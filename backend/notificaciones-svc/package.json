@@ -1,0 +1,27 @@
+{
+  "name": "notificaciones-svc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rimraf dist dist-obfuscated",
+    "dev": "nodemon index.js",
+    "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"node_modules,dist,dist-obfuscated\"",
+    "postbuild": "javascript-obfuscator dist --output dist-obfuscated --compact true",
+    "build:secure": "npm run build && npm run postbuild",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "nodemailer": "^6.9.13"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "javascript-obfuscator": "^4.1.1",
+    "nodemon": "^3.1.11",
+    "rimraf": "^6.1.0"
+  }
+}

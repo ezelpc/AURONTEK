@@ -1,0 +1,198 @@
+/* ====== Reset y fuentes ====== */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #0b2f5b;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+.main-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* ====== SIDEBAR ====== */
+.sidebar {
+    width: 220px;
+    background-color: #173d6e;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 15px;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.sidebar-item.active {
+    background-color: #4a90e2;
+}
+
+.sidebar-item:hover {
+    background-color: #3b7ad1;
+    transform: translateX(4px);
+}
+
+.sidebar-item .material-icons {
+    font-size: 24px;
+    color: #fff;
+    margin-right: 12px;
+}
+
+.sidebar-item .item-text {
+    font-size: 1em;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* ====== CONTENIDO ====== */
+.content-area {
+    flex-grow: 1;
+    padding: 30px;
+    background-color: #0b2f5b;
+    overflow-y: auto;
+}
+
+.content-area h1 {
+    font-size: 2.2em;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+/* ====== PESTAÑAS ====== */
+.tabs-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.tab {
+    padding: 10px 22px;
+    border-radius: 20px;
+    cursor: pointer;
+    background-color: transparent;
+    color: #fff;
+    border: 1px solid #4a90e2;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.tab.active {
+    background-color: #4a90e2;
+    color: #fff;
+}
+
+.tab:hover {
+    background-color: #3b7ad1;
+    border-color: #3b7ad1;
+}
+
+/* ====== CUADROS FLEX ====== */
+.content-flex {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.details-box, 
+.description-box {
+    background-color: #e6f0ff;
+    border-radius: 10px;
+    padding: 20px;
+    flex: 1;
+    min-width: 300px;
+    color: #0b2f5b;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.box-title {
+    margin-top: 0;
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* ====== DROPDOWN ====== */
+.dropdown-header {
+    background-color: #4a90e2;
+    color: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.dropdown-content {
+    display: none;
+    flex-direction: column;
+    background-color: #e6f0ff;
+    border-radius: 5px;
+    margin-top: 5px;
+    padding: 8px 0;
+}
+
+.dropdown-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    color: #0b2f5b;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+    background-color: #d1e2f7;
+}
+
+.dropdown-item.active {
+    background-color: #4a90e2;
+    color: #fff;
+}
+
+/* ====== LISTA DE TICKETS ====== */
+.ticket-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+}
+
+.ticket-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #ccc;
+    transition: background-color 0.2s ease;
+}
+
+.ticket-item:hover {
+    background-color: #d1e2f7;
+}
+
+/* ====== CHART PLACEHOLDER ====== */
+.chart-box {
+    margin-top: 20px;
+}
+
+.chart-placeholder {
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 42px;
+    color: #0b2f5b;
+    opacity: 0.7;
+}
