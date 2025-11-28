@@ -1,0 +1,29 @@
+{
+  "name": "chat-svc",
+  "version": "1.0.0",
+  "description": "Servicio de Chat en tiempo real para la plataforma de Help Desk",
+  "main": "index.js",
+  "type": "module",
+ "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"./node_modules\",\"./dist\"",
+    "start": "node dist/index.js",
+    "dev": "nodemon --exec babel-node index.js",
+   "cache": "rmdir /s /q node_modules && del pnpm-lock.yaml && del pnpm-workspace.yaml && npm cache clean --force"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "mongoose": "^7.6.3",
+    "amqplib": "^0.10.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "@babel/cli": "^7.28.0",
+    "@babel/node": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "rimraf": "^5.0.5"
+  }
+}

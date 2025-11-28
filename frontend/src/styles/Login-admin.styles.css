@@ -1,0 +1,143 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #0b2f5b;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90%;
+    max-width: 600px;
+}
+
+.logo-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    background-color: #173d6e;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.logo-box img {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+}
+
+.logo-name {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+.login-form-box {
+    text-align: center;
+    width: 100%;
+}
+
+.login-form-box h2 {
+    font-size: 2.5em;
+    margin-bottom: 5px;
+}
+
+.login-form-box h3 {
+    font-size: 1.5em;
+    font-weight: 400;
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+.input-field {
+    background-color: #e6f0ff;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    padding: 15px 20px; /* Increased padding for a larger feel */
+    margin-bottom: 15px;
+}
+
+.input-field .icon {
+    color: #4a90e2;
+    margin-right: 15px;
+    font-size: 1.8em; /* Increased icon size */
+}
+
+.input-field input {
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 1.2em; /* Increased text input font size */
+}
+
+.options-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1em; /* Increased font size for options row */
+    margin: 10px 0 20px 0;
+}
+
+.options-row a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.captcha-field {
+    display: none;
+}
+
+.recaptcha-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    transform: scale(1.1); /* Slightly enlarge the reCAPTCHA box */
+    transform-origin: center;
+}
+
+.submit-button {
+    width: 100%;
+    padding: 18px; /* Increased padding for a larger button */
+    background-color: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 1.2em; /* Increased button font size */
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+    background-color: #3b7ad1;
+}
+
+.error-message {
+    color: #ff4d4d;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 1em; /* Increased error message font size */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.error-message.show {
+    visibility: visible;
+    opacity: 1;
+}
+
+.eye-icon {
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 1.8em; /* Increased eye icon size to match other icons */
+}

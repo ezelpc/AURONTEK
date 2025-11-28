@@ -1,0 +1,231 @@
+import React, { useEffect, useState } from 'react';
+import { Box, Grid, Card, CardContent, Typography, Alert, Paper } from '@mui/material';
+import { People, ConfirmationNumber, Timer, Assignment, TrendingUp, CheckCircle } from '@mui/icons-material';
+
+const StatCard = ({ title, value, color, icon }) => (
+  <Card sx={{ borderLeft: `5px solid ${color}`, height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+    <CardContent>
+      <Typography color="textSecondary" variant="overline" fontWeight={600}>{title}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, justifyContent: 'space-between' }}>
+        <Typography variant="h3" fontWeight="bold">{value}</Typography>
+        <Box sx={{ color: color }}>{icon}</Box>
+      </Box>
+    </CardContent>
+  </Card>
+);
+
+const DashboardEmpresa = () => {
+  const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+  const rol = user.rol;
+
+  // Mensaje de bienvenida
+  const getBienvenida = () => {
+    const roleMessages = {
+      'admin-interno': `${user.nombre}, como Admin Interno tienes acceso completo a todas las métricas de la empresa, gestión de usuarios y tickets.`,
+      'admin_empresa': `${user.nombre}, como Admin de Empresa tienes acceso completo a métricas y gestión de usuarios.`,
+      'soporte': `${user.nombre}, aquí puedes ver tus tickets asignados y métricas de resolución.`,
+      'beca-soporte': `${user.nombre}, como Becario de Soporte puedes ver tickets asignados en modo supervisado.`,
+      'usuario_final': `${user.nombre}, bienvenido. Aquí puedes ver el estado de tus solicitudes y crear nuevos tickets.`,
+      'becario': `${user.nombre}, estás en modo aprendizaje. Puedes revisar tickets y el historial.`
+    };
+    return roleMessages[rol] || `Bienvenido, ${user.nombre}`;
+  };
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
+        Panel de Control
+      </Typography>
+
+      {/* Mensaje de Bienvenida */}
+      <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: '#e3f2fd', borderLeft: '4px solid #0288d1' }}>
+        <Typography variant="body1">
+          {getBienvenida()}
+        </Typography>
+      </Paper>
+
+      {/* VISTA: ADMIN INTERNO */}
+      {rol === 'admin-interno' && (
+        <>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <strong>Vista Admin Interno:</strong> Acceso completo al dashboard inicial. Métricas de tickets activos, en proceso, cerrados, en espera, quebranto, de toda la empresa.
+          </Alert>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="Total Usuarios"
+                value="24"
+                color="#1976d2"
+                icon={<People sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="Tickets Activos"
+                value="8"
+                color="#d32f2f"
+                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="En Proceso"
+                value="5"
+                color="#ed6c02"
+                icon={<TrendingUp sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="Cerrados Hoy"
+                value="12"
+                color="#2e7d32"
+                icon={<CheckCircle sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <StatCard
+                title="En Espera"
+                value="3"
+                color="#9c27b0"
+                icon={<Timer sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <StatCard
+                title="Tiempo Promedio"
+                value="2.5h"
+                color="#0288d1"
+                icon={<Timer sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+          </Grid>
+        </>
+      )}
+
+      {/* VISTA: ADMIN EMPRESA */}
+      {rol === 'admin_empresa' && (
+        <>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <strong>Vista Admin Empresa:</strong> Dashboard inicial con métricas de tickets activos, en proceso, cerrados, en espera, quebranto, de toda la empresa.
+          </Alert>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="Total Usuarios"
+                value="24"
+                color="#1976d2"
+                icon={<People sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="Tickets Activos"
+                value="8"
+                color="#d32f2f"
+                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="En Proceso"
+                value="5"
+                color="#ed6c02"
+                icon={<TrendingUp sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <StatCard
+                title="Tiempo Promedio"
+                value="2h"
+                color="#2e7d32"
+                icon={<Timer sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+          </Grid>
+        </>
+      )}
+
+      {/* VISTA: SOPORTE Y BECARIOS */}
+      {(rol === 'soporte' || rol === 'beca-soporte') && (
+        <>
+          <Alert severity="success" sx={{ mb: 3 }}>
+            <strong>Vista {rol === 'soporte' ? 'Soporte' : 'Becario Soporte'}:</strong> Métricas de tickets propios asignados.
+          </Alert>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <StatCard
+                title="Asignados a mí"
+                value="5"
+                color="#ed6c02"
+                icon={<Assignment sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <StatCard
+                title="Alta Prioridad"
+                value="2"
+                color="#d32f2f"
+                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <StatCard
+                title="Resueltos Hoy"
+                value="3"
+                color="#2e7d32"
+                icon={<CheckCircle sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+          </Grid>
+        </>
+      )}
+
+      {/* VISTA: USUARIO FINAL */}
+      {rol === 'usuario_final' && (
+        <>
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <strong>Vista Usuario Final:</strong> El dashboard inicial cambiará conforme se seleccione la opción del menú.
+          </Alert>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <StatCard
+                title="Mis Tickets Abiertos"
+                value="1"
+                color="#1976d2"
+                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <StatCard
+                title="Última Respuesta"
+                value="Hace 1h"
+                color="#2e7d32"
+                icon={<Timer sx={{ fontSize: 48 }} />}
+              />
+            </Grid>
+          </Grid>
+        </>
+      )}
+
+      {/* VISTA: BECARIO  */}
+      {rol === 'becario' && (
+        <>
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <strong>Modo Aprendizaje:</strong> Acceso de lectura limitado.
+          </Alert>
+          <Paper elevation={1} sx={{ p: 3 }}>
+            <Typography variant="body1" paragraph>
+              No tienes métricas asignadas directamente.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Revisa la sección "Mis Tickets" para ver el historial y aprender del proceso de soporte.
+            </Typography>
+          </Paper>
+        </>
+      )}
+    </Box>
+  );
+};
+
+export default DashboardEmpresa;

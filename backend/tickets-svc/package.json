@@ -1,0 +1,35 @@
+{
+  "name": "tickets-svc",
+  "version": "1.0.0",
+  "description": "Servicio de Tickets para la plataforma de Help Desk",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist dist-obfuscated",
+    "dev": "nodemon index.js",
+    "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"node_modules,dist,dist-obfuscated\"",
+    "postbuild": "javascript-obfuscator dist --output dist-obfuscated --compact true",
+    "build:secure": "npm run build && npm run postbuild",
+    "start": "node dist/index.js",
+    "serve": "node dist-obfuscated/index.js",
+    "cache": "rimraf node_modules pnpm-lock.yaml && pnpm store prune && pnpm install"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.3",
+    "multer": "^2.0.2",
+    "amqplib": "^0.10.3"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "javascript-obfuscator": "^4.1.1",
+    "nodemon": "^3.1.11",
+    "rimraf": "^6.1.0"
+  }
+}
