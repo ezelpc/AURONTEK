@@ -6,7 +6,6 @@ import MainLayout from './components/layout/MainLayout';         // Admin Sistem
 import LayoutEmpresa from './components/layout/LayoutEmpresa';   // Admin Empresa
 
 // --- PAGES ADMIN SISTEMA ---
-// import LoginAdmin from './pages/Login-admin.pages'; // ELIMINADO TEMPORALMENTE
 import Dashboard from './pages/Dashboard';
 import RegistrarEmpresa from './pages/RegistrarEmpresa';
 import Tickets from './pages/Tickets';
@@ -31,14 +30,9 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* ================= RUTAS PÚBLICAS ================= */}
-        
-        {/* 1. Redirección Clave:
-           Como PrivateRoute redirige a "/login" si no hay sesión, 
-           esta línea atrapa ese intento y lo manda a tu nueva portada "/acceso-empresa".
-        */}
         <Route path="/login" element={<Navigate to="/acceso-empresa" replace />} />
         
-        {/* Flujo de Acceso Empresa (Nueva Portada) */}
+        {/* Flujo de Acceso Empresa */}
         <Route path="/acceso-empresa" element={<ValidarAcceso />} />
         <Route path="/empresa/login" element={<LoginEmpresa />} />
         
@@ -59,7 +53,7 @@ function App() {
 
         {/* ================= RUTA ADMIN EMPRESA (CLIENTE) ================= */}
         <Route path="/empresa" element={
-          <PrivateRoute allowedRoles={['admin_empresa', 'soporte', 'usuario_final', 'becario']}>
+          <PrivateRoute allowedRoles={['admin-interno', 'admin_empresa', 'soporte', 'usuario_final', 'becario', 'beca-soporte']}>
             <LayoutEmpresa />
           </PrivateRoute>
         }>
@@ -78,7 +72,7 @@ function App() {
           <Route path="perfil" element={<Perfil />} />
         </Route>
 
-        {/* Fallback: Cualquier ruta desconocida va al inicio del flujo de empresa */}
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/acceso-empresa" replace />} />
       </Routes>
     </BrowserRouter>

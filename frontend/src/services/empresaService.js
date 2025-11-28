@@ -79,13 +79,11 @@ const MOCK_TICKETS = [
 ];
 
 // ==========================================
-// 2. HELPERS DE LOCALSTORAGE
+// 2. HELPERS LOCALSTORAGE
 // ==========================================
-const getData = (key, defaultData) => {
-  const stored = localStorage.getItem(key);
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem(key, JSON.stringify(defaultData));
-  return defaultData;
+const getData = (key, mockData) => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : mockData;
 };
 
 const setData = (key, data) => {
@@ -93,69 +91,62 @@ const setData = (key, data) => {
 };
 
 // ==========================================
-// 3. FUNCIONES DE AUTENTICACIÓN (CORREGIDAS)
+// 3. CONFIGURACIÓN API
+// ==========================================
+const api = axios.create({
+  baseURL: 'http://localhost:3000/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Interceptor para manejar errores y extraer el mensaje del backend
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error("API Error:", error.response ? error.response.data : error.message);
+    return Promise.reject(error.response ? error.response.data : { msg: 'Error de red o servidor' });
+  }
+);
+
+// ==========================================
+// 4. FUNCIONES DE AUTENTICACIÓN (REAL API)
 // ==========================================
 
 export const validarCodigoAcceso = async (codigo) => {
-  const empresas = getData(KEY_EMPRESAS, MOCK_EMPRESAS);
-  const empresa = empresas.find(e => e.codigo_acceso === codigo);
-  
-  if (empresa) {
-    if (!empresa.estado) return Promise.reject({ error: 'La empresa está inactiva.' });
-    return Promise.resolve({ ok: true, empresaId: empresa.id, nombre: empresa.nombre });
-  }
-  return Promise.reject({ error: 'Código de acceso inválido.' });
+  const response = await api.post('/auth/validate-code', { codigo });
+  return response.data;
 };
 
-// LOGIN CORREGIDO: Valida estrictamente contra la empresa del código de sesión
-export const loginEmpresa = async ({ correo, contraseña }) => {
-  // 1. Obtener el código con el que se entró a la página (ValidarAcceso)
+export const loginEmpresa = async ({ correo, contraseña, recaptchaToken }) => {
   const codigoSesion = sessionStorage.getItem('empresa_acceso');
   
   if (!codigoSesion) {
-    return Promise.reject({ error: 'Sesión de empresa no válida. Ingrese el código nuevamente.' });
+    return Promise.reject({ msg: 'Sesión de empresa no válida. Ingrese el código nuevamente.' });
   }
 
-  // 2. Identificar la empresa dueña de ese código
-  const empresas = getData(KEY_EMPRESAS, MOCK_EMPRESAS);
-  const empresaActual = empresas.find(e => e.codigo_acceso === codigoSesion);
-
-  if (!empresaActual) {
-    return Promise.reject({ error: 'El código de acceso de la sesión no es válido.' });
-  }
-
-  // 3. Buscar usuario que coincida con el correo Y con la empresa detectada
-  const usuarios = getData(KEY_USUARIOS, MOCK_USUARIOS);
-  const usuario = usuarios.find(u => 
-    u.correo.toLowerCase() === correo.toLowerCase() && 
-    u.empresaId === empresaActual.id // <--- VALIDACIÓN ESTRICTA AQUÍ
-  );
-
-  if (usuario) {
-    if (!usuario.estado) return Promise.reject({ error: 'Usuario inactivo.' });
-    
-    // Login exitoso
-    return Promise.resolve({
-      ok: true,
-      token: `token-mock-${usuario.id}`,
-      usuario: { ...usuario }
-    });
-  }
+  const response = await api.post('/auth/login', {
+    email: correo,
+    password: contraseña,
+    codigoAcceso: codigoSesion,
+    recaptchaToken: recaptchaToken || 'token-bypass-dev'
+  });
   
-  // Si el correo existe pero es de otra empresa, fallará aquí (seguro)
-  return Promise.reject({ error: 'Credenciales incorrectas o usuario no pertenece a esta empresa.' });
+  return {
+    ok: true,
+    token: response.data.token,
+    usuario: response.data.admin
+  };
 };
 
 // ==========================================
-// 4. GESTIÓN DE TICKETS (Filtrado por Empresa)
+// 5. SERVICIOS (MOCK + LOCALSTORAGE)
 // ==========================================
 
-export const getTickets = async (filtros = {}) => {
+export const getTickets = async (filtros = {}, empresaIdFiltro = null) => {
   let tickets = getData(KEY_TICKETS, MOCK_TICKETS);
   const usuarios = getData(KEY_USUARIOS, MOCK_USUARIOS);
-  
-  // Si no se pasa empresaId explícito, intentar obtenerlo del usuario logueado
-  let empresaIdFiltro = filtros.empresaId;
+
   if (!empresaIdFiltro) {
       const usuarioLogueado = JSON.parse(localStorage.getItem('usuario') || '{}');
       empresaIdFiltro = usuarioLogueado.empresaId;
@@ -217,7 +208,7 @@ export const reasignarTicket = async (ticketId, nuevoAsignadoId, tutorId = null)
 };
 
 // ==========================================
-// 5. GESTIÓN DE USUARIOS (Filtrado por Empresa)
+// 6. GESTIÓN DE USUARIOS (Filtrado por Empresa)
 // ==========================================
 
 export const getUsuarios = async (empresaId = null) => {
@@ -251,7 +242,7 @@ export const crearUsuario = async (usuarioData, creador) => {
 };
 
 // ==========================================
-// 6. FUNCIONES ADMIN SISTEMA (SuperAdmin)
+// 7. FUNCIONES ADMIN SISTEMA (SuperAdmin)
 // ==========================================
 
 export const registrarEmpresa = async (empresaData, token) => {
@@ -299,7 +290,7 @@ export const getTodasEmpresas = async () => {
 };
 
 // ==========================================
-// 7. ALIAS DE COMPATIBILIDAD
+// 8. ALIAS DE COMPATIBILIDAD
 // ==========================================
 export const getTicketsEmpresa = () => getTickets(); // Ya maneja la lógica interna de obtener ID de sesión
 export const getUsuariosEmpresa = () => getUsuarios();

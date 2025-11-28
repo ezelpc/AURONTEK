@@ -1,97 +1,212 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, 
-  ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton, 
-  Avatar, Divider, Tooltip, Chip 
+import {
+  Box,
+  CssBaseline,
+  AppBar,
+  Toolbar,
+  Typography,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Avatar,
+  Divider,
+  Tooltip,
+  Chip,
+  Menu,
+  MenuItem,
+  ThemeProvider,
+  createTheme,
+  Button,
 } from '@mui/material';
-import { 
-  Menu as MenuIcon, Dashboard, People, ConfirmationNumber, 
-  AddBox, Logout, Person, School 
+import {
+  Menu as MenuIcon,
+  Dashboard,
+  People,
+  ConfirmationNumber,
+  AddBox,
+  Logout,
+  Person,
+  DarkMode,
+  LightMode,
+  Help,
 } from '@mui/icons-material';
 
-const drawerWidth = 240;
+const drawerWidth = 260;
 
 const LayoutEmpresa = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved === 'true';
+  });
 
-  // Obtener usuario y rol
+  // Obtener usuario, empresa y rol
   const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+  const nombreEmpresa = sessionStorage.getItem('empresa_nombre') || 'Mi Empresa';
   const rol = user.rol || 'usuario_final';
+  const activo = user.activo !== false;
+
+  const handleOpenMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    localStorage.removeItem('empresa_email_recordado');
     sessionStorage.clear();
+    handleCloseMenu();
     navigate('/acceso-empresa');
   };
 
-  // Definir todos los items posibles
+  const handleToggleDarkMode = () => {
+    setDarkMode((prev) => {
+      const newMode = !prev;
+      localStorage.setItem('darkMode', String(newMode));
+      return newMode;
+    });
+    handleCloseMenu();
+  };
+
+  const handleHelp = () => {
+    console.log('Abrir ayuda');
+    handleCloseMenu();
+  };
+
   const allMenuItems = [
-    { 
-      text: 'Dashboard', 
-      icon: <Dashboard />, 
-      path: '/empresa/dashboard', 
-      roles: ['admin_empresa', 'soporte', 'usuario_final', 'becario'] 
+    {
+      text: 'Dashboard',
+      icon: <Dashboard />,
+      path: '/empresa/dashboard',
+      roles: ['admin-interno', 'admin_empresa', 'soporte', 'usuario_final', 'becario', 'beca-soporte'],
     },
-    { 
-      text: 'Gestión Tickets', // Vista avanzada para resolver
-      icon: <ConfirmationNumber />, 
-      path: '/empresa/tickets', 
-      roles: ['admin_empresa', 'soporte'] 
+    {
+      text: 'Gestión Tickets',
+      icon: <ConfirmationNumber />,
+      path: '/empresa/tickets',
+      roles: ['admin-interno', 'admin_empresa', 'soporte'],
     },
-    { 
-      text: 'Mis Tickets', // Vista simple para usuario final
-      icon: <ConfirmationNumber />, 
-      path: '/empresa/tickets', 
-      roles: ['usuario_final', 'becario'] 
+    {
+      text: 'Mis Tickets',
+      icon: <ConfirmationNumber />,
+      path: '/empresa/tickets',
+      roles: ['usuario_final', 'becario', 'beca-soporte'],
     },
-    { 
-      text: 'Crear Ticket', 
-      icon: <AddBox />, 
-      path: '/empresa/tickets/nuevo', 
-      roles: ['admin_empresa', 'usuario_final', 'becario'] // Soporte quizás no crea tickets para sí mismo
+    {
+      text: 'Crear Ticket',
+      icon: <AddBox />,
+      path: '/empresa/tickets/nuevo',
+      roles: ['admin-interno', 'admin_empresa', 'usuario_final', 'becario'],
     },
-    { 
-      text: 'Usuarios', 
-      icon: <People />, 
-      path: '/empresa/usuarios', 
-      roles: ['admin_empresa'] // Solo admin gestiona usuarios
-    },
-    { 
-      text: 'Mi Perfil', 
-      icon: <Person />, 
-      path: '/empresa/perfil', 
-      roles: ['admin_empresa', 'soporte', 'usuario_final', 'becario'] 
+    {
+      text: 'Usuarios',
+      icon: <People />,
+      path: '/empresa/usuarios',
+      roles: ['admin-interno', 'admin_empresa'],
     },
   ];
 
-  // Filtrar menú según rol
-  const menuItems = allMenuItems.filter(item => item.roles.includes(rol));
+  const menuItems = allMenuItems.filter((item) => item.roles.includes(rol));
+
+  const formatRol = (rol) => {
+    const roleMap = {
+      'admin-general': 'ADMIN ROOT',
+      'admin-interno': 'ADMIN',
+      'soporte': 'SOPORTE',
+      'usuario_final': 'USUARIO',
+      'beca-soporte': 'BECARIO SOPORTE',
+    };
+    return roleMap[rol] || rol.toUpperCase();
+  };
 
   const drawer = (
     <div>
-      <Toolbar sx={{ bgcolor: '#0288d1', color: 'white', flexDirection: 'column', alignItems: 'flex-start', py: 2 }}>
-        <Typography variant="h6" noWrap fontWeight="bold">PORTAL EMPRESA</Typography>
-        <Chip 
-          label={rol.replace('_', ' ').toUpperCase()} 
-          size="small" 
-          sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', mt: 1 }} 
+      <Toolbar
+        sx={{
+          bgcolor: darkMode ? '#424242' : '#0288d1',
+          color: 'white',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          py: 2,
+          px: 2,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ opacity: 0.8, mb: 0.5 }}>
+          PORTAL EMPRESA
+        </Typography>
+        <Typography variant="h6" noWrap fontWeight="bold" sx={{ mb: 1 }}>
+          {nombreEmpresa}
+        </Typography>
+        <Chip
+          label={formatRol(rol)}
+          size="small"
+          sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 'bold', mb: 1 }}
         />
+        <Button
+          startIcon={<Person />}
+          onClick={() => { navigate('/empresa/perfil'); setMobileOpen(false); }}
+          sx={{
+            color: 'white',
+            textTransform: 'none',
+            justifyContent: 'flex-start',
+            width: '100%',
+            mt: 0.5,
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
+          }}
+          size="small"
+        >
+          Mi Perfil
+        </Button>
       </Toolbar>
       <Divider />
-      <List>
+      <List sx={{ pt: 2 }}>
         {menuItems.map((item, index) => (
-          <ListItem key={index} disablePadding>
-            <ListItemButton 
+          <ListItem key={index} disablePadding sx={{ px: 1 }}>
+            <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => { navigate(item.path); setMobileOpen(false); }}
+              sx={{
+                borderRadius: 1,
+                mb: 0.5,
+                '&.Mui-selected': {
+                  bgcolor: darkMode ? '#333' : '#e3f2fd',
+                  '&:hover': { bgcolor: darkMode ? '#444' : '#e3f2fd' },
+                },
+              }}
             >
-              <ListItemIcon sx={{ color: location.pathname === item.path ? '#0288d1' : 'inherit' }}>
+              <ListItemIcon
+                sx={{
+                  minWidth: 40,
+                  bgcolor: darkMode ? '#555' : '#0288d1',
+                  color: '#fff',
+                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 {item.icon}
               </ListItemIcon>
-              <ListItemText primary={item.text} />
+              <ListItemText
+                primary={item.text}
+                primaryTypographyProps={{
+                  fontWeight: location.pathname === item.path ? 600 : 400,
+                  fontSize: '0.95rem',
+                }}
+              />
             </ListItemButton>
           </ListItem>
         ))}
@@ -99,35 +214,179 @@ const LayoutEmpresa = () => {
     </div>
   );
 
-  return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar position="fixed" sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, bgcolor: 'white', color: '#333' }}>
-        <Toolbar>
-          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { sm: 'none' } }}>
-            <MenuIcon />
-          </IconButton>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6">Hola, {user.nombre}</Typography>
-          </Box>
-          <IconButton onClick={handleLogout} color="error"><Logout /></IconButton>
-        </Toolbar>
-      </AppBar>
-      
-      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
-        <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }}>
-          {drawer}
-        </Drawer>
-        <Drawer variant="permanent" sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }} open>
-          {drawer}
-        </Drawer>
-      </Box>
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: darkMode ? 'dark' : 'light',
+          primary: {
+            main: darkMode ? '#90a4ae' : '#0288d1',
+          },
+          background: {
+            default: darkMode ? '#121212' : '#f4f6f8',
+            paper: darkMode ? '#1e1e1e' : '#ffffff',
+          },
+          text: {
+            primary: darkMode ? '#e0e0e0' : '#212121',
+            secondary: darkMode ? '#b0b0b0' : '#555555',
+          },
+        },
+        components: {
+          MuiAppBar: {
+            styleOverrides: {
+              root: {
+                backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+                color: darkMode ? '#e0e0e0' : '#333333',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              },
+            },
+          },
+          MuiDrawer: {
+            styleOverrides: {
+              paper: {
+                backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+              },
+            },
+          },
+        },
+      }),
+    [darkMode]
+  );
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, minHeight: '100vh', bgcolor: '#f4f6f8' }}>
-        <Toolbar />
-        <Outlet />
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ display: 'flex' }}>
+        <CssBaseline />
+        <AppBar
+          position="fixed"
+          sx={{
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            ml: { sm: `${drawerWidth}px` },
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              sx={{ mr: 2, display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="h6" sx={{ color: 'inherit' }}>
+                Panel de Control
+              </Typography>
+            </Box>
+            <Tooltip title="Abrir menú de usuario">
+              <IconButton onClick={handleOpenMenu} sx={{ p: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                      {user.nombre || 'Usuario'}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                        {formatRol(rol)}
+                      </Typography>
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          bgcolor: activo ? '#4caf50' : '#9e9e9e',
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                  <Avatar
+                    alt={user.nombre}
+                    src={user.fotoPerfil || '/default-avatar.png'}
+                    sx={{ width: 40, height: 40, bgcolor: darkMode ? '#424242' : '#0288d1' }}
+                  >
+                    {user.nombre?.charAt(0).toUpperCase() || 'U'}
+                  </Avatar>
+                </Box>
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={anchorEl}
+              open={openMenu}
+              onClose={handleCloseMenu}
+              onClick={handleCloseMenu}
+              PaperProps={{
+                elevation: 3,
+                sx: {
+                  mt: 1.5,
+                  minWidth: 200,
+                  '& .MuiMenuItem-root': { px: 2, py: 1.5 },
+                },
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <MenuItem onClick={handleToggleDarkMode}>
+                <ListItemIcon>
+                  {darkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+                </ListItemIcon>
+                <Typography variant="body2">
+                  {darkMode ? 'Modo Claro' : 'Modo Oscuro'}
+                </Typography>
+              </MenuItem>
+              <MenuItem onClick={handleHelp}>
+                <ListItemIcon>
+                  <Help fontSize="small" />
+                </ListItemIcon>
+                <Typography variant="body2">Ayuda</Typography>
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                <ListItemIcon>
+                  <Logout fontSize="small" color="error" />
+                </ListItemIcon>
+                <Typography variant="body2">Cerrar Sesión</Typography>
+              </MenuItem>
+            </Menu>
+          </Toolbar>
+        </AppBar>
+        <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            sx={{
+              display: { xs: 'block', sm: 'none' },
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            }}
+          >
+            {drawer}
+          </Drawer>
+          <Drawer
+            variant="permanent"
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            }}
+            open
+          >
+            {drawer}
+          </Drawer>
+        </Box>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            minHeight: '100vh',
+            bgcolor: (theme) => theme.palette.background.default,
+          }}
+        >
+          <Toolbar />
+          <Outlet />
+        </Box>
       </Box>
-    </Box>
+    </ThemeProvider>
   );
 };
 
