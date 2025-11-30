@@ -9,17 +9,20 @@ const __dirname = path.dirname(__filename);
 // Cargar el .env desde un nivel superior
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const connectDB = async () => {
+const connectDB = async (): Promise<void> => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        }); 
+        const mongoUri = process.env.MONGODB_URI;
+        if (!mongoUri) {
+            throw new Error('MONGODB_URI is not defined in environment variables');
+        }
+
+        await mongoose.connect(mongoUri);
         console.log('MongoDB conexion exitosa');
 
     } catch (error) {
         console.error('MongoDB error de conexion :', error);
-        process.exit(1);    
+        process.exit(1);
     }
 };
+
 export default connectDB;
