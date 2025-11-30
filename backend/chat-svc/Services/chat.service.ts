@@ -1,46 +1,51 @@
 import Mensaje from '../Models/Mensaje.model.js';
-import Ticket from '../../tickets-svc/Models/Ticket.model.js';
-import Usuario from '../../usuarios-svc/Models/AltaUsuario.models.js';
+import axios from 'axios';
+
+interface GuardarMensajeData {
+    ticketId: string;
+    empresaId: string;
+    emisorId: string;
+    tipo?: 'texto' | 'imagen' | 'archivo' | 'sistema';
+    contenido: string;
+    metadata?: any;
+}
+
+interface ObtenerHistorialOpciones {
+    limite?: number;
+    desde?: Date;
+}
 
 class ChatService {
-    
-    async validarAcceso(usuarioId, ticketId) {
+
+    async validarAcceso(usuarioId: string, ticketId: string): Promise<boolean> {
         try {
-            const ticket = await Ticket.findById(ticketId);
-            const usuarioSolicitante = await Usuario.findById(usuarioId);
+            // Obtener ticket mediante llamada HTTP al servicio de tickets
+            const ticketResponse = await axios.get(
+                `${process.env.TICKETS_SVC_URL || 'http://localhost:3002'}/tickets/${ticketId}/verificar-acceso-chat`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.SERVICE_TOKEN}`,
+                        'X-Service-Name': 'chat-svc',
+                        'X-User-Id': usuarioId
+                    }
+                }
+            );
 
-            if (!ticket || !usuarioSolicitante) return false;
+            const result = ticketResponse.data;
+            return result.acceso || false;
 
-            const idSolicitante = usuarioSolicitante._id.toString();
-
-            // 1. Acceso Admin Global
-            if (usuarioSolicitante.rol === 'admin-general') return true;
-
-            // 2. Acceso Dueño del Ticket (Usuario normal)
-            if (ticket.usuarioCreador.toString() === idSolicitante) return true;
-
-            // 3. Acceso Agente Asignado (Sea Soporte o Beca-Soporte)
-            if (ticket.agenteAsignado && ticket.agenteAsignado.toString() === idSolicitante) return true;
-
-            // 4. ACCESO TUTOR (Lógica solicitada)
-            // Si el usuario actual está registrado como el 'tutor' del ticket, tiene acceso total.
-            if (ticket.tutor && ticket.tutor.toString() === idSolicitante) {
-                console.log(`[Chat] Acceso concedido a Tutor: ${usuarioSolicitante.nombre}`);
-                return true;
-            }
-
-            return false;
-        } catch (error) {
-            console.error('Error validando acceso:', error);
+        } catch (error: any) {
+            console.error('Error validando acceso via tickets-svc:', error.message);
+            // Si el endpoint de tickets no responde, denegar acceso por seguridad
             return false;
         }
     }
 
-    async guardarMensaje(data) {
+    async guardarMensaje(data: GuardarMensajeData) {
         const accesoValido = await this.validarAcceso(data.emisorId, data.ticketId);
         if (!accesoValido) throw new Error('No tienes permiso para participar en este chat.');
 
-        const mensaje = new Mensaje({
+        const mensaje: any = new Mensaje({
             ticketId: data.ticketId,
             empresaId: data.empresaId,
             emisorId: data.emisorId,
@@ -53,23 +58,22 @@ class ChatService {
         return await mensaje.save();
     }
 
-    async obtenerHistorialChat(ticketId, usuarioId, opciones = {}) {
+    async obtenerHistorialChat(ticketId: string, usuarioId: string, opciones: ObtenerHistorialOpciones = {}) {
         const accesoValido = await this.validarAcceso(usuarioId, ticketId);
         if (!accesoValido) throw new Error('No autorizado para ver este historial');
 
         const { limite = 50, desde } = opciones;
-        const query = { ticketId };
+        const query: any = { ticketId };
         if (desde) query.createdAt = { $lt: desde };
 
-        return await Mensaje.find(query)
+        return await (Mensaje as any).find(query)
             .sort({ createdAt: 1 })
             .limit(limite)
-            .populate('emisorId', 'nombre rol fotoPerfil'); 
+            .populate('emisorId', 'nombre rol fotoPerfil');
     }
 
-    // ... (Resto de métodos: marcarComoLeido, etc. se mantienen igual)
-    async marcarComoLeido(mensajeId, usuarioId) {
-        return await Mensaje.findByIdAndUpdate(
+    async marcarComoLeido(mensajeId: string, usuarioId: string) {
+        return await (Mensaje as any).findByIdAndUpdate(
             mensajeId,
             { $addToSet: { leidoPor: { usuarioId: usuarioId, fecha: new Date() } } },
             { new: true }

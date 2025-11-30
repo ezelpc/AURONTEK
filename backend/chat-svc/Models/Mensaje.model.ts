@@ -1,19 +1,34 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const mensajeSchema = new mongoose.Schema({
+export interface IMensaje extends Document {
+    ticketId: mongoose.Types.ObjectId;
+    empresaId: mongoose.Types.ObjectId;
+    emisorId: mongoose.Types.ObjectId;
+    tipo: 'texto' | 'imagen' | 'archivo' | 'sistema';
+    contenido: string;
+    leidoPor: Array<{
+        usuarioId: mongoose.Types.ObjectId;
+        fecha: Date;
+    }>;
+    metadata?: Map<string, string>;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+const mensajeSchema = new Schema<IMensaje>({
     ticketId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Ticket',
         required: true,
         index: true
     },
     empresaId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Empresa',
         required: true
     },
     emisorId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Usuario',
         required: true
     },
@@ -27,7 +42,7 @@ const mensajeSchema = new mongoose.Schema({
         required: true
     },
     leidoPor: [{
-        usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
+        usuarioId: { type: Schema.Types.ObjectId, ref: 'Usuario' },
         fecha: { type: Date, default: Date.now }
     }],
     metadata: {
@@ -38,5 +53,5 @@ const mensajeSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const Mensaje = mongoose.model('Mensaje', mensajeSchema);
+const Mensaje = mongoose.model<IMensaje>('Mensaje', mensajeSchema);
 export default Mensaje;
