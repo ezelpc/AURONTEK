@@ -1,32 +1,52 @@
-// Services/ticket.service.js
-import Ticket from '../Models/Ticket.model.js';
-import amqp from 'amqplib';
+import Ticket, { ITicket } from '../Models/Ticket.model.js';
+import amqp, { Channel, Connection, ConfirmChannel } from 'amqplib';
 import axios from 'axios';
+import mongoose from 'mongoose';
+
+interface ListarOptions {
+  pagina?: number;
+  limite?: number;
+  ordenar?: any;
+  poblar?: string[];
+}
+
+interface ObtenerOptions {
+  poblar?: string[];
+}
+
+interface Clasificacion {
+  tipo?: string;
+  prioridad?: string;
+  categoria?: string;
+  tiempoResolucion?: number;
+  tiempoRespuesta?: number;
+}
 
 class TicketService {
+  private channel: ConfirmChannel | null = null;
+  private connection: Connection | null = null;
+  private exchange: string = 'tickets';
+  private _connecting: boolean = false;
+
   constructor() {
-    this.channel = null;
-    this.connection = null;
-    this.exchange = 'tickets';
-    this._connecting = false;
     this.initializeRabbitMQ();
   }
 
-  async initializeRabbitMQ() {
+  async initializeRabbitMQ(): Promise<void> {
     if (this._connecting) return;
     this._connecting = true;
 
     const url = process.env.RABBITMQ_URL || 'amqp://localhost';
     let attempt = 0;
 
-    const connectWithRetry = async () => {
+    const connectWithRetry = async (): Promise<void> => {
       attempt++;
       try {
         this.connection = await amqp.connect(url);
         this.channel = await this.connection.createConfirmChannel();
         await this.channel.assertExchange(this.exchange, 'topic', { durable: true });
 
-        this.connection.on('error', (err) => {
+        this.connection.on('error', (err: Error) => {
           console.error('RabbitMQ connection error:', err);
         });
 
@@ -48,7 +68,7 @@ class TicketService {
     connectWithRetry();
   }
 
-  async publicarEvento(routingKey, data) {
+  async publicarEvento(routingKey: string, data: any): Promise<void> {
     if (!this.channel) {
       console.warn('Intento publicar sin conexión con RabbitMQ. Reintentando conexión...');
       this.initializeRabbitMQ();
@@ -70,8 +90,7 @@ class TicketService {
     }
   }
 
-  // ✅ Validar que un usuario tenga las habilidades necesarias
-  async validarHabilidadesAgente(agenteId, empresaId) {
+  async validarHabilidadesAgente(agenteId: string, empresaId: string): Promise<any> {
     try {
       const response = await axios.get(
         `${process.env.USUARIOS_SVC_URL}/usuarios/${agenteId}`,
@@ -96,13 +115,13 @@ class TicketService {
       }
 
       return agente;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error validando agente:', error.message);
       throw new Error('No se pudo validar el agente: ' + error.message);
     }
   }
 
-  async crearTicket(datosTicket) {
+  async crearTicket(datosTicket: any): Promise<ITicket> {
     try {
       const nuevoTicket = await Ticket.create(datosTicket);
 
@@ -123,7 +142,7 @@ class TicketService {
 
       try {
         await this.publicarEvento('ticket.creado', eventPayload);
-      } catch (pubErr) {
+      } catch (pubErr: any) {
         console.error('No se pudo publicar evento ticket.creado:', pubErr.message || pubErr);
       }
 
@@ -134,29 +153,33 @@ class TicketService {
     }
   }
 
-  async listarTickets(filtros = {}, { pagina = 1, limite = 10, ordenar = { createdAt: -1 }, poblar = [] } = {}) {
+  async listarTickets(filtros: any = {}, options: ListarOptions = {}): Promise<any> {
+    const { pagina = 1, limite = 10, ordenar = { createdAt: -1 }, poblar = [] } = options;
     const skip = (Number(pagina) - 1) * Number(limite);
+
     let query = Ticket.find(filtros).sort(ordenar).skip(skip).limit(Number(limite));
-    poblar.forEach(p => query = query.populate(p, 'nombre correo rol'));
+    poblar.forEach((p: string) => query = query.populate(p, 'nombre correo rol'));
+
     const docs = await query.exec();
     const total = await Ticket.countDocuments(filtros);
+
     return { data: docs, pagina: Number(pagina), limite: Number(limite), total };
   }
 
-  async obtenerTicket(id, options = {}) {
+  async obtenerTicket(id: string, options: ObtenerOptions = {}): Promise<ITicket> {
     let q = Ticket.findById(id);
-    (options.poblar || []).forEach(p => (q = q.populate(p, 'nombre correo rol')));
+    (options.poblar || []).forEach((p: string) => (q = q.populate(p, 'nombre correo rol')));
     const ticket = await q.exec();
     if (!ticket) throw new Error('Ticket no encontrado');
     return ticket;
   }
 
-  async actualizarEstado(id, estado, usuarioId) {
+  async actualizarEstado(id: string, estado: string, usuarioId?: string): Promise<ITicket> {
     const ticket = await Ticket.findById(id);
     if (!ticket) throw new Error('Ticket no encontrado');
-    
+
     const estadoAnterior = ticket.estado;
-    ticket.estado = estado;
+    ticket.estado = estado as any;
 
     // Actualizar fechas según el estado
     if (estado === 'en_proceso' && !ticket.fechaRespuesta) {
@@ -171,29 +194,29 @@ class TicketService {
     // Publicar evento
     try {
       await this.publicarEvento('ticket.estado_actualizado', {
-        ticket: { 
-          id: ticket._id.toString(), 
-          estado, 
+        ticket: {
+          id: ticket._id.toString(),
+          estado,
           estadoAnterior,
-          actualizadoPor: usuarioId 
+          actualizadoPor: usuarioId
         }
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('No se pudo publicar estado actualizado:', e.message || e);
     }
 
     return ticket;
   }
 
-  async asignarTicket(id, agenteId, empresaId) {
+  async asignarTicket(id: string, agenteId: string, empresaId?: string): Promise<ITicket> {
     const ticket = await Ticket.findById(id);
     if (!ticket) throw new Error('Ticket no encontrado');
 
     // Validar habilidades del agente
-    const agente = await this.validarHabilidadesAgente(agenteId, empresaId);
+    const agente = await this.validarHabilidadesAgente(agenteId, empresaId || ticket.empresaId.toString());
 
-    ticket.agenteAsignado = agenteId;
-    
+    ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
+
     // Si el ticket está en 'abierto', cambiarlo a 'en_proceso'
     if (ticket.estado === 'abierto') {
       ticket.estado = 'en_proceso';
@@ -204,27 +227,26 @@ class TicketService {
 
     try {
       await this.publicarEvento('ticket.asignado', {
-        ticket: { 
-          id: ticket._id.toString(), 
+        ticket: {
+          id: ticket._id.toString(),
           agenteId: agenteId.toString(),
           agenteNombre: agente.nombre,
           estado: ticket.estado
         }
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('No se pudo publicar ticket.asignado:', e.message || e);
     }
 
     return ticket;
   }
 
-  // ✅ NUEVO: Delegar ticket a becario (el soporte se vuelve tutor)
-  async delegarTicket(ticketId, becarioId, tutorId, empresaId) {
+  async delegarTicket(ticketId: string, becarioId: string, tutorId: string, empresaId?: string): Promise<ITicket> {
     const ticket = await Ticket.findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
     // Validar que el becario sea beca-soporte
-    const becario = await this.validarHabilidadesAgente(becarioId, empresaId);
+    const becario = await this.validarHabilidadesAgente(becarioId, empresaId || ticket.empresaId.toString());
     if (becario.rol !== 'beca-soporte') {
       throw new Error('Solo se puede delegar a usuarios con rol beca-soporte');
     }
@@ -235,10 +257,10 @@ class TicketService {
     }
 
     // Guardar el soporte actual como tutor
-    ticket.tutor = tutorId;
+    ticket.tutor = new mongoose.Types.ObjectId(tutorId);
     // Asignar al becario
-    ticket.agenteAsignado = becarioId;
-    
+    ticket.agenteAsignado = new mongoose.Types.ObjectId(becarioId);
+
     await ticket.save();
 
     try {
@@ -250,16 +272,15 @@ class TicketService {
           becarioNombre: becario.nombre
         }
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('No se pudo publicar ticket.delegado:', e.message || e);
     }
 
     return ticket;
   }
 
-  // ✅ NUEVO: Verificar si el chat está habilitado para este ticket
-  async verificarAccesoChat(ticketId, usuarioId) {
-    const ticket = await Ticket.findById(ticketId)
+  async verificarAccesoChat(ticketId: string, usuarioId?: string): Promise<any> {
+    const ticket: any = await Ticket.findById(ticketId)
       .populate('usuarioCreador', '_id')
       .populate('agenteAsignado', '_id')
       .populate('tutor', '_id');
@@ -294,14 +315,13 @@ class TicketService {
     };
   }
 
-  // ✅ NUEVO: Actualizar clasificación del ticket (desde IA)
-  async actualizarClasificacion(ticketId, clasificacion) {
+  async actualizarClasificacion(ticketId: string, clasificacion: Clasificacion): Promise<ITicket> {
     const ticket = await Ticket.findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
     // Actualizar campos de clasificación
-    if (clasificacion.tipo) ticket.tipo = clasificacion.tipo;
-    if (clasificacion.prioridad) ticket.prioridad = clasificacion.prioridad;
+    if (clasificacion.tipo) ticket.tipo = clasificacion.tipo as any;
+    if (clasificacion.prioridad) ticket.prioridad = clasificacion.prioridad as any;
     if (clasificacion.categoria) ticket.categoria = clasificacion.categoria;
     if (clasificacion.tiempoResolucion) ticket.tiempoResolucion = clasificacion.tiempoResolucion;
     if (clasificacion.tiempoRespuesta) ticket.tiempoRespuesta = clasificacion.tiempoRespuesta;
@@ -325,21 +345,20 @@ class TicketService {
           categoria: ticket.categoria
         }
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('No se pudo publicar ticket.clasificado:', e.message);
     }
 
     return ticket;
   }
 
-  // ✅ NUEVO: Asignar ticket automáticamente (desde IA)
-  async asignarTicketIA(ticketId, agenteId) {
+  async asignarTicketIA(ticketId: string, agenteId: string): Promise<ITicket> {
     const ticket = await Ticket.findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
     // Validar que el agente existe (se hace en agent_assigner)
-    ticket.agenteAsignado = agenteId;
-    
+    ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
+
     // Cambiar estado si está en 'abierto'
     if (ticket.estado === 'abierto') {
       ticket.estado = 'en_proceso';
@@ -356,7 +375,7 @@ class TicketService {
           estado: ticket.estado
         }
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('No se pudo publicar ticket.asignado_automaticamente:', e.message);
     }
 

@@ -1,9 +1,9 @@
-// Routes/tickets.routes.js
-import express from 'express';
-const router = express.Router();
+import express, { Router } from 'express';
 import ticketController from '../Controllers/ticket.controller.js';
 import { auth, authorize } from '../Middleware/auth.middleware.js';
 import { validateServiceToken } from '../Middleware/service.middleware.js';
+
+const router: Router = express.Router();
 
 // Todas las rutas requieren autenticación (excepto las de servicio)
 router.use(auth);
