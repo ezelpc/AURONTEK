@@ -4,12 +4,12 @@
   "description": "Servicio de Chat en tiempo real para la plataforma de Help Desk",
   "main": "index.js",
   "type": "module",
- "scripts": {
+  "scripts": {
+    "dev": "nodemon --exec babel-node index.js",
     "clean": "rimraf dist",
     "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"./node_modules\",\"./dist\"",
     "start": "node dist/index.js",
-    "dev": "nodemon --exec babel-node index.js",
-   "cache": "rmdir /s /q node_modules && del pnpm-lock.yaml && del pnpm-workspace.yaml && npm cache clean --force"
+    "cache": "rimraf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "express": "^4.18.2",

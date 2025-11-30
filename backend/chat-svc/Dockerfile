@@ -1,40 +1,57 @@
-# --- Etapa 1: Build (con devDependencies) ---
-FROM node:18-alpine AS builder
+# =============================
+# Multi-stage Dockerfile optimizado para producción
+# =============================
+
+# --- Etapa 1: Build ---
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copia archivos de dependencias
+# Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instala dependencias completas (dev + prod)
-RUN npm install
+# Instalar dependencias
+RUN npm ci
 
-# Copia el resto del código fuente
+# Copiar código fuente
 COPY . .
 
-# Compila el proyecto
+# Compilar TypeScript
 RUN npm run build
 
-
-# --- Etapa 2: Imagen final (solo producción) ---
-FROM node:18-alpine AS runner
+# --- Etapa 2: Producción ---
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Instala wget para healthcheck
+# Instalar wget para healthcheck
 RUN apk add --no-cache wget
 
-# Copia archivos de dependencias
+# Copiar package files
 COPY package*.json ./
 
-# Instala solo dependencias de producción
-RUN npm install --omit=dev
+# Instalar SOLO dependencias de producción
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Copia la build compilada desde la etapa anterior
+# Copiar build compilado
 COPY --from=builder /app/dist ./dist
 
-# Expone el puerto que usa el servicio
+# Usuario no-root
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+USER nodejs
+
+# Exponer puerto
 EXPOSE 3003
+
+# Variables de entorno
+ENV NODE_ENV=production \
+    PORT=3003
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3003/health || exit 1
 
 # Comando de inicio
 CMD ["node", "dist/index.js"]

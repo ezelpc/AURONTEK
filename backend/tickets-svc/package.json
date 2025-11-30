@@ -5,14 +5,11 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "clean": "rimraf dist dist-obfuscated",
     "dev": "nodemon index.js",
-    "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"node_modules,dist,dist-obfuscated\"",
-    "postbuild": "javascript-obfuscator dist --output dist-obfuscated --compact true",
-    "build:secure": "npm run build && npm run postbuild",
+    "clean": "rimraf dist",
+    "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"node_modules\",\"dist\"",
     "start": "node dist/index.js",
-    "serve": "node dist-obfuscated/index.js",
-    "cache": "rimraf node_modules pnpm-lock.yaml && pnpm store prune && pnpm install"
+    "cache": "rimraf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -28,7 +25,6 @@
     "@babel/cli": "^7.28.3",
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
-    "javascript-obfuscator": "^4.1.1",
     "nodemon": "^3.1.11",
     "rimraf": "^6.1.0"
   }

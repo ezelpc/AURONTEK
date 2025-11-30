@@ -4,10 +4,11 @@
   "description": "Microservicio de usuarios de Aurontek",
   "main": "index.js",
   "scripts": {
-    "cache": "rimraf node_modules package-lock.json && npm store prune && npm install",
     "dev": "nodemon src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc",
+    "start": "node dist/index.js",
+    "cache": "rimraf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "axios": "^1.13.2",

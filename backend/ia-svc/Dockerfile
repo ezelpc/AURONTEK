@@ -1,30 +1,47 @@
-# --- Etapa base ---
+# =============================
+# Dockerfile optimizado para Python - IA Service
+# =============================
+
+# Usar imagen Python slim para menor tamaño
 FROM python:3.11-slim
 
-# Define el directorio de trabajo
 WORKDIR /app
 
-# Evita que Python genere archivos .pyc y que el buffer de logs se retrase
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Variables de entorno
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Instala dependencias del sistema necesarias y limpia para reducir tamaño
+# Instalar dependencias del sistema necesarias
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copia los requirements e instálalos primero (mejor uso de caché)
+# Copiar e instalar dependencias Python
 COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copia el resto del código del proyecto
+# Copiar código fuente
 COPY . .
 
-# Expone el puerto de la app
+# Crear usuario no-root
+RUN useradd -m -u 1001 pythonuser && \
+    chown -R pythonuser:pythonuser /app
+
+USER pythonuser
+
+# Exponer puerto
 EXPOSE 3005
 
-# Comando de ejecución en modo producción
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3005"]
+# Variables de entorno adicionales
+ENV PORT=3005
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:3005/health || exit 1
+
+# Comando de inicio
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3005", "--workers", "1"]

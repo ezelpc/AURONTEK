@@ -1,6 +1,21 @@
 version: "3.9"
 
 services:
+  # --- Redis (for Gateway Rate Limiting) ---
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 50mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    mem_limit: 50m
+    restart: always
+
   # --- API Gateway ---
   gateway-svc:
     image: ${DOCKER_USERNAME}/aurontek-gateway:${IMAGE_TAG:-latest}
@@ -11,6 +26,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: redis://redis:6379
       USUARIOS_SERVICE_URL: http://usuarios-svc:3001
       TICKETS_SERVICE_URL: http://tickets-svc:3002
       CHAT_SERVICE_URL: http://chat-svc:3003
@@ -19,9 +35,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       NODE_OPTIONS: "--max-old-space-size=256"
     depends_on:
-      - usuarios-svc
-      - tickets-svc
-      - chat-svc
+      redis:
+        condition: service_healthy
+      usuarios-svc:
+        condition: service_started
+      tickets-svc:
+        condition: service_started
+      chat-svc:
+        condition: service_started
     mem_limit: 150m
     restart: always
 
