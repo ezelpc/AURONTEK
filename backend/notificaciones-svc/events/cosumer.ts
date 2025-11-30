@@ -1,3 +1,4 @@
+import { ConsumeMessage } from 'amqplib';
 import { getChannel } from '../config/rabbitmq.config.js';
 import { handleTicketEvent } from './ticket.events.js';
 import { handleChatEvent } from './chat.events.js';
@@ -6,7 +7,7 @@ import { logger } from '../utils/logger.js';
 // Esperar a que RabbitMQ esté conectado antes de consumir
 setTimeout(async () => {
   try {
-    const channel = getChannel();
+    const channel: any = getChannel();
     
     if (!channel) {
       logger.error('❌ Canal de RabbitMQ no disponible');
@@ -15,7 +16,7 @@ setTimeout(async () => {
 
     // Cola de tickets
     await channel.assertQueue('ticket_events', { durable: true });
-    channel.consume('ticket_events', async (msg) => {
+    channel.consume('ticket_events', async (msg: ConsumeMessage | null) => {
       if (!msg) return;
       
       try {
@@ -29,7 +30,7 @@ setTimeout(async () => {
 
     // Cola de chat
     await channel.assertQueue('chat_events', { durable: true });
-    channel.consume('chat_events', async (msg) => {
+    channel.consume('chat_events', async (msg: ConsumeMessage | null) => {
       if (!msg) return;
       
       try {

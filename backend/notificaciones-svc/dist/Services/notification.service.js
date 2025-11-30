@@ -1,27 +1,12 @@
 import { sendEmail } from './email.service.js';
 import { logger } from '../utils/logger.js';
-
-interface TicketNotificationData {
-  email: string;
-  ticketId: string;
-  mensaje?: string;
-}
-
-interface ChatNotificationData {
-  email: string;
-  mensaje?: string;
-  sender?: string;
-}
-
-export const sendTicketNotification = async (data: TicketNotificationData) => {
-  try {
-    const { email, ticketId, mensaje } = data;
-
-    if (!email) {
-      throw new Error('Email es requerido');
-    }
-
-    const html = `
+export const sendTicketNotification = async (data) => {
+    try {
+        const { email, ticketId, mensaje } = data;
+        if (!email) {
+            throw new Error('Email es requerido');
+        }
+        const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -43,29 +28,25 @@ export const sendTicketNotification = async (data: TicketNotificationData) => {
         </body>
       </html>
     `;
-
-    await sendEmail({
-      to: email,
-      subject: `Nuevo ticket creado - #${ticketId}`,
-      html
-    });
-
-    logger.info(`✅ Notificación de ticket enviada a ${email}`);
-  } catch (error) {
-    logger.error('❌ Error enviando notificación de ticket:', error);
-    throw error;
-  }
-};
-
-export const sendChatNotification = async (data: ChatNotificationData) => {
-  try {
-    const { email, mensaje, sender } = data;
-
-    if (!email) {
-      throw new Error('Email es requerido');
+        await sendEmail({
+            to: email,
+            subject: `Nuevo ticket creado - #${ticketId}`,
+            html
+        });
+        logger.info(`✅ Notificación de ticket enviada a ${email}`);
     }
-
-    const html = `
+    catch (error) {
+        logger.error('❌ Error enviando notificación de ticket:', error);
+        throw error;
+    }
+};
+export const sendChatNotification = async (data) => {
+    try {
+        const { email, mensaje, sender } = data;
+        if (!email) {
+            throw new Error('Email es requerido');
+        }
+        const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -87,21 +68,19 @@ export const sendChatNotification = async (data: ChatNotificationData) => {
         </body>
       </html>
     `;
-
-    await sendEmail({
-      to: email,
-      subject: 'Nuevo mensaje en chat',
-      html
-    });
-
-    logger.info(`✅ Notificación de chat enviada a ${email}`);
-  } catch (error) {
-    logger.error('❌ Error enviando notificación de chat:', error);
-    throw error;
-  }
+        await sendEmail({
+            to: email,
+            subject: 'Nuevo mensaje en chat',
+            html
+        });
+        logger.info(`✅ Notificación de chat enviada a ${email}`);
+    }
+    catch (error) {
+        logger.error('❌ Error enviando notificación de chat:', error);
+        throw error;
+    }
 };
-
 export default {
-  sendTicketNotification,
-  sendChatNotification
+    sendTicketNotification,
+    sendChatNotification
 };
