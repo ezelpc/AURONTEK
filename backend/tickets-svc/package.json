@@ -2,12 +2,12 @@
   "name": "tickets-svc",
   "version": "1.0.0",
   "description": "Servicio de Tickets para la plataforma de Help Desk",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
     "clean": "rimraf dist",
-    "build": "npm run clean && babel . -d dist --extensions \".js\" --ignore \"node_modules\",\"dist\"",
+    "build": "npm run clean && tsc",
     "start": "node dist/index.js",
     "cache": "rimraf node_modules package-lock.json && npm install"
   },
@@ -22,10 +22,13 @@
     "amqplib": "^0.10.3"
   },
   "devDependencies": {
-    "@babel/cli": "^7.28.3",
-    "@babel/core": "^7.28.5",
-    "@babel/preset-env": "^7.28.5",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.10.1",
     "nodemon": "^3.1.11",
-    "rimraf": "^6.1.0"
+    "rimraf": "^6.1.0",
+    "typescript": "^5.9.3"
   }
 }

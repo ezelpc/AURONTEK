@@ -16,8 +16,8 @@ RUN npm install
 # Copiar código fuente
 COPY . .
 
-# Compilar si es necesario
-RUN npm run build 2>/dev/null || echo "No build script, skipping"
+# Compilar TypeScript
+RUN npm run build
 
 # --- Etapa 2: Producción ---
 FROM node:20-alpine AS production
@@ -33,8 +33,8 @@ COPY package*.json ./
 # Instalar SOLO dependencias de producción
 RUN npm install --omit=dev && npm cache clean --force
 
-# Copiar build o código fuente
-COPY --from=builder /app/dist ./dist 2>/dev/null || COPY --from=builder /app/src ./src
+# Copiar build compilado
+COPY --from=builder /app/dist ./dist
 
 # Usuario no-root
 RUN addgroup -g 1001 -S nodejs && \
