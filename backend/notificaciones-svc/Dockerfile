@@ -1,8 +1,8 @@
 # =============================
-# Multi-stage Dockerfile optimizado para producción
+# Multi-stage Dockerfile optimizado para producción  
 # =============================
 
-# --- Etapa 1: Build/Preparación ---
+# --- Etapa 1: Build ---
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -11,12 +11,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm ci
+RUN npm install
 
 # Copiar código fuente
 COPY . .
 
-# Este servicio no requiere compilación, es JavaScript puro
+# Compilar TypeScript
+RUN npm run build
 
 # --- Etapa 2: Producción ---
 FROM node:20-alpine AS production
@@ -30,11 +31,10 @@ RUN apk add --no-cache wget
 COPY package*.json ./
 
 # Instalar SOLO dependencias de producción
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
-# Copiar código fuente
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/index.js ./index.js 2>/dev/null || echo "No index.js"
+# Copiar build compilado
+COPY --from=builder /app/dist ./dist
 
 # Usuario no-root
 RUN addgroup -g 1001 -S nodejs && \
@@ -53,5 +53,5 @@ ENV NODE_ENV=production \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3004/health || exit 1
 
-# Comando de inicio (ajusta según tu package.json)
-CMD ["npm", "run", "start"]
+# Comando de inicio
+CMD ["node", "dist/index.js"]
