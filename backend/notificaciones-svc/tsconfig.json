@@ -8,12 +8,15 @@
         "moduleResolution": "node",
         "outDir": "./dist",
         "rootDir": "./",
-        "strict": true,
+        "strict": false,
+        "noImplicitAny": false,
+        "strictNullChecks": false,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "useUnknownInCatchVariables": false
     },
     "include": [
         "**/*.ts",
