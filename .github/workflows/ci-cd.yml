@@ -1,0 +1,205 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - test
+      - dev
+  pull_request:
+    branches:
+      - main
+      - test
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  REGISTRY: docker.io
+
+jobs:
+  #############################################################################
+  # CI JOB - Runs on ALL branches (dev, test, main)
+  # Builds all Docker images to verify Dockerfiles are valid
+  #############################################################################
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Gateway Service
+        run: docker build -t aurontek-gateway:${{ github.sha }} ./backend/gateway-svc
+
+      - name: Build Usuarios Service
+        run: docker build -t aurontek-usuarios:${{ github.sha }} ./backend/usuarios-svc
+
+      - name: Build Tickets Service
+        run: docker build -t aurontek-tickets:${{ github.sha }} ./backend/tickets-svc
+
+      - name: Build Chat Service
+        run: docker build -t aurontek-chat:${{ github.sha }} ./backend/chat-svc
+
+      - name: Build Notificaciones Service
+        run: docker build -t aurontek-notificaciones:${{ github.sha }} ./backend/notificaciones-svc
+
+      - name: Build IA Service
+        run: docker build -t aurontek-ia:${{ github.sha }} ./backend/ia-svc
+
+      - name: ✅ All services built successfully
+        run: echo "All Docker images built successfully for branch ${{ github.ref_name }}"
+
+  #############################################################################
+  # DEPLOY JOB - Runs ONLY on 'main' branch
+  # Pushes images to Docker Hub and deploys to EC2
+  #############################################################################
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      #########################################################################
+      # Build and Push all services to Docker Hub
+      #########################################################################
+      
+      - name: Build & Push Gateway Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/gateway-svc
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-gateway:latest
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-gateway:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-gateway:latest
+          cache-to: type=inline
+
+      - name: Build & Push Usuarios Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/usuarios-svc
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-usuarios:latest
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-usuarios:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-usuarios:latest
+          cache-to: type=inline
+
+      - name: Build & Push Tickets Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/tickets-svc
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-tickets:latest
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-tickets:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-tickets:latest
+          cache-to: type=inline
+
+      - name: Build & Push Chat Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/chat-svc
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-chat:latest
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-chat:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-chat:latest
+          cache-to: type=inline
+
+      - name: Build & Push Notificaciones Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/notificaciones-svc
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-notificaciones:latest
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-notificaciones:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-notificaciones:latest
+          cache-to: type=inline
+
+      - name: Build & Push IA Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ia-svc
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-ia:latest
+            ${{ secrets.DOCKER_USERNAME }}/aurontek-ia:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-ia:latest
+          cache-to: type=inline
+
+      #########################################################################
+      # Deploy to EC2 via SSH
+      #########################################################################
+      
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navigate to application directory
+            cd /opt/aurontek
+            
+            # Create .env file from secrets
+            cat > .env << EOF
+            DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            IMAGE_TAG=latest
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            RECAPTCHA_SECRET_KEY=${{ secrets.RECAPTCHA_SECRET_KEY }}
+            RECAPTCHA_TEST_TOKEN=${{ secrets.RECAPTCHA_TEST_TOKEN }}
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            EMAIL_HOST=${{ secrets.EMAIL_HOST }}
+            EMAIL_PORT=${{ secrets.EMAIL_PORT }}
+            EMAIL_USER=${{ secrets.EMAIL_USER }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+            EMAIL_SECURE=${{ secrets.EMAIL_SECURE }}
+            EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+            RATE_LIMIT=100
+            LOG_LEVEL=info
+            EOF
+            
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull
+            
+            # Restart services with zero downtime
+            docker-compose -f docker-compose.prod.yml up -d --remove-orphans
+            
+            # Clean up old images
+            docker image prune -af
+            
+            # Show running containers
+            echo "==================================="
+            echo "Deployment Complete!"
+            echo "==================================="
+            docker ps
+            echo ""
+            echo "Memory usage:"
+            free -h
+
+      - name: ✅ Deployment successful
+        run: |
+          echo "🚀 Application deployed successfully to EC2!"
+          echo "🌐 Backend API: http://${{ secrets.EC2_HOST }}:3000"

@@ -1,45 +1,57 @@
-# --- Etapa 1: Build (instala dependencias) ---
-FROM node:18-alpine AS builder
+# =============================
+# Multi-stage Dockerfile optimizado para producción  
+# =============================
+
+# --- Etapa 1: Build ---
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Instala pnpm globalmente
-RUN npm install -g pnpm
+# Copiar archivos de dependencias
+COPY package*.json ./
 
-# Copia los archivos de dependencias
-COPY package.json pnpm-lock.yaml ./
+# Instalar dependencias
+RUN npm install
 
-# Instala dependencias (todas, para asegurar que build/start funcionen)
-RUN pnpm install --frozen-lockfile
-
-# Copia el resto del código fuente
+# Copiar código fuente
 COPY . .
 
-# Notificaciones no requiere build
+# Compilar TypeScript
+RUN npm run build
 
-
-# --- Etapa 2: Final (producción) ---
-FROM node:18-alpine AS runner
+# --- Etapa 2: Producción ---
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Instala pnpm globalmente
-RUN npm install -g pnpm
-
-# Instala wget para healthcheck
+# Instalar wget para healthcheck
 RUN apk add --no-cache wget
 
-# Copia archivos de dependencias
-COPY package.json pnpm-lock.yaml ./
+# Copiar package files
+COPY package*.json ./
 
-# Instala solo dependencias de producción
-RUN pnpm install --prod --frozen-lockfile
+# Instalar SOLO dependencias de producción
+RUN npm install --omit=dev && npm cache clean --force
 
-# Copia el código desde el builder
-COPY --from=builder /app .
+# Copiar build compilado
+COPY --from=builder /app/dist ./dist
 
-# Expone el puerto del servicio
+# Usuario no-root
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+USER nodejs
+
+# Exponer puerto
 EXPOSE 3004
 
+# Variables de entorno
+ENV NODE_ENV=production \
+    PORT=3004
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3004/health || exit 1
+
 # Comando de inicio
-CMD ["pnpm", "run", "start"]
+CMD ["node", "dist/index.js"]

@@ -1,43 +1,54 @@
 # =============================
-# 🔹 Etapa 1: Build
+# Multi-stage Dockerfile optimizado para producción
 # =============================
+
+# --- Etapa 1: Build ---
 FROM node:20-alpine AS builder
 
-# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos del servicio
+# Copiar archivos de configuración
 COPY package*.json ./
-COPY .babelrc ./
 
-# Instalar dependencias (solo lo necesario para build)
+# Instalar todas las dependencias
 RUN npm install
 
-# Copiar el resto del código
+# Copiar código fuente
 COPY . .
 
-# Compilar con Babel
+# Compilar TypeScript
 RUN npm run build
 
-# =============================
-# 🔹 Etapa 2: Producción
-# =============================
+# --- Etapa 2: Producción ---
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copiar solo los archivos compilados y dependencias de producción
-COPY --from=builder /app/dist ./dist
+# Copiar package files
 COPY package*.json ./
 
-# Instalar solo dependencias necesarias en producción
-RUN npm install --omit=dev
+# Instalar SOLO dependencias de producción
+RUN npm install --omit=dev && npm cache clean --force
 
-# Copiar el .env si se monta externo o definir variable
-# (si lo vas a montar desde tu máquina, no copies el archivo)
-# COPY ../.env .env
+# Copiar build compilado
+COPY --from=builder /app/dist ./dist
 
+# Usuario no-root para seguridad
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+USER nodejs
+
+# Exponer puerto
 EXPOSE 3001
+
+# Variables de entorno
+ENV NODE_ENV=production \
+    PORT=3001
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Comando de inicio
 CMD ["node", "dist/index.js"]
