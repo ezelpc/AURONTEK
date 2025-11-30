@@ -2,24 +2,6 @@
 # Multi-stage Dockerfile optimizado para producción
 # =============================
 
-# --- Etapa 1: Build ---
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copiar archivos de configuración
-COPY package*.json ./
-COPY .babelrc ./
-
-# Instalar todas las dependencias
-RUN npm install
-
-# Copiar código fuente
-COPY . .
-
-# Compilar con Babel
-RUN npm run build
-
 # --- Etapa 2: Producción ---
 FROM node:20-alpine AS production
 
