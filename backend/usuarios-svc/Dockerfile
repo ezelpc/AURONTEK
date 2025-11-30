@@ -12,7 +12,7 @@ COPY package*.json ./
 COPY .babelrc ./
 
 # Instalar todas las dependencias
-RUN npm ci
+RUN npm install
 
 # Copiar código fuente
 COPY . .
@@ -29,7 +29,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar SOLO dependencias de producción
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copiar build compilado
 COPY --from=builder /app/dist ./dist
