@@ -47,6 +47,12 @@ services:
         condition: service_started
     mem_limit: 150m
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aurontek/gateway
+        awslogs-stream-prefix: gateway
 
   # --- Servicio de Usuarios ---
   usuarios-svc:
@@ -69,6 +75,13 @@ services:
       NODE_OPTIONS: "--max-old-space-size=256"
     mem_limit: 150m
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aurontek/usuarios
+        awslogs-stream-prefix: usuarios
+
 
   # --- Servicio de Tickets ---
   tickets-svc:
@@ -92,6 +105,13 @@ services:
       retries: 3
     mem_limit: 150m
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aurontek/tickets
+        awslogs-stream-prefix: tickets
+
 
   # --- Servicio de Chat ---
   chat-svc:
@@ -115,6 +135,13 @@ services:
       retries: 3
     mem_limit: 150m
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aurontek/chat
+        awslogs-stream-prefix: chat
+
 
   # --- Servicio de Notificaciones ---
   notificaciones-svc:
@@ -142,6 +169,13 @@ services:
       retries: 3
     mem_limit: 150m
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aurontek/notificaciones
+        awslogs-stream-prefix: notificaciones
+
 
   # --- Servicio de IA (Python) ---
   ia-svc:
@@ -164,3 +198,10 @@ services:
       retries: 3
     mem_limit: 200m
     restart: always
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aurontek/ia
+        awslogs-stream-prefix: ia
+
