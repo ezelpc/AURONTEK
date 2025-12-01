@@ -7,6 +7,7 @@ import path from 'path';
 
 // Rutas
 import authRoutes from './Routes/auth.routes';
+import { initLogger } from '../../common/logger';
 import empresasRoutes from './Routes/empresas.routes';
 import usuariosRoutes from './Routes/usuarios.routes';
 
@@ -37,6 +38,9 @@ const startServer = async () => {
     // 🔹 Montar rutas
     // ================================
     app.use('/auth', authRoutes);
+
+    // Inicializar logger lo más pronto posible en este servicio
+    initLogger();
     app.use('/empresas', empresasRoutes);
     app.use('/usuarios', usuariosRoutes);
 

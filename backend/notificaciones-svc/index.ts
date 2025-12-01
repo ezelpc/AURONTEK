@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { connectRabbitMQ } from './config/rabbitmq.config.js';
 import { loadSMTP } from './config/smtp.config.js';
 import './events/consumer.js';
+import { initLogger } from '../common/logger';
 
 // Configuración de rutas absolutas
 const __filename = fileURLToPath(import.meta.url);
@@ -12,6 +13,9 @@ const __dirname = path.dirname(__filename);
 
 // Cargar el .env desde un nivel superior
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Inicializar logger según rama
+initLogger();
 
 // Inicialización del servidor
 const app = express();

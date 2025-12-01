@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { initLogger } from '../common/logger';
 import express, { Request, Response, Application } from 'express';
 import connectDB from './Config/ConectionDB.js';
 import cors from 'cors';
@@ -14,6 +15,9 @@ const __dirname = path.dirname(__filename);
 
 // Cargar el .env desde un nivel superior
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Inicializar logger según rama
+initLogger();
 
 // Inicialización del servidor
 const app: Application = express();

@@ -181,6 +181,8 @@ jobs:
             cat > .env << EOF
             DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             IMAGE_TAG=latest
+            BRANCH=${{ github.ref_name }}
+            LOG_DIR=/var/log/aurontek
             MONGODB_URI=${{ secrets.MONGODB_URI }}
             RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}

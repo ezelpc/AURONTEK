@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { initLogger } from '../common/logger';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +17,9 @@ import chatService from './Services/chat.service.js';
 
 // Configuración de entorno
 dotenv.config({ path: path.join(__dirname, '../.env') });
+
+// Inicializar logger lo antes posible en el servicio de chat
+initLogger();
 
 if (!process.env.JWT_SECRET) dotenv.config(); // Fallback local
 
