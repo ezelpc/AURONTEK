@@ -3,7 +3,7 @@ version: "3.9"
 services:
   # --- Redis (for Gateway Rate Limiting) ---
   redis:
-    image: redis:7-alpine
+    image: redis:20-alpine
     container_name: redis
     ports:
       - "6379:6379"
