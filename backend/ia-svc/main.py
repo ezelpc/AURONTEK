@@ -15,6 +15,19 @@ from services.rabbitmq_client import RabbitMQClient
 # Cargar variables de entorno
 load_dotenv()
 
+# Inicializar logger lo antes posible
+try:
+    from .logger import init_logger
+except Exception:
+    # fallback relative import for when module executed as script
+    try:
+        from logger import init_logger
+    except Exception:
+        init_logger = None
+
+if init_logger:
+    init_logger()
+
 # Configuración de la aplicación
 app = FastAPI(
     title="Servicio de IA para Help Desk",

@@ -1,8 +1,11 @@
 import { createApp } from './app';
 import { connectRedis } from './config/redis';
 import dotenv from 'dotenv';
+import { initLogger } from '../../common/logger';
 
 dotenv.config();
+// Inicializar logger lo antes posible para controlar console.* según la rama
+initLogger();
 
 const PORT = process.env.PORT || 3000;
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
