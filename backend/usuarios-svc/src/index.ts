@@ -7,7 +7,7 @@ import path from 'path';
 
 // Rutas
 import authRoutes from './Routes/auth.routes';
-import { initLogger } from '../common/logger';
+import { initLogger } from './common/logger';
 import empresasRoutes from './Routes/empresas.routes';
 import usuariosRoutes from './Routes/usuarios.routes';
 

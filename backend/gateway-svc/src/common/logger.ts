@@ -3,10 +3,6 @@ import path from 'path';
 
 /**
  * Inicializa el logger global según la rama/entorno.
- * - En `dev` o `test` (o cualquier rama distinta de `main`) deja los console.* normales
- *   (con un prefijo de rama).
- * - En `main` redirige console.* a un archivo de logs en `LOG_DIR` (por defecto /var/log/aurontek)
- *   creando el directorio y archivo con permisos restrictivos (0700 para dir, 0600 para archivo).
  */
 export function initLogger() {
   const branch = (process.env.GIT_BRANCH || process.env.BRANCH || process.env.BRANCH_NAME || process.env.NODE_ENV || 'dev').toString();
@@ -14,7 +10,6 @@ export function initLogger() {
   const isMain = normalized === 'main' || normalized === 'production' || normalized === 'prod';
 
   if (!isMain) {
-    // En dev/test dejamos console intacto pero añadimos prefijo para rastrear la rama
     const origLog = console.log.bind(console);
     const origInfo = console.info.bind(console);
     const origWarn = console.warn.bind(console);
@@ -28,7 +23,6 @@ export function initLogger() {
     return;
   }
 
-  // En rama main: escribir a archivo con permisos restrictivos
   const logDir = process.env.LOG_DIR || '/var/log/aurontek';
   const logFileName = process.env.LOG_FILE || 'app.log';
   const logFile = path.join(logDir, logFileName);
@@ -48,7 +42,6 @@ export function initLogger() {
       try { fs.chmodSync(logFile, 0o600); } catch (e) { /* ignore */ }
     }
   } catch (err) {
-    // Si no podemos crear el archivo, caemos a consola para evitar bloquear el arranque.
     console.error('Logger init: no se pudo crear directorio/archivo de log, usando consola.', err);
     return;
   }
@@ -62,7 +55,6 @@ export function initLogger() {
       const line = `${new Date().toISOString()} [${level}] ${message}\n`;
       fs.appendFileSync(logFile, line, { mode: 0o600 });
     } catch (e) {
-      // último recurso: escribir a stderr
       process.stderr.write(`Logger write error: ${e}\n`);
     }
   };
