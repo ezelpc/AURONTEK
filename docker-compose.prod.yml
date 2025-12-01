@@ -1,10 +1,10 @@
-version: "3.9"
+# version line removed (Docker Compose v2 does not require it)
 
 services:
   # --- Redis (for Gateway Rate Limiting) ---
   redis:
-    image: redis:20-alpine
-    container_name: redis
+    image: redis:7-alpine
+    # container_name removed to let Compose generate name
     ports:
       - "6379:6379"
     command: redis-server --maxmemory 50mb --maxmemory-policy allkeys-lru
