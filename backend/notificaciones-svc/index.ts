@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { connectRabbitMQ } from './config/rabbitmq.config.js';
 import { loadSMTP } from './config/smtp.config.js';
 import './events/consumer.js';
-import { initLogger } from '../common/logger';
+import { initLogger } from './common/logger';
 
 // Configuración de rutas absolutas
 const __filename = fileURLToPath(import.meta.url);

@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { initLogger } from '../common/logger';
+import { initLogger } from './common/logger';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

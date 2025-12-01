@@ -1,7 +1,7 @@
 import { createApp } from './app';
 import { connectRedis } from './config/redis';
 import dotenv from 'dotenv';
-import { initLogger } from '../../common/logger';
+import { initLogger } from '../common/logger';
 
 dotenv.config();
 // Inicializar logger lo antes posible para controlar console.* según la rama
