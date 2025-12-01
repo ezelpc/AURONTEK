@@ -12,6 +12,7 @@ Esta guía te llevará paso a paso desde cero hasta tener tu aplicación despleg
 4. [Parte 3: Configuración de GitHub](#parte-3-configuración-de-github)
 5. [Parte 4: Flujo de Desarrollo y Despliegue](#parte-4-flujo-de-desarrollo-y-despliegue)
 6. [Parte 5: Monitoreo y Troubleshooting](#parte-5-monitoreo-y-troubleshooting)
+7. [Parte 6: Post-Despliegue (Verificación y Optimización)](#parte-6-post-despliegue-verificación-y-optimización)
 
 ---
 
@@ -546,7 +547,7 @@ git push origin main
 # Backend: http://TU_EC2_IP:3000/health
 ```
 
----
+--- 
 
 ## Parte 5: Monitoreo y Troubleshooting
 
@@ -647,6 +648,454 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ---
 
+## Parte 6: Post-Despliegue (Verificación y Optimización)
+
+### 6.1 Verificación Inicial del Despliegue
+
+Una vez que el deployment ha completado exitosamente, sigue estos pasos para verificar que todo funcione correctamente.
+
+#### Paso 1: Verificar Contenedores en EC2
+
+```bash
+# Conectar a EC2
+ssh -i aurontek-key.pem ubuntu@TU_EC2_IP
+
+# Ver todos los contenedores corriendo
+docker ps
+
+# Deberías ver estos 6 contenedores:
+# - gateway-svc
+# - usuarios-svc
+# - tickets-svc
+# - chat-svc
+# - notificaciones-svc
+# - ia-svc
+```
+
+**Salida esperada:**
+```
+CONTAINER ID   IMAGE                           STATUS         PORTS
+abc123def456   aurontek-gateway:latest         Up 2 minutes   0.0.0.0:3000->3000/tcp
+def456ghi789   aurontek-usuarios:latest        Up 2 minutes   3001/tcp
+ghi789jkl012   aurontek-tickets:latest         Up 2 minutes   3002/tcp
+jkl012mno345   aurontek-chat:latest            Up 2 minutes   3003/tcp
+mno345pqr678   aurontek-notificaciones:latest  Up 2 minutes   3004/tcp
+pqr678stu901   aurontek-ia:latest              Up 2 minutes   3005/tcp
+```
+
+#### Paso 2: Verificar Logs de los Servicios
+
+```bash
+# Ver logs del API Gateway (debería mostrar "Server running on port 3000")
+docker logs gateway-svc --tail 50
+
+# Ver logs de cada servicio individual
+docker logs usuarios-svc --tail 30
+docker logs tickets-svc --tail 30
+docker logs chat-svc --tail 30
+docker logs notificaciones-svc --tail 30
+docker logs ia-svc --tail 30
+
+# Ver logs en tiempo real (Ctrl+C para salir)
+docker-compose -f /opt/aurontek/docker-compose.prod.yml logs -f
+```
+
+**Busca en los logs:**
+- ✅ "Server running on port XXXX"
+- ✅ "Connected to MongoDB"
+- ✅ "Connected to RabbitMQ"
+- ❌ Errores de conexión
+- ❌ Stack traces
+
+#### Paso 3: Verificar Uso de Recursos
+
+```bash
+# Ver memoria (debe estar usando swap)
+free -h
+
+# Ver procesos en tiempo real
+htop
+
+# Ver uso de disco
+df -h
+
+# Ver estadísticas de Docker
+docker stats
+```
+
+**Valores normales para t2.micro:**
+- **RAM**: ~900MB usado (de 1GB) + 1-2GB de swap usado
+- **CPU**: 5-30% en reposo
+- **Disco**: <5GB usado (de 30GB disponibles)
+
+---
+
+### 6.2 Pruebas de Endpoints (Health Checks)
+
+#### Desde EC2 (pruebas internas):
+
+```bash
+# Health check del API Gateway
+curl http://localhost:3000/health
+
+# Response esperado:
+# {"status":"ok","service":"api-gateway"}
+
+# Health check de cada microservicio
+curl http://localhost:3001/health  # usuarios-svc
+curl http://localhost:3002/health  # tickets-svc
+curl http://localhost:3003/health  # chat-svc
+curl http://localhost:3004/health  # notificaciones-svc
+curl http://localhost:3005/health  # ia-svc
+```
+
+#### Desde tu computadora local (pruebas externas):
+
+```bash
+# Reemplaza TU_EC2_IP con la IP pública de tu EC2
+
+# Health check público
+curl http://TU_EC2_IP:3000/health
+
+# Test de autenticación (debería devolver 400 o 401, no 500)
+curl -X POST http://TU_EC2_IP:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"test"}'
+```
+
+**Desde el navegador:**
+- Abre `http://TU_EC2_IP:3000/health`
+- Deberías ver: `{"status":"ok","service":"api-gateway"}`
+
+---
+
+### 6.3 Verificar Frontend en Vercel
+
+1. **Ir a Vercel Dashboard:**
+   - [https://vercel.com/dashboard](https://vercel.com/dashboard)
+   - Selecciona tu proyecto `AURONTEK`
+
+2. **Verificar deployment:**
+   - ✅ Status: "Ready"
+   - ✅ URL de producción activa
+   - ✅ Build exitoso
+
+3. **Probar el frontend:**
+   - Abre la URL de producción
+   - Verifica que cargue correctamente
+   - Abre DevTools (F12) → Console
+   - **No debería haber errores de CORS o de conexión al backend**
+
+4. **Actualizar URL de API (si es necesario):**
+   ```bash
+   # Si el frontend no puede conectar al backend:
+   # Ve a Vercel → Settings → Environment Variables
+   # Actualiza REACT_APP_API_URL a: http://TU_EC2_IP:3000
+   # Redeploy desde Vercel Dashboard
+   ```
+
+---
+
+### 6.4 Troubleshooting: Error SSH Timeout en GitHub Actions
+
+> [!IMPORTANT]
+> Si experimentaste el error `dial tcp ***:22: i/o timeout` durante el deployment, aquí está la solución definitiva.
+
+#### Causa del Problema
+
+GitHub Actions no pudo conectarse a tu EC2 por SSH porque el **Security Group** de AWS no permitía conexiones SSH desde las IPs dinámicas de GitHub Actions.
+
+#### Solución Permanente
+
+**Opción 1: Permitir SSH desde cualquier IP (Más Simple)**
+
+1. Ve a **AWS Console → EC2 → Security Groups**
+2. Selecciona tu security group `aurontek-sg`
+3. **Inbound Rules → Edit inbound rules**
+4. Modifica la regla SSH (puerto 22):
+   - **Type**: SSH
+   - **Port**: 22
+   - **Source**: `0.0.0.0/0` (Anywhere IPv4)
+   - **Description**: `SSH from GitHub Actions`
+5. **Save rules**
+
+**Opción 2: Usar GitHub IP Ranges (Más Seguro)**
+
+GitHub publica sus rangos de IPs que puedes usar:
+
+1. Ve a [https://api.github.com/meta](https://api.github.com/meta)
+2. Busca la sección `"actions"`
+3. Agrega reglas para cada rango CIDR en tu Security Group
+
+**Alternativa: Usar AWS Systems Manager (Sin SSH)**
+
+Para evitar exponer el puerto 22 completamente, considera usar AWS Systems Manager Session Manager en lugar de SSH directo. Esto requiere configuración adicional pero es más seguro.
+
+#### Verificar que el Fix Funcionó
+
+Después de ajustar el Security Group, prueba la conexión SSH manualmente:
+
+```bash
+# Desde tu computadora local
+ssh -i aurontek-key.pem ubuntu@TU_EC2_IP
+
+# Si conecta exitosamente, GitHub Actions también podrá conectar
+```
+
+Luego haz un push a `main` y verifica que el deployment funcione sin errores.
+
+---
+
+### 6.5 Configurar Monitoreo Continuo
+
+#### 6.5.1 Crear Script de Monitoreo en EC2
+
+```bash
+# Conectar a EC2
+ssh -i aurontek-key.pem ubuntu@TU_EC2_IP
+
+# Crear script de monitoreo
+sudo nano /usr/local/bin/aurontek-health.sh
+```
+
+Pega este contenido:
+
+```bash
+#!/bin/bash
+echo "==================================="
+echo "AURONTEK Health Check - $(date)"
+echo "==================================="
+echo ""
+
+echo "📦 Docker Containers:"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+echo ""
+
+echo "💾 Memory Usage:"
+free -h
+echo ""
+
+echo "💿 Disk Usage:"
+df -h /
+echo ""
+
+echo "🌐 API Gateway Health:"
+curl -s http://localhost:3000/health || echo "❌ Gateway not responding"
+echo ""
+
+echo "==================================="
+```
+
+Guardar y dar permisos:
+
+```bash
+sudo chmod +x /usr/local/bin/aurontek-health.sh
+
+# Ejecutar para probar
+sudo /usr/local/bin/aurontek-health.sh
+```
+
+#### 6.5.2 Configurar Cron Job para Logs Automáticos
+
+```bash
+# Editar crontab
+crontab -e
+
+# Agregar esta línea (ejecuta health check cada hora)
+0 * * * * /usr/local/bin/aurontek-health.sh >> /var/log/aurontek-health.log 2>&1
+
+# Ver logs históricos
+tail -f /var/log/aurontek-health.log
+```
+
+#### 6.5.3 Alertas de Uptime con UptimeRobot (Gratis)
+
+1. **Crear cuenta en UptimeRobot:**
+   - [https://uptimerobot.com/](https://uptimerobot.com/)
+   - Plan gratuito: 50 monitores, checks cada 5 minutos
+
+2. **Crear monitor:**
+   - **Monitor Type**: HTTP(s)
+   - **Friendly Name**: AURONTEK API Gateway
+   - **URL**: `http://TU_EC2_IP:3000/health`
+   - **Monitoring Interval**: 5 minutes
+   - **Alert Contacts**: Tu email
+
+3. **Notificaciones:**
+   - Recibirás emails si el servicio está caído
+   - Dashboard público disponible
+
+---
+
+### 6.6 Optimizaciones Recomendadas
+
+#### 6.6.1 Configurar Elastic IP (Opcional)
+
+Por defecto, la IP pública de EC2 cambia si reinicias la instancia. Para evitar esto:
+
+1. **AWS Console → EC2 → Elastic IPs**
+2. **Allocate Elastic IP address**
+3. **Actions → Associate Elastic IP address**
+4. Selecciona tu instancia `aurontek-backend`
+5. **Associate**
+
+**Ventaja:** La IP nunca cambiará, incluso si reinicias EC2.
+
+**⚠️ Importante:** Elastic IPs gratuitas SOLO si están asociadas a una instancia corriendo. Si detienes la instancia, te cobran $0.005/hora.
+
+#### 6.6.2 Configurar Dominio Personalizado (Recomendado)
+
+En lugar de usar `http://3.123.45.67:3000`, usa un dominio:
+
+1. **Comprar dominio en Namecheap/GoDaddy** (ejemplo: `aurontek.com`)
+2. **Crear registro DNS A:**
+   - Host: `api` o `@`
+   - Value: `TU_EC2_IP`
+   - TTL: 3600
+3. **Actualizar Vercel:**
+   - `REACT_APP_API_URL` → `http://api.aurontek.com:3000`
+
+#### 6.6.3 Configurar HTTPS con SSL/TLS (Producción Ready)
+
+Para usar HTTPS y eliminar el puerto 3000 en la URL:
+
+**Opción 1: Nginx Reverse Proxy + Let's Encrypt (Gratis)**
+
+```bash
+# Conectar a EC2
+ssh -i aurontek-key.pem ubuntu@TU_EC2_IP
+
+# Instalar Nginx y Certbot
+sudo apt update
+sudo apt install -y nginx certbot python3-certbot-nginx
+
+# Configurar Nginx
+sudo nano /etc/nginx/sites-available/aurontek
+```
+
+Configuración básica:
+
+```nginx
+server {
+    listen 80;
+    server_name api.tudominio.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+```bash
+# Activar configuración
+sudo ln -s /etc/nginx/sites-available/aurontek /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Obtener certificado SSL gratuito
+sudo certbot --nginx -d api.tudominio.com
+```
+
+**Ahora podrás usar:** `https://api.tudominio.com` (sin puerto!)
+
+**Opción 2: Cloudflare (Más simple)**
+
+1. Agrega tu dominio a Cloudflare (gratis)
+2. Crea registro DNS A → TU_EC2_IP
+3. Activa Proxy (nube naranja)
+4. SSL/TLS → Full
+5. Usa `https://api.tudominio.com` directamente
+
+#### 6.6.4 Optimizar Docker para Producción
+
+```bash
+# Limpiar recursos no usados semanalmente
+sudo crontab -e
+
+# Agregar (ejecuta cada domingo a las 3am)
+0 3 * * 0 docker system prune -af --volumes
+```
+
+#### 6.6.5 Backup Automático de EC2
+
+**Opción 1: AWS Snapshots Manuales**
+
+1. **EC2 → Volumes → Selecciona tu volumen**
+2. **Actions → Create snapshot**
+3. Description: `aurontek-backup-YYYY-MM-DD`
+
+**Opción 2: AWS Backup (Automatizado)**
+
+1. **AWS Backup → Create backup plan**
+2. Frequency: Daily
+3. Retention: 7 days
+4. Resources: Tu instancia EC2
+
+---
+
+### 6.7 Checklist de Post-Despliegue
+
+Marca cada item después de verificarlo:
+
+- [ ] **Contenedores:** Todos los 6 servicios corriendo sin errores
+- [ ] **Logs:** No hay stack traces ni errores críticos
+- [ ] **Memoria:** Swap configurado y en uso
+- [ ] **Health Checks:** Todos los endpoints `/health` responden
+- [ ] **Frontend:** Vercel desplegado y accesible
+- [ ] **Conectividad:** Frontend puede llamar al backend sin errores CORS
+- [ ] **Security Group:** Puerto 22 (SSH) configurado para GitHub Actions
+- [ ] **Security Group:** Puerto 3000 abierto a internet
+- [ ] **Monitoreo:** Script de health check funcionando
+- [ ] **UptimeRobot:** Monitor configurado (opcional)
+- [ ] **Dominio:** DNS configurado apuntando a EC2 (opcional)
+- [ ] **SSL:** HTTPS configurado (opcional pero recomendado para producción)
+- [ ] **Backup:** Snapshot de EC2 creado
+
+---
+
+### 6.8 Comandos Rápidos de Referencia
+
+```bash
+# Conectar a EC2
+ssh -i aurontek-key.pem ubuntu@TU_EC2_IP
+
+# Ver status rápido
+docker ps
+free -h
+df -h
+
+# Health check completo
+/usr/local/bin/aurontek-health.sh
+
+# Ver logs en vivo
+docker-compose -f /opt/aurontek/docker-compose.prod.yml logs -f
+
+# Reiniciar todo
+docker-compose -f /opt/aurontek/docker-compose.prod.yml restart
+
+# Reiniciar un servicio específico
+docker-compose -f /opt/aurontek/docker-compose.prod.yml restart gateway-svc
+
+# Pull nuevas imágenes
+docker-compose -f /opt/aurontek/docker-compose.prod.yml pull
+
+# Limpiar recursos
+docker system prune -af
+
+# Ver uso de recursos en tiempo real
+docker stats
+```
+
+---
+
 ## 🎉 ¡Felicidades!
 
 Has configurado un pipeline de CI/CD completo con:
@@ -656,6 +1105,7 @@ Has configurado un pipeline de CI/CD completo con:
 - ✅ Frontend en Vercel con CDN global
 - ✅ Backend en EC2 optimizado para Free Tier
 - ✅ Base de datos y message broker en la nube
+- ✅ **Post-deployment verificado y optimizado**
 
 **Tu workflow es:**
 ```
