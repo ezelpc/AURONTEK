@@ -24,7 +24,7 @@ async function main() {
     await connectRabbitMQ();
 
     // Inicializar consumidores (importar después de conectar)
-    await import('./Events/consumer');
+    await import('./events/consumer');
 
     // Healthcheck
     app.get('/health', (req: Request, res: Response) => {
