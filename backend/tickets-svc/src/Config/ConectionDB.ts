@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Cargar el .env desde un nivel superior
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Cargar el .env desde AURONTEK/.env (2 niveles arriba: src -> Config -> backend -> AURONTEK)
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 const connectDB = async (): Promise<void> => {
     try {

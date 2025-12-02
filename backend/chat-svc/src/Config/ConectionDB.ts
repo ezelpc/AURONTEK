@@ -1,7 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config({ path: '../../.env' });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Cargar el .env desde AURONTEK/.env (2 niveles arriba: src -> Config -> backend -> AURONTEK)
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 let isConnected = false;
 

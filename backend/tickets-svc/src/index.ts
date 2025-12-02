@@ -8,8 +8,8 @@ import path from 'path';
 // Importar rutas
 import ticketRoutes from './Routes/ticket.routes';
 
-// Cargar el .env desde un nivel superior
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Cargar el .env desde AURONTEK/.env
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // Inicializar logger según rama
 initLogger();

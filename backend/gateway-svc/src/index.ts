@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { initLogger } from './common/logger';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Cargar .env desde AURONTEK/.env
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 // Inicializar logger lo antes posible para controlar console.* según la rama
 initLogger();
 

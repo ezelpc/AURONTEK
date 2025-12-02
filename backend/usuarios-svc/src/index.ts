@@ -14,8 +14,8 @@ import usuariosRoutes from './Routes/usuarios.routes';
 // ================================
 // 🔹 Configuración de rutas absolutas
 // ================================
-// Cargar .env desde nivel superior
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Cargar .env desde AURONTEK/.env
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // ================================
 // 🔹 Inicialización del servidor

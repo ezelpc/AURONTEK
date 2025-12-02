@@ -1,6 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+// Extend Express Request to include usuario
+declare global {
+  namespace Express {
+    interface Request {
+      usuario?: any;
+    }
+  }
+}
+
 /**
  * Middleware para verificar la validez de un JWT.
  */
