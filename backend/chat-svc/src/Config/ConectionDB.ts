@@ -1,12 +1,8 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Cargar el .env desde AURONTEK/.env (2 niveles arriba: src -> Config -> backend -> AURONTEK)
+// Cargar el .env desde AURONTEK/.env
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 let isConnected = false;
@@ -34,16 +30,16 @@ const connectDB = async (): Promise<void> => {
 
     mongoose.connection.on('disconnected', () => {
       isConnected = false;
-      console.log(' Mongoose desconectado de MongoDB');
+      console.log('Mongoose desconectado de MongoDB');
     });
 
     // Intentar conexión
     await mongoose.connect(process.env.MONGODB_URI as string, {
-      serverSelectionTimeoutMS: 30000,    // 30 segundos
-      socketTimeoutMS: 45000,             // 45 segundos
-      heartbeatFrequencyMS: 2000,         // Latido cada 2 segundos
-      family: 4,                          // Forzar IPv4
-      maxPoolSize: 10                     // Límite de conexiones simultáneas
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      heartbeatFrequencyMS: 2000,
+      family: 4,
+      maxPoolSize: 10
     });
 
     // Verificar conexión
@@ -77,18 +73,12 @@ const initializeCollections = async () => {
     const collections = await db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name);
 
-    // Verificar y crear colección de usuarios si existe
-    if (!collectionNames.includes('usuarios')) {
-      console.log('Creando colección de usuarios...');
-      await db.createCollection('usuarios');
-      await db.collection('usuarios').createIndex({ correo: 1 }, { unique: true });
-    }
-
-    // Verificar y crear colección de admins si no existe
-    if (!collectionNames.includes('admins')) {
-      console.log('Creando colección de admins...');
-      await db.createCollection('admins');
-      await db.collection('admins').createIndex({ correo: 1 }, { unique: true });
+    // Verificar y crear colección de mensajes si no existe
+    if (!collectionNames.includes('mensajes')) {
+      console.log('Creando colección de mensajes...');
+      await db.createCollection('mensajes');
+      await db.collection('mensajes').createIndex({ ticketId: 1 });
+      await db.collection('mensajes').createIndex({ empresaId: 1 });
     }
   } catch (error) {
     console.error('Error al inicializar colecciones:', error);
@@ -96,6 +86,5 @@ const initializeCollections = async () => {
   }
 };
 
-// Exportar un objeto con todas las funciones relacionadas con la base de datos
 export default connectDB;
 export { isConnected };

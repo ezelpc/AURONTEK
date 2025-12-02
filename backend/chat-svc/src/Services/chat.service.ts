@@ -16,10 +16,8 @@ interface ObtenerHistorialOpciones {
 }
 
 class ChatService {
-
     async validarAcceso(usuarioId: string, ticketId: string): Promise<boolean> {
         try {
-            // Obtener ticket mediante llamada HTTP al servicio de tickets
             const ticketResponse = await axios.get(
                 `${process.env.TICKETS_SVC_URL || 'http://localhost:3002'}/tickets/${ticketId}/verificar-acceso-chat`,
                 {
@@ -36,7 +34,6 @@ class ChatService {
 
         } catch (error: any) {
             console.error('Error validando acceso via tickets-svc:', error.message);
-            // Si el endpoint de tickets no responde, denegar acceso por seguridad
             return false;
         }
     }
