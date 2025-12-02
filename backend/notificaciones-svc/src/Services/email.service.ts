@@ -1,5 +1,4 @@
 import { transporter } from '../config/smtp.config';
-import { logger } from '../utils/logger';
 
 interface EmailOptions {
   to: string;
@@ -20,10 +19,10 @@ export const sendEmail = async ({ to, subject, html }: EmailOptions) => {
       html
     });
 
-    logger.info(`📧 Correo enviado a ${to}`);
+    console.log(`📧 Correo enviado a ${to}`);
     return result;
   } catch (err) {
-    logger.error('❌ Error enviando correo:', err);
+    console.error('❌ Error enviando correo:', err);
     throw new Error('No se pudo enviar el correo');
   }
 };

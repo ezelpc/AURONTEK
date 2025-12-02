@@ -1,14 +1,9 @@
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { connectRabbitMQ } from './config/rabbitmq.config';
 import { loadSMTP } from './config/smtp.config';
 import { initLogger } from './common/logger';
-
-// Definir __dirname para módulos ES
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Cargar el .env desde AURONTEK/.env
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -27,6 +22,9 @@ async function main() {
     // Conectar servicios externos
     await loadSMTP();
     await connectRabbitMQ();
+
+    // Inicializar consumidores (importar después de conectar)
+    await import('./Events/consumer');
 
     // Healthcheck
     app.get('/health', (req: Request, res: Response) => {

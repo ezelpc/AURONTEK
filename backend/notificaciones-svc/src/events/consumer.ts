@@ -2,7 +2,6 @@ import { ConsumeMessage } from 'amqplib';
 import { getChannel } from '../config/rabbitmq.config';
 import { handleTicketEvent } from './ticket.events';
 import { handleChatEvent } from './chat.events';
-import { logger } from '../utils/logger';
 
 // Esperar a que RabbitMQ esté conectado antes de consumir
 setTimeout(async () => {
@@ -10,7 +9,7 @@ setTimeout(async () => {
     const channel: any = getChannel();
     
     if (!channel) {
-      logger.error('❌ Canal de RabbitMQ no disponible');
+      console.error('❌ Canal de RabbitMQ no disponible');
       return;
     }
 
@@ -23,7 +22,7 @@ setTimeout(async () => {
         await handleTicketEvent(msg);
         channel.ack(msg);
       } catch (error) {
-        logger.error('❌ Error procesando ticket event:', error);
+        console.error('❌ Error procesando ticket event:', error);
         channel.nack(msg, false, false);
       }
     });
@@ -37,13 +36,13 @@ setTimeout(async () => {
         await handleChatEvent(msg);
         channel.ack(msg);
       } catch (error) {
-        logger.error('❌ Error procesando chat event:', error);
+        console.error('❌ Error procesando chat event:', error);
         channel.nack(msg, false, false);
       }
     });
 
-    logger.info('📡 Consumidores de eventos inicializados');
+    console.log('📡 Consumidores de eventos inicializados');
   } catch (error) {
-    logger.error('❌ Error inicializando consumidores:', error);
+    console.error('❌ Error inicializando consumidores:', error);
   }
 }, 2000);

@@ -1,5 +1,4 @@
 import { sendEmail } from './email.service';
-import { logger } from '../utils/logger';
 
 interface TicketNotificationData {
   email: string;
@@ -50,9 +49,9 @@ export const sendTicketNotification = async (data: TicketNotificationData) => {
       html
     });
 
-    logger.info(`✅ Notificación de ticket enviada a ${email}`);
+    console.log(`✅ Notificación de ticket enviada a ${email}`);
   } catch (error) {
-    logger.error('❌ Error enviando notificación de ticket:', error);
+    console.error('❌ Error enviando notificación de ticket:', error);
     throw error;
   }
 };
@@ -94,9 +93,9 @@ export const sendChatNotification = async (data: ChatNotificationData) => {
       html
     });
 
-    logger.info(`✅ Notificación de chat enviada a ${email}`);
+    console.log(`✅ Notificación de chat enviada a ${email}`);
   } catch (error) {
-    logger.error('❌ Error enviando notificación de chat:', error);
+    console.error('❌ Error enviando notificación de chat:', error);
     throw error;
   }
 };

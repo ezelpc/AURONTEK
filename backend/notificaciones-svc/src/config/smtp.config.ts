@@ -1,24 +1,23 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { logger } from '../utils/logger';
 
 export let transporter: Transporter | null = null;
 
 export const loadSMTP = async (): Promise<void> => {
     try {
         transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST as string,
+            host: process.env.EMAIL_HOST,
             port: Number(process.env.EMAIL_PORT),
             secure: process.env.EMAIL_SECURE === 'true',
             auth: {
-                user: process.env.EMAIL_USER as string,
-                pass: process.env.EMAIL_PASSWORD as string
+                user: process.env.EMAIL_USER, 
+                pass: process.env.EMAIL_PASSWORD,
             }
         });
 
         await transporter.verify();
-        logger.info('📨 SMTP listo');
+        console.log('📨 SMTP listo');
     } catch (err) {
-        logger.error('❌ Error al configurar SMTP', err);
+        console.error('❌ Error al configurar SMTP', err);
         throw err;
     }
 };
