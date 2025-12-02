@@ -9,6 +9,10 @@ interface EmailOptions {
 
 export const sendEmail = async ({ to, subject, html }: EmailOptions) => {
   try {
+    if (!transporter) {
+      throw new Error('SMTP no configurado');
+    }
+
     const result = await transporter.sendMail({
       from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
       to,

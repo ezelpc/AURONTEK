@@ -62,14 +62,14 @@ async function main() {
     // ==========================================
     // GESTIÓN DE EVENTOS DEL CHAT
     // ==========================================
-    io.on('connection', (socket: SocketWithUser) => {=> {
+    io.on('connection', (socket: SocketWithUser) => {
         console.log(`Cliente conectado: ${socket.user.id} (${socket.user.rol})`);
 
         // 1. Sala Personal (para notificaciones privadas)
         socket.join(`user:${socket.user.id}`);
 
         // 2. Unirse a Sala de Ticket (CON VALIDACIÓN DE TUTOR)
-        socket.on('join-ticket-room', async (ticketId: string) => {=> {
+        socket.on('join-ticket-room', async (ticketId: string) => {
             if (!ticketId) return;
 
             try {
@@ -88,7 +88,9 @@ async function main() {
                 console.error('Error al unirse a sala:', error);
                 socket.emit('error', { message: 'Error interno al procesar solicitud.' });
             }
-        });        // 3. Enviar Mensaje
+        });
+
+        // 3. Enviar Mensaje
         socket.on('send-message', async (data: any) => {
             try {
                 if (!data.ticketId || !data.contenido) return;
@@ -119,7 +121,9 @@ async function main() {
                 console.error('Error enviando mensaje:', error);
                 socket.emit('error', { message: 'No se pudo enviar el mensaje', detalle: error.message });
             }
-        });        // 4. Marcar como leído
+        });
+
+        // 4. Marcar como leído
         socket.on('mark-as-read', async ({ mensajeId, ticketId }: { mensajeId: string, ticketId: string }) => {
             try {
                 await chatService.marcarComoLeido(mensajeId, socket.user.id);
@@ -148,7 +152,9 @@ async function main() {
         socket.on('disconnect', () => {
             // console.log('Cliente desconectado:', socket.user.id);
         });
-    });    // ==========================================
+    });
+
+    // ==========================================
     // API REST (Historial y Utilidades)
     // ==========================================
     app.use(express.json());
@@ -193,7 +199,9 @@ async function main() {
     httpServer.listen(PORT, () => {
         console.log(`Servidor de chat corriendo en puerto ${PORT}`);
     });
-}main().catch(error => {
+}
+
+main().catch(error => {
     console.error('❌ Error al iniciar chat-svc:', error);
     process.exit(1);
 });

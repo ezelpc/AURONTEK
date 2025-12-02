@@ -177,7 +177,7 @@ const ticketController = {
         return;
       }
 
-      const ticket = await ticketService.asignarTicket(id, agenteId, req.usuario.empresaId);
+      const ticket = await ticketService.asignarTicket(id, agenteId, req.usuario.empresaId!);
       res.json(ticket);
     } catch (error: any) {
       console.error('Error al asignar ticket:', error);
@@ -211,7 +211,7 @@ const ticketController = {
         id,
         becarioId,
         req.usuario.id, // El soporte actual se convierte en tutor
-        req.usuario.empresaId
+        req.usuario.empresaId!
       );
 
       res.json({

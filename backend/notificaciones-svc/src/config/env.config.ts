@@ -2,7 +2,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-export const loadEnv = (customPath) => {
+export const loadEnv = (customPath?: string) => {
   const envPath = customPath
     ? path.resolve(customPath)
     : path.resolve(process.cwd(), '../.env'); // Ruta por defecto (fuera del servicio)
