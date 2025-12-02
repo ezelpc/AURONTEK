@@ -1,20 +1,20 @@
 // index.ts
-import dotenv from 'dotenv';
-import express from 'express';
-import connectDB from './Config/ConectionDB';
-import cors from 'cors';
-import path from 'path';
+import dotenv from "dotenv";
+import express from "express";
+import connectDB from "./Config/ConectionDB";
+import cors from "cors";
+import path from "path";
 
 // Rutas
-import authRoutes from './Routes/auth.routes';
-import { initLogger } from './common/logger';
-import empresasRoutes from './Routes/empresas.routes';
-import usuariosRoutes from './Routes/usuarios.routes';
+import authRoutes from "./Routes/auth.routes";
+import { initLogger } from "./common/logger";
+import empresasRoutes from "./Routes/empresas.routes";
+import usuariosRoutes from "./Routes/usuarios.routes";
 
 // ================================
 // 🔹 Configuración de rutas absolutas
 // ================================
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 // ================================
 // 🔹 Inicialización del servidor
@@ -27,13 +27,6 @@ app.use(cors());
 app.use(express.json());
 
 // ================================
-// 🔹 Ruta de Healthcheck (REQUERIDA PARA DOCKER)
-// ================================
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-// ================================
 // 🔹 Conexión a MongoDB y arranque
 // ================================
 const startServer = async () => {
@@ -43,12 +36,18 @@ const startServer = async () => {
     // ================================
     // 🔹 Montar rutas
     // ================================
-    app.use('/auth', authRoutes);
+    app.use("/auth", authRoutes);
 
     initLogger();
-    app.use('/empresas', empresasRoutes);
-    app.use('/usuarios', usuariosRoutes);
+    app.use("/empresas", empresasRoutes);
+    app.use("/usuarios", usuariosRoutes);
 
+    // ================================
+    // 🔹 Ruta de Healthcheck (REQUERIDA PARA DOCKER)
+    // ================================
+    app.get("/health", (req, res) => {
+      res.status(200).json({ status: "ok" });
+    });
     // ================================
     // 🔹 Iniciar servidor
     // ================================
@@ -57,7 +56,7 @@ const startServer = async () => {
       console.log(`📂 Ruta del proyecto: ${__dirname}`);
     });
   } catch (error) {
-    console.error('❌ Error al iniciar el servidor:', error);
+    console.error("❌ Error al iniciar el servidor:", error);
   }
 };
 
