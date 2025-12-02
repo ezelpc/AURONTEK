@@ -1,9 +1,14 @@
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { connectRabbitMQ } from './config/rabbitmq.config';
 import { loadSMTP } from './config/smtp.config';
 import { initLogger } from './common/logger';
+
+// Definir __dirname para módulos ES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Cargar el .env desde un nivel superior
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });

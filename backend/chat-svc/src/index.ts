@@ -5,13 +5,18 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { initLogger } from './common/logger';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Definir __dirname para módulos ES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configuración de entorno
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Importar configuración de DB y Servicios
 import connectDB from './Config/ConectionDB';
 import chatService from './Services/chat.service';
-
-// Configuración de entorno
-dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Inicializar logger lo antes posible en el servicio de chat
 initLogger();
