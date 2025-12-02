@@ -30,3 +30,5 @@ yarn-error.log*
 *.http
 
 env.categorized.md
+
+generate-service-token.js
