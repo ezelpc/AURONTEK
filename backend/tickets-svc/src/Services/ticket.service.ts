@@ -1,5 +1,5 @@
 // Services/ticket.service.ts
-import Ticket from '../Models/Ticket.model.js';
+import Ticket from '../Models/Ticket.model';
 import amqp from 'amqplib';
 import axios from 'axios';
 import mongoose from 'mongoose';

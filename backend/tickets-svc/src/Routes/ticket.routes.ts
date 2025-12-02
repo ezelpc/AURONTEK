@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
-import ticketController from '../Controllers/ticket.controller.js';
-import { auth, authorize } from '../Middleware/auth.middleware.js';
-import { validateServiceToken } from '../Middleware/service.middleware.js';
+import ticketController from '../Controllers/ticket.controller';
+import { auth, authorize } from '../Middleware/auth.middleware';
+import { validateServiceToken } from '../Middleware/service.middleware';
 
 const router: Router = express.Router();
 

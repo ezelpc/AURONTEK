@@ -1,13 +1,13 @@
 import dotenv from 'dotenv';
-import { initLogger } from './common/logger.js';
+import { initLogger } from './common/logger';
 import express, { Request, Response, Application } from 'express';
-import connectDB from './Config/ConectionDB.js';
+import connectDB from './Config/ConectionDB';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Importar rutas
-import ticketRoutes from './Routes/ticket.routes.js';
+import ticketRoutes from './Routes/ticket.routes';
 
 // Configuración de rutas absolutas
 const __filename = fileURLToPath(import.meta.url);

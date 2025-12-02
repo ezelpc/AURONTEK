@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import ticketService from '../Services/ticket.service.js';
-import { estadosTicket, tipos, prioridades } from '../Models/Ticket.model.js';
+import ticketService from '../Services/ticket.service';
+import { estadosTicket, tipos, prioridades } from '../Models/Ticket.model';
 
 // Middleware para validar formato ID MongoDB
 const validarMongoId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
