@@ -1,63 +1,51 @@
-// index.ts
-import dotenv from "dotenv";
-import express from "express";
-import connectDB from "./Config/ConectionDB";
-import cors from "cors";
-import path from "path";
+import dotenv from 'dotenv';
+import express, { Request, Response, Application } from 'express';
+import connectDB from './Config/ConectionDB';
+import cors from 'cors';
+import path from 'path';
 
 // Rutas
-import authRoutes from "./Routes/auth.routes";
-import { initLogger } from "./common/logger";
-import empresasRoutes from "./Routes/empresas.routes";
-import usuariosRoutes from "./Routes/usuarios.routes";
+import authRoutes from './Routes/auth.routes';
+import { initLogger } from './common/logger';
+import empresasRoutes from './Routes/empresas.routes';
+import usuariosRoutes from './Routes/usuarios.routes';
 
-// ================================
-// 🔹 Configuración de rutas absolutas
-// ================================
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+// Cargar el .env desde AURONTEK/.env
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
-// ================================
-// 🔹 Inicialización del servidor
-// ================================
-const app = express();
-const PORT = process.env.PORT || 3001;
+// Inicializar logger según rama
+initLogger();
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+async function main() {
+    // Inicialización del servidor
+    const app: Application = express();
+    const PORT = process.env.PORT || 3001;
 
-// ================================
-// 🔹 Conexión a MongoDB y arranque
-// ================================
-const startServer = async () => {
-  try {
+    // Middlewares globales
+    app.use(cors());
+    app.use(express.json());
+
+    // Conexión a MongoDB
     await connectDB();
 
-    // ================================
-    // 🔹 Montar rutas
-    // ================================
-    app.use("/auth", authRoutes);
+    // Montar Rutas
+    app.use('/auth', authRoutes);
+    app.use('/empresas', empresasRoutes);
+    app.use('/usuarios', usuariosRoutes);
 
-    initLogger();
-    app.use("/empresas", empresasRoutes);
-    app.use("/usuarios", usuariosRoutes);
-
-    // ================================
-    // 🔹 Ruta de Healthcheck (REQUERIDA PARA DOCKER)
-    // ================================
-    app.get("/health", (req, res) => {
-      res.status(200).json({ status: "ok" });
+    // Healthcheck
+    app.get('/health', (req: Request, res: Response) => {
+        res.json({ status: 'OK', timestamp: new Date().toISOString() });
     });
-    // ================================
-    // 🔹 Iniciar servidor
-    // ================================
+
+    // Iniciar servidor
     app.listen(PORT, () => {
-      console.log(`✅ Usuarios-SVC escuchando en el puerto ${PORT}`);
-      console.log(`📂 Ruta del proyecto: ${__dirname}`);
+        console.log(`✅ Usuarios-SVC escuchando en el puerto ${PORT}`);
+        console.log(`📂 Ruta del proyecto: ${__dirname}`);
     });
-  } catch (error) {
-    console.error("❌ Error al iniciar el servidor:", error);
-  }
-};
+}
 
-startServer();
+main().catch(error => {
+    console.error('❌ Error al iniciar usuarios-svc:', error);
+    process.exit(1);
+});
