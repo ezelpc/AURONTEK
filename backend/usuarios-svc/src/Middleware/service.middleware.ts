@@ -1,6 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+// Extend Express Request to include service-related properties
+declare global {
+  namespace Express {
+    interface Request {
+      isServiceCall?: boolean;
+      serviceName?: string;
+      imageUrl?: string;
+    }
+  }
+}
+
 /**
  * Middleware para validar tokens de comunicación entre servicios
  */
@@ -53,9 +64,4 @@ export const validateUserOrService = (req: Request, res: Response, next: NextFun
   } catch (error) {
     return res.status(401).json({ msg: 'Token inválido' });
   }
-};
-
-export default {
-  validateServiceToken,
-  validateUserOrService
 };

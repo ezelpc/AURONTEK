@@ -10,6 +10,8 @@ coverage
 
 # production
 /build
+dist/
+dist
 
 # misc
 .DS_Store   
@@ -26,3 +28,5 @@ yarn-debug.log*
 yarn-error.log*
  
 *.http
+
+env.categorized.md
