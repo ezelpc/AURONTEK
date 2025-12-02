@@ -65,5 +65,3 @@ export function initLogger() {
   console.error = (...args: any[]) => write('ERROR', args);
   console.debug = (...args: any[]) => write('DEBUG', args);
 }
-
-export default { initLogger };

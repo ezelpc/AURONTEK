@@ -54,8 +54,3 @@ export const validateUserOrService = (req: Request, res: Response, next: NextFun
     return res.status(401).json({ msg: 'Token inválido' });
   }
 };
-
-export default {
-  validateServiceToken,
-  validateUserOrService
-};

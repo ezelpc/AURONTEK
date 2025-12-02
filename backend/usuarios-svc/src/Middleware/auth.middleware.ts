@@ -53,5 +53,3 @@ export const esSoporte = (req: Request, res: Response, next: NextFunction) => {
   }
   next();
 };
-
-export default { verificarToken, esAdminGeneral, esAdminInterno, esSoporte };

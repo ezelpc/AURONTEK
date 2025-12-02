@@ -31,4 +31,3 @@ export const verificarRecaptcha = async (token: string) => {
     return false;
   }
 };
-export default { verificarRecaptcha };
