@@ -24,9 +24,6 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Instalar wget para healthcheck
-RUN apk add --no-cache wget
-
 # Copiar package files
 COPY package*.json ./
 
@@ -36,7 +33,7 @@ RUN npm install --omit=dev && npm cache clean --force
 # Copiar build compilado
 COPY --from=builder /app/dist ./dist
 
-# Usuario no-root
+# Usuario no-root para seguridad
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
