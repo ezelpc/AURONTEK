@@ -16,7 +16,7 @@ import connectDB from './Config/ConectionDB';
 import chatService from './Services/chat.service';
 
 // Configuración de entorno
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Inicializar logger lo antes posible en el servicio de chat
 initLogger();

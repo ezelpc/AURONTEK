@@ -7,7 +7,7 @@ import { Empresa } from './Models/AltaEmpresas.models';
 import Admin from './Models/Admin.model';
 
 // Load env
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const run = async () => {
     try {
