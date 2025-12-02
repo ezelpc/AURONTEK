@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
+// En desarrollo local usa localhost, en Docker usa el hostname 'redis'
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 export const redisClient = createClient({
   url: REDIS_URL,
