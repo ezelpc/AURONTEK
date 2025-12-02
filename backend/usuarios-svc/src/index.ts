@@ -14,7 +14,6 @@ import usuariosRoutes from './Routes/usuarios.routes';
 // ================================
 // 🔹 Configuración de rutas absolutas
 // ================================
-// Cargar .env desde AURONTEK/.env
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // ================================
@@ -28,6 +27,13 @@ app.use(cors());
 app.use(express.json());
 
 // ================================
+// 🔹 Ruta de Healthcheck (REQUERIDA PARA DOCKER)
+// ================================
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// ================================
 // 🔹 Conexión a MongoDB y arranque
 // ================================
 const startServer = async () => {
@@ -39,7 +45,6 @@ const startServer = async () => {
     // ================================
     app.use('/auth', authRoutes);
 
-    // Inicializar logger lo más pronto posible en este servicio
     initLogger();
     app.use('/empresas', empresasRoutes);
     app.use('/usuarios', usuariosRoutes);
