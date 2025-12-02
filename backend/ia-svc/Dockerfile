@@ -40,8 +40,8 @@ EXPOSE 3005
 ENV PORT=3005
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:3005/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3005/health || exit 1
 
 # Comando de inicio
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3005", "--workers", "1"]
