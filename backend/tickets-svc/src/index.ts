@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { initLogger } from './common/logger';
+import { initLogger } from './common/logger.js';
 import express, { Request, Response, Application } from 'express';
 import connectDB from './Config/ConectionDB.js';
 import cors from 'cors';

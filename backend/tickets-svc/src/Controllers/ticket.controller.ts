@@ -167,7 +167,12 @@ const ticketController = {
         return;
       }
 
-      if (!req.usuario || req.usuario.rol !== 'admin-interno') {
+      if (!req.usuario) {
+        res.status(401).json({ msg: 'Usuario no autenticado' });
+        return;
+      }
+
+      if (req.usuario.rol !== 'admin-interno') {
         res.status(403).json({ msg: 'No autorizado para asignar tickets' });
         return;
       }
@@ -191,8 +196,13 @@ const ticketController = {
         return;
       }
 
+      if (!req.usuario) {
+        res.status(401).json({ msg: 'Usuario no autenticado' });
+        return;
+      }
+
       // Solo 'soporte' puede delegar
-      if (!req.usuario || req.usuario.rol !== 'soporte') {
+      if (req.usuario.rol !== 'soporte') {
         res.status(403).json({ msg: 'Solo usuarios con rol soporte pueden delegar tickets' });
         return;
       }
