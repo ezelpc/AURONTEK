@@ -2,11 +2,7 @@ import { createApp } from './app';
 import { connectRedis } from './config/redis';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { initLogger } from './common/logger';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 // Inicializar logger lo antes posible para controlar console.* según la rama
