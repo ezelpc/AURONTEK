@@ -2,10 +2,10 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// ✅ Cargar el .env desde un nivel superior (backend/.env)
+// ✅ Cargar el .env desde la raíz del proyecto (AURONTEK/.env)
 // __dirname en ts-node apunta a src/Config
-// ../../../.env llega a backend/.env
-const envPath = path.resolve(__dirname, '../../../.env');
+// ../../../../.env llega a AURONTEK/.env (src -> Config -> usuarios-svc -> backend -> AURONTEK)
+const envPath = path.resolve(__dirname, '../../../../.env');
 dotenv.config({ path: envPath });
 
 console.log('🔍 Intentando cargar .env desde:', envPath);

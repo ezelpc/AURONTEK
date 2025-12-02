@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import * as usuarioService from '../Services/usuario.service';
+import usuarioService from '../Services/usuario.service';
 
 // PATCH /api/usuarios/me/foto-perfil
 const subirFotoPerfil = async (req: Request, res: Response) => {

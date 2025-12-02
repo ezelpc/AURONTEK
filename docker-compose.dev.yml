@@ -1,58 +1,184 @@
 version: "3.9"
 
 services:
-  # --- MongoDB Local ---
+  # --- Base de datos MongoDB ---
   mongodb:
-    image: mongo:7
-    container_name: mongodb-dev
+    image: mongo:6.0
+    container_name: mongodb
     ports:
       - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-      MONGO_INITDB_DATABASE: aurontek
     volumes:
-      - mongodb_dev_data:/data/db
+      - mongodb_data:/data/db
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: always
 
-  # --- RabbitMQ Local ---
+  # --- Mensajería RabbitMQ ---
   rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: rabbitmq-dev
+    image: rabbitmq:3-management
+    container_name: rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
+      - "5672:5672"    # Broker
+      - "15672:15672"  # Dashboard
     volumes:
-      - rabbitmq_dev_data:/var/lib/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    restart: always
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
-  # --- Redis ---
-  redis:
-    image: redis:7-alpine
-    container_name: redis-dev
+  # --- API Gateway ---
+  gateway-svc:
+    build: ./gateway-svc
+    container_name: gateway-svc
     ports:
-      - "6379:6379"
-    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      USUARIOS_SERVICE_URL: http://usuarios-svc:3001
+      TICKETS_SERVICE_URL: http://tickets-svc:3002
+      CHAT_SERVICE_URL: http://chat-svc:3003
+      NOTIFICATIONS_SERVICE_URL: http://notificaciones-svc:3004
+      RATE_LIMIT: ${RATE_LIMIT:-100}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      usuarios-svc:
+        condition: service_started
+      tickets-svc:
+        condition: service_healthy
+      chat-svc:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Servicio de Usuarios ---
+  usuarios-svc:
+    build: ./usuarios-svc
+    container_name: usuarios-svc
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/aurontek
+      JWT_SECRET: ${JWT_SECRET}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
+      RECAPTCHA_TEST_TOKEN: ${RECAPTCHA_TEST_TOKEN}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Servicio de Tickets ---
+  tickets-svc:
+    build: ./tickets-svc
+    container_name: tickets-svc
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      MONGODB_URI: mongodb://mongodb:27017/aurontek
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
       retries: 3
-    restart: always
+    restart: unless-stopped
+
+  # --- Servicio de Chat ---
+  chat-svc:
+    build: ./chat-svc
+    container_name: chat-svc
+    ports:
+      - "3003:3003"
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      MONGODB_URI: mongodb://mongodb:27017/aurontek
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # --- Servicio de Notificaciones ---
+  notificaciones-svc:
+    build: ./notificaciones-svc
+    container_name: notificaciones-svc
+    ports:
+      - "3004:3004"
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_SECURE: ${EMAIL_SECURE}
+      EMAIL_FROM: ${EMAIL_FROM}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # --- Servicio de IA (Python) ---
+  ia-svc:
+    build: ./ia-svc
+    container_name: ia-svc
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      USUARIOS_SERVICE_URL: http://usuarios-svc:3001
+      TICKETS_SERVICE_URL: http://tickets-svc:3002
+      DOCKER_ENV: "true"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
-  mongodb_dev_data:
-  rabbitmq_dev_data:
+  mongodb_data:
+  rabbitmq_data:
+  redis_data:  
