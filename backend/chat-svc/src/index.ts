@@ -12,8 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Importar configuración de DB y Servicios
-import connectDB from './Config/ConectionDB.js';
-import chatService from './Services/chat.service.js';
+import connectDB from './Config/ConectionDB';
+import chatService from './Services/chat.service';
 
 // Configuración de entorno
 dotenv.config({ path: path.join(__dirname, '../.env') });

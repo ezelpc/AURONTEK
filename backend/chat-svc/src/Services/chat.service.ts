@@ -1,4 +1,4 @@
-import Mensaje from '../Models/Mensaje.model.js';
+import Mensaje from '../Models/Mensaje.model';
 import axios from 'axios';
 
 interface GuardarMensajeData {
