@@ -187,7 +187,6 @@ jobs:
             RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             RECAPTCHA_SECRET_KEY=${{ secrets.RECAPTCHA_SECRET_KEY }}
-            RECAPTCHA_TEST_TOKEN=${{ secrets.RECAPTCHA_TEST_TOKEN }}
             CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
             CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
             CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
