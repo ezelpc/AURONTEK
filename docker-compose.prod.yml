@@ -73,7 +73,7 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       NODE_OPTIONS: "--max-old-space-size=256"
-      healthcheck:
+    healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
@@ -209,4 +209,3 @@ services:
         awslogs-region: us-east-1
         awslogs-group: /aurontek/ia
         awslogs-stream-prefix: ia
-
