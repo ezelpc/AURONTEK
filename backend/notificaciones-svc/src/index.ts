@@ -2,8 +2,8 @@ import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { connectRabbitMQ } from './config/rabbitmq.config.js';
-import { loadSMTP } from './config/smtp.config.js';
+import { connectRabbitMQ } from './config/rabbitmq.config';
+import { loadSMTP } from './config/smtp.config';
 import './events/consumer.js';
 import { initLogger } from './common/logger';
 

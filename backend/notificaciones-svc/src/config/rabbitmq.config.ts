@@ -1,5 +1,5 @@
 import amqplib from 'amqplib';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 let connection: any = null;
 let channel: any = null;

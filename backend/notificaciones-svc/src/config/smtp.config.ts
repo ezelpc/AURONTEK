@@ -1,5 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 export let transporter: Transporter | null = null;
 

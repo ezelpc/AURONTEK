@@ -1,5 +1,5 @@
-import { sendEmail } from './email.service.js';
-import { logger } from '../utils/logger.js';
+import { sendEmail } from './email.service';
+import { logger } from '../utils/logger';
 
 interface TicketNotificationData {
   email: string;

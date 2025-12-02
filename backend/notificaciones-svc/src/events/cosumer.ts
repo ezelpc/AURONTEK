@@ -1,8 +1,8 @@
 import { ConsumeMessage } from 'amqplib';
-import { getChannel } from '../config/rabbitmq.config.js';
-import { handleTicketEvent } from './ticket.events.js';
-import { handleChatEvent } from './chat.events.js';
-import { logger } from '../utils/logger.js';
+import { getChannel } from '../config/rabbitmq.config';
+import { handleTicketEvent } from './ticket.events';
+import { handleChatEvent } from './chat.events';
+import { logger } from '../utils/logger';
 
 // Esperar a que RabbitMQ esté conectado antes de consumir
 setTimeout(async () => {

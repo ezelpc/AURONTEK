@@ -1,5 +1,5 @@
-import { transporter } from '../config/smtp.config.js';
-import { logger } from '../utils/logger.js';
+import { transporter } from '../config/smtp.config';
+import { logger } from '../utils/logger';
 
 interface EmailOptions {
   to: string;

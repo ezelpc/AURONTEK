@@ -1,5 +1,5 @@
 import { ConsumeMessage } from 'amqplib';
-import { sendTicketNotification } from '../Services/notification.service.js';
+import { sendTicketNotification } from '../Services/notification.service';
 
 export const handleTicketEvent = async (msg: ConsumeMessage) => {
     const data = JSON.parse(msg.content.toString());
