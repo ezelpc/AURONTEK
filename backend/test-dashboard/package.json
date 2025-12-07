@@ -1,0 +1,24 @@
+{
+    "name": "test-dashboard",
+    "version": "1.0.0",
+    "description": "Test reporting dashboard and report generator",
+    "main": "generate-report.js",
+    "scripts": {
+        "generate": "node generate-report.js",
+        "generate:all": "node generate-report.js --all",
+        "generate:pdf": "node export-pdf.js",
+        "serve": "npx http-server . -p 8080"
+    },
+    "dependencies": {
+        "chart.js": "^4.4.0",
+        "puppeteer": "^21.6.1"
+    },
+    "devDependencies": {},
+    "keywords": [
+        "testing",
+        "dashboard",
+        "reporting"
+    ],
+    "author": "",
+    "license": "ISC"
+}

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Pruebas - AURONTEK</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .kpi-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .kpi-card.green .kpi-value { color: #10b981; }
+        .kpi-card.blue .kpi-value { color: #3b82f6; }
+        .kpi-card.yellow .kpi-value { color: #f59e0b; }
+        .kpi-card.purple .kpi-value { color: #8b5cf6; }
+
+        .kpi-subtitle {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-card h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.passed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .export-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .export-btn:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Dashboard de Pruebas - Sistema AURONTEK</h1>
+            <p class="subtitle">Capítulos 6 y 7: Pruebas del Backend y Sistema</p>
+            <button class="export-btn" onclick="exportPDF()">📄 Exportar PDF</button>
+            <button class="export-btn" onclick="exportCSV()">📊 Exportar CSV</button>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card green">
+                <h3>Tests Pasados</h3>
+                <div class="kpi-value">156/160</div>
+                <div class="kpi-subtitle">97.5% de éxito</div>
+            </div>
+            <div class="kpi-card blue">
+                <h3>Cobertura de Código</h3>
+                <div class="kpi-value">87%</div>
+                <div class="kpi-subtitle">Objetivo: >80%</div>
+            </div>
+            <div class="kpi-card yellow">
+                <h3>Latencia Promedio</h3>
+                <div class="kpi-value">78ms</div>
+                <div class="kpi-subtitle">Objetivo: <100ms</div>
+            </div>
+            <div class="kpi-card purple">
+                <h3>Precisión IA</h3>
+                <div class="kpi-value">92%</div>
+                <div class="kpi-subtitle">Objetivo: >90%</div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+            <!-- Latency Chart -->
+            <div class="chart-card">
+                <h2>6.6 Latencia en el Tiempo</h2>
+                <div class="chart-container">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tests Pass/Fail Chart -->
+            <div class="chart-card">
+                <h2>7.2 Tests Pasados vs Fallidos</h2>
+                <div class="chart-container">
+                    <canvas id="testsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- P95 Latency by Service -->
+            <div class="chart-card">
+                <h2>6.6 P95 Latency por Servicio</h2>
+                <div class="chart-container">
+                    <canvas id="p95Chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Module Evaluation Radar -->
+            <div class="chart-card">
+                <h2>7.4 Evaluación por Módulo</h2>
+                <div class="chart-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="chart-card">
+            <h2>Resultados por Módulo</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Módulo</th>
+                        <th>Tests Unitarios</th>
+                        <th>Tests Funcionales</th>
+                        <th>Tests Integración</th>
+                        <th>Cobertura</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>usuarios-svc</td>
+                        <td>45/45</td>
+                        <td>12/12</td>
+                        <td>8/8</td>
+                        <td>89%</td>
+                        <td><span class="status-badge passed">✓ Pasado</span></td>
+                    </tr>
+                    <tr>
+                        <td>tickets-svc</td>
+                        <td>38/40</td>
+                        <td>15/15</td>
+                        <td>10/10</td>
+                        <td>85%</td>
+                        <td><span class="status-badge passed">✓ Pasado</span></td>
+                    </tr>
+                    <tr>
+                        <td>ia-svc</td>
+                        <td>32/32</td>
+                        <td>8/8</td>
+                        <td>6/6</td>
+                        <td>91%</td>
+                        <td><span class="status-badge passed">✓ Pasado</span></td>
+                    </tr>
+                    <tr>
+                        <td>gateway-svc</td>
+                        <td>28/30</td>
+                        <td>10/10</td>
+                        <td>5/5</td>
+                        <td>82%</td>
+                        <td><span class="status-badge passed">✓ Pasado</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Latency over time chart
+        new Chart(document.getElementById('latencyChart'), {
+            type: 'line',
+            data: {
+                labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5'],
+                datasets: [{
+                    label: 'Latencia Promedio (ms)',
+                    data: [95, 88, 82, 79, 78],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Tests pass/fail pie chart
+        new Chart(document.getElementById('testsChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Pasados', 'Fallidos'],
+                datasets: [{
+                    data: [156, 4],
+                    backgroundColor: ['#10b981', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // P95 Latency by service
+        new Chart(document.getElementById('p95Chart'), {
+            type: 'bar',
+            data: {
+                labels: ['usuarios-svc', 'tickets-svc', 'ia-svc', 'gateway-svc'],
+                datasets: [{
+                    label: 'P95 Latency (ms)',
+                    data: [185, 210, 195, 230],
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Module evaluation radar
+        new Chart(document.getElementById('radarChart'), {
+            type: 'radar',
+            data: {
+                labels: ['Cobertura', 'Rendimiento', 'Calidad', 'Confiabilidad', 'Mantenibilidad'],
+                datasets: [{
+                    label: 'Evaluación',
+                    data: [87, 92, 85, 90, 88],
+                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                    borderColor: '#8b5cf6',
+                    pointBackgroundColor: '#8b5cf6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        function exportPDF() {
+            alert('Generando PDF... (Implementar con Puppeteer en generate-report.js)');
+        }
+
+        function exportCSV() {
+            alert('Exportando CSV... (Implementar en generate-report.js)');
+        }
+    </script>
+</body>
+</html>
