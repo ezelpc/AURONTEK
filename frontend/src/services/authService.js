@@ -1,7 +1,7 @@
 // src/services/authService.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api/admin-sistema/login'; // URL corregida
+const API_URL = `${process.env.REACT_APP_API_URL}/api/admin-sistema/login`;
 
 /**
  * Inicia sesión y guarda credenciales según "mantener sesión"
