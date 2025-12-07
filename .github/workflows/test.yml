@@ -1,0 +1,114 @@
+name: Test Suite
+on:
+  push:
+    branches: [ test ]
+  pull_request:
+    branches: [ test ]
+
+jobs:
+  test-node-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [usuarios-svc, tickets-svc, gateway-svc]
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/${{ matrix.service }}/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: backend/${{ matrix.service }}
+        run: npm ci
+      
+      - name: Run tests
+        working-directory: backend/${{ matrix.service }}
+        run: npm test -- --coverage --ci
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: backend/${{ matrix.service }}/coverage/coverage-final.json
+          flags: ${{ matrix.service }}
+          name: ${{ matrix.service }}-coverage
+
+  test-python-service:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        working-directory: backend/ia-svc
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov pytest-mock scikit-learn
+      
+      - name: Run tests
+        working-directory: backend/ia-svc
+        run: pytest --cov=. --cov-report=xml --cov-report=html
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: backend/ia-svc/coverage.xml
+          flags: ia-svc
+          name: ia-svc-coverage
+
+  generate-report:
+    needs: [test-node-services, test-python-service]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install report dependencies
+        working-directory: backend/test-dashboard
+        run: npm install
+      
+      - name: Generate test report
+        working-directory: backend/test-dashboard
+        run: node generate-report.js --all --ci
+      
+      - name: Upload test reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: |
+            docs/testing/reportes/
+            backend/test-dashboard/index.html
+          retention-days: 30
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'docs/testing/reportes/latest/resumen-ejecutivo.md';
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 📊 Test Results\n\n${report}`
+              });
+            }
