@@ -1,13 +1,42 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Grid, Card, CardContent, Typography, Alert, Paper } from '@mui/material';
-import { People, ConfirmationNumber, Timer, Assignment, TrendingUp, CheckCircle } from '@mui/icons-material';
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Alert,
+  Paper,
+  CircularProgress
+} from '@mui/material';
+import {
+  People,
+  ConfirmationNumber,
+  Timer,
+  Assignment,
+  TrendingUp,
+  CheckCircle
+} from '@mui/icons-material';
+import ticketService from '../../services/ticketService';
+import { useAuth } from '../../hooks/useAuth';
 
-const StatCard = ({ title, value, color, icon }) => (
-  <Card sx={{ borderLeft: `5px solid ${color}`, height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
+const StatCard = ({ title, value, color, icon, loading }) => (
+  <Card sx={{
+    borderLeft: `5px solid ${color}`,
+    height: '100%',
+    transition: 'transform 0.2s',
+    '&:hover': { transform: 'translateY(-4px)' }
+  }}>
     <CardContent>
-      <Typography color="textSecondary" variant="overline" fontWeight={600}>{title}</Typography>
+      <Typography color="textSecondary" variant="overline" fontWeight={600}>
+        {title}
+      </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, justifyContent: 'space-between' }}>
-        <Typography variant="h3" fontWeight="bold">{value}</Typography>
+        {loading ? (
+          <CircularProgress size={32} />
+        ) : (
+          <Typography variant="h3" fontWeight="bold">{value}</Typography>
+        )}
         <Box sx={{ color: color }}>{icon}</Box>
       </Box>
     </CardContent>
@@ -15,20 +44,39 @@ const StatCard = ({ title, value, color, icon }) => (
 );
 
 const DashboardEmpresa = () => {
-  const user = JSON.parse(localStorage.getItem('usuario') || '{}');
-  const rol = user.rol;
+  const { user } = useAuth();
+  const rol = user?.rol;
+  const [stats, setStats] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setLoading(true);
+        const estadisticas = await ticketService.obtenerEstadisticas();
+        setStats(estadisticas);
+      } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+        setStats({});
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
+  }, []);
 
   // Mensaje de bienvenida
   const getBienvenida = () => {
     const roleMessages = {
-      'admin-interno': `${user.nombre}, como Admin Interno tienes acceso completo a todas las métricas de la empresa, gestión de usuarios y tickets.`,
-      'admin_empresa': `${user.nombre}, como Admin de Empresa tienes acceso completo a métricas y gestión de usuarios.`,
-      'soporte': `${user.nombre}, aquí puedes ver tus tickets asignados y métricas de resolución.`,
-      'beca-soporte': `${user.nombre}, como Becario de Soporte puedes ver tickets asignados en modo supervisado.`,
-      'usuario_final': `${user.nombre}, bienvenido. Aquí puedes ver el estado de tus solicitudes y crear nuevos tickets.`,
-      'becario': `${user.nombre}, estás en modo aprendizaje. Puedes revisar tickets y el historial.`
+      'admin-interno': `${user?.nombre}, como Admin Interno tienes acceso completo a todas las métricas de la empresa, gestión de usuarios y tickets.`,
+      'admin_empresa': `${user?.nombre}, como Admin de Empresa tienes acceso completo a métricas y gestión de usuarios.`,
+      'soporte': `${user?.nombre}, aquí puedes ver tus tickets asignados y métricas de resolución.`,
+      'beca-soporte': `${user?.nombre}, como Becario de Soporte puedes ver tickets asignados en modo supervisado.`,
+      'usuario_final': `${user?.nombre}, bienvenido. Aquí puedes ver el estado de tus solicitudes y crear nuevos tickets.`,
+      'becario': `${user?.nombre}, estás en modo aprendizaje. Puedes revisar tickets y el historial.`
     };
-    return roleMessages[rol] || `Bienvenido, ${user.nombre}`;
+    return roleMessages[rol] || `Bienvenido, ${user?.nombre}`;
   };
 
   return (
@@ -48,55 +96,43 @@ const DashboardEmpresa = () => {
       {rol === 'admin-interno' && (
         <>
           <Alert severity="info" sx={{ mb: 3 }}>
-            <strong>Vista Admin Interno:</strong> Acceso completo al dashboard inicial. Métricas de tickets activos, en proceso, cerrados, en espera, quebranto, de toda la empresa.
+            <strong>Vista Admin Interno:</strong> Acceso completo al dashboard inicial. Métricas de tickets activos, en proceso, cerrados, en espera, de toda la empresa.
           </Alert>
           <Grid container spacing={3}>
             <Grid item xs={12} md={3}>
               <StatCard
-                title="Total Usuarios"
-                value="24"
+                title="Total Tickets"
+                value={stats.total || 0}
                 color="#1976d2"
-                icon={<People sx={{ fontSize: 48 }} />}
+                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <StatCard
-                title="Tickets Activos"
-                value="8"
+                title="Tickets Abiertos"
+                value={stats.abiertos || 0}
                 color="#d32f2f"
-                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+                icon={<TrendingUp sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <StatCard
                 title="En Proceso"
-                value="5"
+                value={stats.enProceso || stats.en_progreso || 0}
                 color="#ed6c02"
-                icon={<TrendingUp sx={{ fontSize: 48 }} />}
+                icon={<Timer sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <StatCard
-                title="Cerrados Hoy"
-                value="12"
+                title="Resueltos"
+                value={stats.resueltos || 0}
                 color="#2e7d32"
                 icon={<CheckCircle sx={{ fontSize: 48 }} />}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <StatCard
-                title="En Espera"
-                value="3"
-                color="#9c27b0"
-                icon={<Timer sx={{ fontSize: 48 }} />}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <StatCard
-                title="Tiempo Promedio"
-                value="2.5h"
-                color="#0288d1"
-                icon={<Timer sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
           </Grid>
@@ -107,39 +143,43 @@ const DashboardEmpresa = () => {
       {rol === 'admin_empresa' && (
         <>
           <Alert severity="info" sx={{ mb: 3 }}>
-            <strong>Vista Admin Empresa:</strong> Dashboard inicial con métricas de tickets activos, en proceso, cerrados, en espera, quebranto, de toda la empresa.
+            <strong>Vista Admin Empresa:</strong> Dashboard inicial con métricas de tickets activos, en proceso, cerrados de tu empresa.
           </Alert>
           <Grid container spacing={3}>
             <Grid item xs={12} md={3}>
               <StatCard
-                title="Total Usuarios"
-                value="24"
+                title="Total Tickets"
+                value={stats.total || 0}
                 color="#1976d2"
-                icon={<People sx={{ fontSize: 48 }} />}
+                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <StatCard
-                title="Tickets Activos"
-                value="8"
+                title="Tickets Abiertos"
+                value={stats.abiertos || 0}
                 color="#d32f2f"
-                icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+                icon={<TrendingUp sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <StatCard
                 title="En Proceso"
-                value="5"
+                value={stats.enProceso || stats.en_progreso || 0}
                 color="#ed6c02"
-                icon={<TrendingUp sx={{ fontSize: 48 }} />}
+                icon={<Timer sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <StatCard
-                title="Tiempo Promedio"
-                value="2h"
+                title="Resueltos"
+                value={stats.resueltos || 0}
                 color="#2e7d32"
-                icon={<Timer sx={{ fontSize: 48 }} />}
+                icon={<CheckCircle sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
           </Grid>
@@ -156,25 +196,28 @@ const DashboardEmpresa = () => {
             <Grid item xs={12} md={4}>
               <StatCard
                 title="Asignados a mí"
-                value="5"
+                value={stats.asignados || 0}
                 color="#ed6c02"
                 icon={<Assignment sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <StatCard
                 title="Alta Prioridad"
-                value="2"
+                value={stats.altaPrioridad || 0}
                 color="#d32f2f"
                 icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <StatCard
                 title="Resueltos Hoy"
-                value="3"
+                value={stats.resueltosHoy || 0}
                 color="#2e7d32"
                 icon={<CheckCircle sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
           </Grid>
@@ -185,30 +228,32 @@ const DashboardEmpresa = () => {
       {rol === 'usuario_final' && (
         <>
           <Alert severity="info" sx={{ mb: 3 }}>
-            <strong>Vista Usuario Final:</strong> El dashboard inicial cambiará conforme se seleccione la opción del menú.
+            <strong>Vista Usuario Final:</strong> Aquí puedes ver el estado de tus solicitudes.
           </Alert>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <StatCard
                 title="Mis Tickets Abiertos"
-                value="1"
+                value={stats.misTickets || 0}
                 color="#1976d2"
                 icon={<ConfirmationNumber sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <StatCard
-                title="Última Respuesta"
-                value="Hace 1h"
+                title="Tickets Resueltos"
+                value={stats.resueltos || 0}
                 color="#2e7d32"
-                icon={<Timer sx={{ fontSize: 48 }} />}
+                icon={<CheckCircle sx={{ fontSize: 48 }} />}
+                loading={loading}
               />
             </Grid>
           </Grid>
         </>
       )}
 
-      {/* VISTA: BECARIO  */}
+      {/* VISTA: BECARIO */}
       {rol === 'becario' && (
         <>
           <Alert severity="warning" sx={{ mb: 3 }}>

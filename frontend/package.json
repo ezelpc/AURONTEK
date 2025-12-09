@@ -2,38 +2,30 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "@mui/x-data-grid": "^8.18.0",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
     "axios": "^1.12.2",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-google-recaptcha": "^3.1.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.9.3",
-    "react-scripts": "^0.0.0",
+    "socket.io-client": "^4.8.1",
     "web-vitals": "^2.1.4"
   },
-  "scripts": {
-    "dev": "react-scripts start",
-    "build": "react-scripts build",
-    "postbuild": "javascript-obfuscator ./build --output ./build-obfuscated --compact true --self-defending true",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "cache": "rimraf node_modules && rimraf build build-obfuscated && del pnpm-lock.yaml && del pnpm-workspace.yaml && npm cache clean --force"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.0"
   },
   "browserslist": {
     "production": [
@@ -46,10 +38,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "javascript-obfuscator": "^4.1.1",
-    "nodemon": "^3.1.10",
-    "rimraf": "^6.1.0"
   }
 }

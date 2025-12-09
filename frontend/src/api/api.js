@@ -4,11 +4,11 @@ import axios from "axios";
 // ===============================
 // 🔧 CONFIG GENERAL DEL CLIENTE
 // ===============================
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
+  baseURL: `${API_URL}/api`,
+  timeout: 15000, // Aumentado a 15 segundos
   headers: {
     "Content-Type": "application/json"
   }
@@ -37,6 +37,11 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Log de requests en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔵 ${config.method.toUpperCase()} ${config.url}`, config.data || '');
     }
 
     return config;
