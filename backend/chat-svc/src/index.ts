@@ -179,7 +179,7 @@ async function main() {
         });
     });
 
-    const PORT = process.env.PORT || 3003;
+    const PORT = process.env.CHAT_PORT || 3003;
     httpServer.listen(PORT, () => {
         console.log(`✅ Chat-SVC escuchando en el puerto ${PORT}`);
     });

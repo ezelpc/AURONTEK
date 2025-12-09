@@ -94,7 +94,7 @@ const setData = (key, data) => {
 // 3. CONFIGURACIÓN API
 // ==========================================
 const api = axios.create({
-  baseURL: '${process.env.REACT_APP_API_URL}/api',
+  baseURL: `${import.meta.env.VITE_API_URL}/api`,
   headers: {
     'Content-Type': 'application/json'
   }

@@ -95,9 +95,7 @@ const Dashboard = () => {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3 }}>
-        Hola, {user.nombre || 'Admin'}
-      </Typography>
+
 
       {error && (
         <Alert severity="warning" sx={{ mb: 3 }}>

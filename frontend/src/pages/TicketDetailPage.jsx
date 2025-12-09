@@ -9,7 +9,7 @@ import {
     Alert,
     Grid,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/Arrow Back';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TicketDetail from '../components/tickets/TicketDetail';
 import ChatWidget from '../components/chat/ChatWidget';
 import ticketService from '../services/ticketService';

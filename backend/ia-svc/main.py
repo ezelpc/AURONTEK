@@ -46,9 +46,9 @@ app.add_middleware(
 
 # Configuración de servicios
 if os.getenv('DOCKER_ENV') == 'true':
-    RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://rabbitmq:5672')
+    RABBITMQ_URL = os.getenv('RABBITMQ_URL')
 else:
-    RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://localhost:5672')
+    RABBITMQ_URL = os.getenv('RABBITMQ_URL')
 
 USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SERVICE_URL', 'http://localhost:3001')
 TICKETS_SERVICE_URL = os.getenv('TICKETS_SERVICE_URL', 'http://localhost:3002')

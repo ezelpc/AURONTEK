@@ -11,9 +11,8 @@
     },
     "dependencies": {
         "chart.js": "^4.4.0",
-        "puppeteer": "^21.6.1"
+        "puppeteer": "^24.32.0"
     },
-    "devDependencies": {},
     "keywords": [
         "testing",
         "dashboard",

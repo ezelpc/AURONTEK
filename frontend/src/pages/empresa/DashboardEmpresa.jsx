@@ -66,31 +66,8 @@ const DashboardEmpresa = () => {
     loadStats();
   }, []);
 
-  // Mensaje de bienvenida
-  const getBienvenida = () => {
-    const roleMessages = {
-      'admin-interno': `${user?.nombre}, como Admin Interno tienes acceso completo a todas las métricas de la empresa, gestión de usuarios y tickets.`,
-      'admin_empresa': `${user?.nombre}, como Admin de Empresa tienes acceso completo a métricas y gestión de usuarios.`,
-      'soporte': `${user?.nombre}, aquí puedes ver tus tickets asignados y métricas de resolución.`,
-      'beca-soporte': `${user?.nombre}, como Becario de Soporte puedes ver tickets asignados en modo supervisado.`,
-      'usuario_final': `${user?.nombre}, bienvenido. Aquí puedes ver el estado de tus solicitudes y crear nuevos tickets.`,
-      'becario': `${user?.nombre}, estás en modo aprendizaje. Puedes revisar tickets y el historial.`
-    };
-    return roleMessages[rol] || `Bienvenido, ${user?.nombre}`;
-  };
-
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
-        Panel de Control
-      </Typography>
-
-      {/* Mensaje de Bienvenida */}
-      <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: '#e3f2fd', borderLeft: '4px solid #0288d1' }}>
-        <Typography variant="body1">
-          {getBienvenida()}
-        </Typography>
-      </Paper>
 
       {/* VISTA: ADMIN INTERNO */}
       {rol === 'admin-interno' && (

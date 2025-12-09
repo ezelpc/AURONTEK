@@ -22,6 +22,7 @@ import {
   ThemeProvider,
   createTheme,
   Button,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -34,9 +35,9 @@ import {
   DarkMode,
   LightMode,
   Help,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
-
-const drawerWidth = 260;
 
 const LayoutEmpresa = () => {
   const navigate = useNavigate();
@@ -48,6 +49,58 @@ const LayoutEmpresa = () => {
     const saved = localStorage.getItem('darkMode');
     return saved === 'true';
   });
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: darkMode ? 'dark' : 'light',
+          primary: {
+            main: darkMode ? '#90a4ae' : '#0288d1',
+          },
+          background: {
+            default: darkMode ? '#121212' : '#f4f6f8',
+            paper: darkMode ? '#1e1e1e' : '#ffffff',
+          },
+          text: {
+            primary: darkMode ? '#e0e0e0' : '#212121',
+            secondary: darkMode ? '#b0b0b0' : '#555555',
+          },
+        },
+        components: {
+          MuiAppBar: {
+            styleOverrides: {
+              root: {
+                backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+                color: darkMode ? '#e0e0e0' : '#333333',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              },
+            },
+          },
+          MuiDrawer: {
+            styleOverrides: {
+              paper: {
+                backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+              },
+            },
+          },
+        },
+      }),
+    [darkMode]
+  );
+
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isPermanentDrawer = useMediaQuery(theme.breakpoints.up('sm'));
+
+  const handleDrawerToggle = () => {
+    if (isPermanentDrawer) {
+      setIsCollapsed(!isCollapsed);
+    } else {
+      setMobileOpen(!mobileOpen);
+    }
+  };
+
+  const drawerWidth = isPermanentDrawer && isCollapsed ? 88 : 260;
 
   // Obtener usuario, empresa y rol
   const user = JSON.parse(localStorage.getItem('usuario') || '{}');
@@ -121,6 +174,29 @@ const LayoutEmpresa = () => {
 
   const menuItems = allMenuItems.filter((item) => item.roles.includes(rol));
 
+  // Determinar el título de la página actual
+  const getPageTitle = () => {
+    const { pathname } = location;
+
+    if (pathname.startsWith('/empresa/perfil')) {
+      return 'Mi Perfil';
+    }
+    if (pathname.startsWith('/empresa/tickets/nuevo')) {
+      return 'Crear Ticket';
+    }
+    // Casos para roles con la misma ruta base pero diferente texto
+    if (rol === 'usuario_final' || rol === 'becario' || rol === 'beca-soporte') {
+      if (pathname.startsWith('/empresa/tickets')) return 'Mis Tickets';
+    } else {
+      if (pathname.startsWith('/empresa/tickets')) return 'Gestión Tickets';
+    }
+
+    const currentItem = menuItems.find(item => pathname.startsWith(item.path));
+    return currentItem ? currentItem.text : 'Dashboard';
+  };
+  const pageTitle = getPageTitle();
+
+
   const formatRol = (rol) => {
     const roleMap = {
       'admin-general': 'ADMIN ROOT',
@@ -133,124 +209,95 @@ const LayoutEmpresa = () => {
   };
 
   const drawer = (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar
         sx={{
           bgcolor: darkMode ? '#424242' : '#0288d1',
           color: 'white',
           flexDirection: 'column',
-          alignItems: 'flex-start',
+          alignItems: isCollapsed ? 'center' : 'flex-start',
           py: 2,
-          px: 2,
+          px: isCollapsed ? 1 : 2,
+          transition: 'all 0.2s ease-in-out',
         }}
       >
-        <Typography variant="subtitle2" sx={{ opacity: 0.8, mb: 0.5 }}>
-          PORTAL EMPRESA
-        </Typography>
-        <Typography variant="h6" noWrap fontWeight="bold" sx={{ mb: 1 }}>
-          {nombreEmpresa}
-        </Typography>
-        <Chip
-          label={formatRol(rol)}
-          size="small"
-          sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 'bold', mb: 1 }}
-        />
-        <Button
-          startIcon={<Person />}
-          onClick={() => { navigate('/empresa/perfil'); setMobileOpen(false); }}
-          sx={{
-            color: 'white',
-            textTransform: 'none',
-            justifyContent: 'flex-start',
-            width: '100%',
-            mt: 0.5,
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
-          }}
-          size="small"
-        >
-          Mi Perfil
-        </Button>
+        {isCollapsed ? (
+          <Avatar 
+            src={'/src/assets/logoArutontek.png'} 
+            sx={{ width: 40, height: 40, mb: 1, bgcolor: 'transparent' }}
+          />
+        ) : (
+          <>
+            <Typography variant="subtitle2" sx={{ opacity: 0.8, mb: 0.5 }}>
+              PORTAL EMPRESA
+            </Typography>
+            <Typography variant="h6" noWrap fontWeight="bold" sx={{ mb: 1 }}>
+              {nombreEmpresa}
+            </Typography>
+          </>
+        )}
       </Toolbar>
       <Divider />
-      <List sx={{ pt: 2 }}>
-        {menuItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ px: 1 }}>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => { navigate(item.path); setMobileOpen(false); }}
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                '&.Mui-selected': {
-                  bgcolor: darkMode ? '#333' : '#e3f2fd',
-                  '&:hover': { bgcolor: darkMode ? '#444' : '#e3f2fd' },
-                },
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 40,
-                  bgcolor: darkMode ? '#555' : '#0288d1',
-                  color: '#fff',
-                  borderRadius: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                primaryTypographyProps={{
-                  fontWeight: location.pathname === item.path ? 600 : 400,
-                  fontSize: '0.95rem',
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+        <List sx={{ pt: 2 }}>
+          {menuItems.map((item, index) => (
+            <ListItem key={index} disablePadding sx={{ px: 1 }}>
+              <Tooltip title={isCollapsed ? item.text : ''} placement="right">
+                <ListItemButton
+                  selected={location.pathname.startsWith(item.path)}
+                  onClick={() => {
+                    navigate(item.path);
+                    if (!isPermanentDrawer) {
+                      setMobileOpen(false);
+                    }
+                  }}
+                  sx={{
+                    borderRadius: 1,
+                    mb: 0.5,
+                    justifyContent: isCollapsed ? 'center' : 'initial',
+                    '&.Mui-selected': {
+                      bgcolor: darkMode ? '#333' : '#e3f2fd',
+                      '&:hover': { bgcolor: darkMode ? '#444' : '#e3f2fd' },
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 40,
+                      bgcolor: darkMode ? '#555' : '#0288d1',
+                      color: '#fff',
+                      borderRadius: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: isCollapsed ? 0 : 3,
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    sx={{ opacity: isCollapsed ? 0 : 1 }}
+                    primaryTypographyProps={{
+                      fontWeight: location.pathname.startsWith(item.path) ? 600 : 400,
+                      fontSize: '0.95rem',
+                    }}
+                  />
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+      <Divider />
+      {isPermanentDrawer && (
+        <Box sx={{ p: 1, display: 'flex', justifyContent: 'center' }}>
+          <IconButton onClick={handleDrawerToggle}>
+            {isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </IconButton>
+        </Box>
+      )}
     </div>
-  );
-
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: darkMode ? 'dark' : 'light',
-          primary: {
-            main: darkMode ? '#90a4ae' : '#0288d1',
-          },
-          background: {
-            default: darkMode ? '#121212' : '#f4f6f8',
-            paper: darkMode ? '#1e1e1e' : '#ffffff',
-          },
-          text: {
-            primary: darkMode ? '#e0e0e0' : '#212121',
-            secondary: darkMode ? '#b0b0b0' : '#555555',
-          },
-        },
-        components: {
-          MuiAppBar: {
-            styleOverrides: {
-              root: {
-                backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
-                color: darkMode ? '#e0e0e0' : '#333333',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-              },
-            },
-          },
-          MuiDrawer: {
-            styleOverrides: {
-              paper: {
-                backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
-              },
-            },
-          },
-        },
-      }),
-    [darkMode]
   );
 
   return (
@@ -262,20 +309,24 @@ const LayoutEmpresa = () => {
           sx={{
             width: { sm: `calc(100% - ${drawerWidth}px)` },
             ml: { sm: `${drawerWidth}px` },
+            transition: theme.transitions.create(['margin', 'width'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           }}
         >
           <Toolbar>
             <IconButton
               color="inherit"
               edge="start"
-              onClick={() => setMobileOpen(!mobileOpen)}
+              onClick={handleDrawerToggle}
               sx={{ mr: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
             </IconButton>
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h6" sx={{ color: 'inherit' }}>
-                Panel de Control
+                {pageTitle}
               </Typography>
             </Box>
             <Tooltip title="Abrir menú de usuario">
@@ -325,6 +376,12 @@ const LayoutEmpresa = () => {
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
+              <MenuItem onClick={() => navigate('/empresa/perfil')}>
+                <ListItemIcon>
+                  <Person fontSize="small" />
+                </ListItemIcon>
+                <Typography variant="body2">Mi Perfil</Typography>
+              </MenuItem>
               <MenuItem onClick={handleToggleDarkMode}>
                 <ListItemIcon>
                   {darkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
@@ -365,7 +422,14 @@ const LayoutEmpresa = () => {
             variant="permanent"
             sx={{
               display: { xs: 'none', sm: 'block' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: drawerWidth,
+                transition: theme.transitions.create('width', {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.enteringScreen,
+                }),
+              },
             }}
             open
           >
@@ -380,6 +444,10 @@ const LayoutEmpresa = () => {
             width: { sm: `calc(100% - ${drawerWidth}px)` },
             minHeight: '100vh',
             bgcolor: (theme) => theme.palette.background.default,
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           }}
         >
           <Toolbar />

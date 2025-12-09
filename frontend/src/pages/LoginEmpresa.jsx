@@ -142,7 +142,7 @@ const LoginEmpresa = () => {
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
               onChange={onChangeRecaptcha}
             />
           </Box>
@@ -152,9 +152,6 @@ const LoginEmpresa = () => {
           </Button>
         </form>
 
-        <Typography variant="caption" display="block" align="center" sx={{ mt: 2, color: '#888' }}>
-          Password (test): password123
-        </Typography>
       </Paper>
     </Box>
   );

@@ -17,7 +17,7 @@ initLogger();
 async function main() {
     // Inicialización del servidor
     const app: Application = express();
-    const PORT = process.env.PORT || 3002;
+    const PORT = process.env.TICKETS_PORT || 3002;
 
     // Middlewares globales
     app.use(cors());

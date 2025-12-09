@@ -8,9 +8,13 @@ import { redisClient } from './config/redis';
 export const createApp = () => {
     const app = express();
 
-    // Configuración de Seguridad y Logs
-    app.set('trust proxy', 1);
-    app.use(cors());
+    // CORS - Permitir frontend en puerto 5000 (Vite) y 3000 (legacy)
+    app.use(cors({
+        origin: ['http://localhost:5000', 'http://localhost:3000'],
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    }));
     app.use(helmet());
     app.use(morgan('dev'));
 

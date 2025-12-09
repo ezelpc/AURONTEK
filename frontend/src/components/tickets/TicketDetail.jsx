@@ -11,6 +11,11 @@ import {
     Divider,
     Card,
     CardContent,
+    Avatar,
+    IconButton,
+    Tooltip,
+} from '@mui/material';
+import {
     Timeline,
     TimelineItem,
     TimelineSeparator,
@@ -18,10 +23,7 @@ import {
     TimelineContent,
     TimelineDot,
     TimelineOppositeContent,
-    Avatar,
-    IconButton,
-    Tooltip,
-} from '@mui/material';
+} from '@mui/lab';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CategoryIcon from '@mui/icons-material/Category';
