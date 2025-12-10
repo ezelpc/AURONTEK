@@ -1,49 +1,49 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, Paper, Typography, TextField, Button, MenuItem, Grid, Alert, 
-  Card, CardContent, CardActionArea, Stack, IconButton, Chip 
+import {
+  Box, Paper, Typography, TextField, Button, MenuItem, Grid, Alert,
+  Card, CardContent, CardActionArea, Stack, IconButton, Chip
 } from '@mui/material';
-import { 
-  Send, ArrowBack, BugReport, Assignment, 
+import {
+  Send, ArrowBack, BugReport, Assignment,
   Computer, Wifi, VpnKey, Description, Extension, Settings,
-  AttachFile, Image 
+  AttachFile, Image
 } from '@mui/icons-material';
 import { crearTicketEmpresa } from '../../services/empresaService';
+import { CATALOGO_SERVICIOS, CATEGORIAS_SERVICIOS } from '../../constants/catalogoServicios';
 
 const CrearTicketEmpresa = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [categoria, setCategoria] = useState(''); 
-  const [form, setForm] = useState({ 
-    asunto: '', 
-    tipo: '', 
-    prioridad: 'Media', 
-    descripcion: '' 
+  const [categoria, setCategoria] = useState('');
+  const [form, setForm] = useState({
+    asunto: '',
+    tipo: '',
+    servicioNombre: '', // Nuevo campo para el servicio específico
+    prioridad: 'Media',
+    descripcion: ''
   });
   const [archivo, setArchivo] = useState(null);
-  
+
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState(''); // Estado para errores de archivo
   const [enviando, setEnviando] = useState(false);
 
-  const tiposIncidentes = [
-    { label: 'Hardware', icon: <Computer fontSize="large" />, valor: 'Hardware' },
-    { label: 'Software', icon: <Extension fontSize="large" />, valor: 'Software' },
-    { label: 'Redes / Internet', icon: <Wifi fontSize="large" />, valor: 'Redes' },
-    { label: 'Otro Incidente', icon: <BugReport fontSize="large" />, valor: 'Soporte' },
-  ];
+  // Handlers simplificados - Sin paso intermedio de categorías
+  const handleSelectCategoria = (cat) => {
+    setCategoria(cat);
+    setStep(2); // Ir directo a selección de servicio
+  };
 
-  const tiposRequerimientos = [
-    { label: 'Acceso / VPN', icon: <VpnKey fontSize="large" />, valor: 'Acceso' },
-    { label: 'Nueva Licencia', icon: <Description fontSize="large" />, valor: 'Licenciamiento' },
-    { label: 'Equipo Nuevo', icon: <Computer fontSize="large" />, valor: 'Activos' },
-    { label: 'Configuración', icon: <Settings fontSize="large" />, valor: 'Configuracion' },
-  ];
+  const handleSelectServicio = (servicioNombre, categoriaServicio) => {
+    setForm({ ...form, servicioNombre, tipo: categoriaServicio });
+    setStep(3);
+  };
 
-  const handleSelectCategoria = (cat) => { setCategoria(cat); setStep(2); };
-  const handleSelectTipo = (tipoValor) => { setForm({ ...form, tipo: tipoValor }); setStep(3); };
-  const handleBack = () => { step > 1 ? setStep(step - 1) : navigate(-1); };
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+    else navigate(-1);
+  };
 
   const handleFileChange = (e) => {
     setError('');
@@ -71,10 +71,10 @@ const CrearTicketEmpresa = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setEnviando(true);
-    
+
     try {
       let adjuntoUrl = null;
-      
+
       // Si hay archivo, lo convertimos antes de guardar
       if (archivo) {
         adjuntoUrl = await convertToBase64(archivo);
@@ -88,7 +88,7 @@ const CrearTicketEmpresa = () => {
       };
 
       await crearTicketEmpresa(ticketFinal);
-      
+
       setMensaje('Ticket creado exitosamente.');
       setEnviando(false);
       setTimeout(() => navigate('/empresa/tickets'), 1500);
@@ -151,12 +151,43 @@ const CrearTicketEmpresa = () => {
           </>
         )}
 
+        {step === 2.5 && (
+          <>
+            <Typography variant="h5" fontWeight="bold" gutterBottom align="center">
+              Selecciona el Servicio Específico
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+              Categoría: <strong>{form.tipo}</strong>
+            </Typography>
+            <Grid container spacing={2} sx={{ mt: 1, maxHeight: 400, overflowY: 'auto' }}>
+              {CATALOGO_SERVICIOS[form.tipo]?.map((servicio, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card elevation={2} sx={{ height: '100%' }}>
+                    <CardActionArea
+                      onClick={() => handleSelectServicio(servicio.nombre)}
+                      sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+                    >
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5 }}>
+                        {servicio.nombre}
+                      </Typography>
+                      {servicio.org && servicio.org !== 'NA' && (
+                        <Chip label={servicio.org} size="small" variant="outlined" sx={{ mt: 'auto' }} />
+                      )}
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        )}
+
         {step === 3 && (
           <>
             <Typography variant="h5" fontWeight="bold" gutterBottom color="primary">Detalles del Ticket</Typography>
-            <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+            <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
               <Chip label={categoria} color={categoria === 'Incidente' ? 'error' : 'primary'} />
               <Chip label={form.tipo} variant="outlined" />
+              {form.servicioNombre && <Chip label={form.servicioNombre} color="success" size="small" />}
             </Stack>
 
             {mensaje && <Alert severity="success" sx={{ mb: 2 }}>{mensaje}</Alert>}
@@ -165,10 +196,10 @@ const CrearTicketEmpresa = () => {
             <form onSubmit={handleSubmit}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <TextField fullWidth label="Asunto Breve" required value={form.asunto} onChange={(e) => setForm({...form, asunto: e.target.value})} />
+                  <TextField fullWidth label="Asunto Breve" required value={form.asunto} onChange={(e) => setForm({ ...form, asunto: e.target.value })} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField select fullWidth label="Prioridad" value={form.prioridad} onChange={(e) => setForm({...form, prioridad: e.target.value})}>
+                  <TextField select fullWidth label="Prioridad" value={form.prioridad} onChange={(e) => setForm({ ...form, prioridad: e.target.value })}>
                     <MenuItem value="Baja">Baja</MenuItem>
                     <MenuItem value="Media">Media</MenuItem>
                     <MenuItem value="Alta">Alta</MenuItem>
@@ -179,7 +210,7 @@ const CrearTicketEmpresa = () => {
                   <TextField fullWidth label="Categoría" value={form.tipo} disabled variant="filled" />
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField fullWidth multiline rows={4} label="Descripción Detallada" required value={form.descripcion} onChange={(e) => setForm({...form, descripcion: e.target.value})} />
+                  <TextField fullWidth multiline rows={4} label="Descripción Detallada" required value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
                 </Grid>
 
                 {/* --- SECCIÓN DE ADJUNTAR FOTO --- */}

@@ -18,7 +18,11 @@ import {
   CheckCircle
 } from '@mui/icons-material';
 import ticketService from '../../services/ticketService';
+import estadisticasService from '../../services/estadisticasService';
 import { useAuth } from '../../hooks/useAuth';
+import ResolverStatsCard from '../../components/dashboard/ResolverStatsCard';
+import BurnedTicketsCard from '../../components/dashboard/BurnedTicketsCard';
+import RatingsCard from '../../components/dashboard/RatingsCard';
 
 const StatCard = ({ title, value, color, icon, loading }) => (
   <Card sx={{
@@ -49,6 +53,14 @@ const DashboardEmpresa = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
 
+  // Estados para estadísticas avanzadas (admin_empresa)
+  const [resolverStats, setResolverStats] = useState([]);
+  const [burnedTickets, setBurnedTickets] = useState(null);
+  const [ratings, setRatings] = useState([]);
+  const [loadingResolvers, setLoadingResolvers] = useState(false);
+  const [loadingBurned, setLoadingBurned] = useState(false);
+  const [loadingRatings, setLoadingRatings] = useState(false);
+
   useEffect(() => {
     const loadStats = async () => {
       try {
@@ -65,6 +77,51 @@ const DashboardEmpresa = () => {
 
     loadStats();
   }, []);
+
+  // Cargar estadísticas avanzadas solo para admin_empresa
+  useEffect(() => {
+    if (rol !== 'admin_empresa') return;
+
+    const loadAdvancedStats = async () => {
+      try {
+        // Cargar estadísticas de resolvers
+        setLoadingResolvers(true);
+        const resolversData = await estadisticasService.obtenerEstadisticasResolvers();
+        setResolverStats(resolversData);
+      } catch (error) {
+        console.error('Error cargando estadísticas de resolvers:', error);
+        setResolverStats([]);
+      } finally {
+        setLoadingResolvers(false);
+      }
+
+      try {
+        // Cargar tickets quemados
+        setLoadingBurned(true);
+        const burnedData = await estadisticasService.obtenerTicketsQuemados();
+        setBurnedTickets(burnedData);
+      } catch (error) {
+        console.error('Error cargando tickets quemados:', error);
+        setBurnedTickets(null);
+      } finally {
+        setLoadingBurned(false);
+      }
+
+      try {
+        // Cargar calificaciones
+        setLoadingRatings(true);
+        const ratingsData = await estadisticasService.obtenerCalificacionesResolvers();
+        setRatings(ratingsData);
+      } catch (error) {
+        console.error('Error cargando calificaciones:', error);
+        setRatings([]);
+      } finally {
+        setLoadingRatings(false);
+      }
+    };
+
+    loadAdvancedStats();
+  }, [rol]);
 
   return (
     <Box>
@@ -120,9 +177,11 @@ const DashboardEmpresa = () => {
       {rol === 'admin_empresa' && (
         <>
           <Alert severity="info" sx={{ mb: 3 }}>
-            <strong>Vista Admin Empresa:</strong> Dashboard inicial con métricas de tickets activos, en proceso, cerrados de tu empresa.
+            <strong>Vista Admin Empresa:</strong> Dashboard con métricas completas de tickets, performance de resolvers y calidad de atención.
           </Alert>
-          <Grid container spacing={3}>
+
+          {/* Estadísticas básicas */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={3}>
               <StatCard
                 title="Total Tickets"
@@ -158,6 +217,23 @@ const DashboardEmpresa = () => {
                 icon={<CheckCircle sx={{ fontSize: 48 }} />}
                 loading={loading}
               />
+            </Grid>
+          </Grid>
+
+          {/* Estadísticas avanzadas */}
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={6}>
+              <ResolverStatsCard data={resolverStats} loading={loadingResolvers} />
+            </Grid>
+            <Grid item xs={12} lg={6}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <BurnedTicketsCard data={burnedTickets} loading={loadingBurned} />
+                </Grid>
+                <Grid item xs={12}>
+                  <RatingsCard data={ratings} loading={loadingRatings} />
+                </Grid>
+              </Grid>
             </Grid>
           </Grid>
         </>
