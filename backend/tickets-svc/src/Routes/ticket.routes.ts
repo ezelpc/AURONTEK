@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import ticketController from '../Controllers/ticket.controller';
+import estadisticasController from '../Controllers/estadisticas.controller';
 import { auth, authorize } from '../Middleware/auth.middleware';
 import { validateServiceToken } from '../Middleware/service.middleware';
 
@@ -8,6 +9,13 @@ const router: Router = express.Router();
 // Todas las rutas requieren autenticación (excepto las de servicio)
 router.use(auth);
 
+// ===== RUTAS DE ESTADÍSTICAS =====
+router.get('/estadisticas/resolvers', estadisticasController.obtenerEstadisticasResolvers);
+router.get('/estadisticas/quemados', estadisticasController.obtenerTicketsQuemados);
+router.get('/estadisticas/calificaciones', estadisticasController.obtenerCalificaciones);
+router.get('/estadisticas', estadisticasController.obtenerEstadisticasGenerales);
+
+// ===== RUTAS DE TICKETS =====
 // Crear ticket (cualquier usuario autenticado)
 router.post('/', ticketController.crear);
 

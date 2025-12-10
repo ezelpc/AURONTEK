@@ -25,6 +25,11 @@ export interface ITicket extends Document {
   fechaLimiteResolucion?: Date;
   fechaRespuesta?: Date;
   fechaResolucion?: Date;
+  calificacion?: {
+    puntuacion: number; // 1-5 stars
+    comentario?: string;
+    fecha: Date;
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -66,7 +71,13 @@ const ticketSchema = new Schema<ITicket>({
   fechaLimiteRespuesta: Date,
   fechaLimiteResolucion: Date,
   fechaRespuesta: Date,
-  fechaResolucion: Date
+  fechaResolucion: Date,
+
+  calificacion: {
+    puntuacion: { type: Number, min: 1, max: 5 },
+    comentario: String,
+    fecha: Date
+  }
 
 }, {
   collection: 'tickets',
