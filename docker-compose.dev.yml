@@ -85,11 +85,15 @@ services:
     ports:
       - "3003:3003"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3003
       MONGODB_URI: ${MONGODB_URI}
       JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: redis://redis:6379
+      FRONTEND_URL: http://localhost:5173
+    depends_on:
+      - redis
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health"]
       interval: 15s
@@ -104,15 +108,18 @@ services:
     ports:
       - "3004:3004"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3004
       RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: redis://redis:6379
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
       EMAIL_SECURE: ${EMAIL_SECURE}
       EMAIL_FROM: ${EMAIL_FROM}
+    depends_on:
+      - redis
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3004/health"]
       interval: 15s
@@ -131,9 +138,10 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL}
       USUARIOS_SERVICE_URL: http://usuarios-svc:3001
       TICKETS_SERVICE_URL: http://tickets-svc:3002
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
       DOCKER_ENV: "true"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3005/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
       interval: 15s
       timeout: 5s
       retries: 3
