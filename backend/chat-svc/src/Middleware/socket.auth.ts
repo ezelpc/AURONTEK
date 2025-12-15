@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import { PERMISSIONS } from '../../../../usuarios-svc/src/Constants/permissions'; // Assuming we can share or duplicate types? 
+import { PERMISSIONS } from '../Constants/permissions';
 // Note: We cannot easily import from another microservice source in TS without path mapping. 
 // For now, we decode the token which should have permissions if we updated auth.controller to include them?
 // ACTUALLY: The token usually only has basic info.
@@ -30,7 +30,7 @@ export const socketAuthMiddleware = (socket: SocketWithUser, next: (err?: Error)
         const secret = process.env.JWT_SECRET || 'secret_dev'; // Fallback for dev
         const decoded = jwt.verify(token, secret);
         socket.user = decoded;
-        
+
         // Join own room
         // "user:{ID}"
         const userId = (decoded as any).id || (decoded as any).uid || (decoded as any)._id; // Normalize ID
