@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as ticketService from '../services/ticketService';
+import ticketService from '../services/ticketService';
 
 /**
  * Hook personalizado para gestión de tickets

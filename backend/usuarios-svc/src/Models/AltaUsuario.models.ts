@@ -21,7 +21,7 @@ const UsuarioSchema = new Schema({
   activo: { type: Boolean, default: true },
   rol: {
     type: String,
-    enum: ['admin-general', 'admin-interno', 'soporte', 'usuario', 'beca-soporte'],
+    // enum removed to support dynamic roles
     required: true
   },
   empresa: {

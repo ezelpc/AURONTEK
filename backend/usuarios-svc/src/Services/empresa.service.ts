@@ -12,8 +12,6 @@ export const crearEmpresaLicenciaAdmin = async (
   datosAdminContratante: any,
   datosAdminInterno: any
 ) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
     const codigo_acceso = generarCodigoAcceso();
 
@@ -25,6 +23,9 @@ export const crearEmpresaLicenciaAdmin = async (
       contratantes: [{ ...datosAdminContratante, correo: datosAdminInterno.email }],
     });
 
+    // Guardar la empresa
+    await nuevaEmpresa.save();
+
     // Se crea el admin interno, asociándolo a la empresa
     const adminInterno = new Usuario({
       nombre: datosAdminInterno.nombre,
@@ -34,24 +35,15 @@ export const crearEmpresaLicenciaAdmin = async (
       empresa: nuevaEmpresa._id, // Asignación del ID de la empresa
     });
 
-    // Guardar ambos documentos dentro de la transacción
-    await nuevaEmpresa.save({ session });
-    await adminInterno.save({ session });
-
-    // Si todo va bien, se confirma la transacción
-    await session.commitTransaction();
+    // Guardar el admin interno
+    await adminInterno.save();
 
     return nuevaEmpresa;
   } catch (error: any) {
-    // Si algo falla, se aborta la transacción
-    await session.abortTransaction();
     if (error.code === 11000) {
       throw new Error('Conflicto: El RFC, correo de empresa o email de admin ya existe.');
     }
     throw error;
-  } finally {
-    // Se cierra la sesión
-    session.endSession();
   }
 };
 
@@ -59,7 +51,7 @@ export const crearEmpresaLicenciaAdmin = async (
  * Obtiene todas las empresas (solo Admin General)
  */
 export const obtenerEmpresas = async () => {
-  return await Empresa.find({}).select('nombre rfc correo telefono activo');
+  return await Empresa.find({});
 };
 
 /**
@@ -83,28 +75,103 @@ export const encontrarEmpresaPorId = async (id: string) => {
  */
 export const actualizarEmpresa = async (id: string, datosActualizados: any) => {
   delete datosActualizados.rfc;
-  delete datosActualizados.codigo_acceso;
+  // delete datosActualizados.codigo_acceso; // Allow update now
+
+  const original = await Empresa.findById(id);
+  if (!original) throw new Error('Empresa no encontrada.');
 
   const empresa = await Empresa.findByIdAndUpdate(
     id,
     { $set: datosActualizados },
     { new: true, runValidators: true }
   );
+
+  // Check if access code changed
+  if (datosActualizados.codigo_acceso && original.codigo_acceso !== datosActualizados.codigo_acceso) {
+    // TODO: Emit event or call notification service
+    // For now, simple console log simulating notification
+    console.log(`[SECURITY ALERT] Access code changed for ${empresa?.nombre}. Notifying ${empresa?.correo}...`);
+
+    // Try to call external notification service via HTTP (Gateway or direct)
+    try {
+      const axios = (await import('axios')).default;
+      const NOTIF_URL = process.env.NOTIFICACIONES_SERVICE_URL || 'http://localhost:3004';
+
+      await axios.post(`${NOTIF_URL}/api/notificaciones/system-email`, {
+        to: empresa?.correo,
+        subject: 'Alerta de Seguridad: Cambio de Código de Acceso',
+        text: `Su código de acceso ha sido actualizado a: ${datosActualizados.codigo_acceso}. Si no reconce esta acción, contacte a soporte.`
+      });
+      console.log('Security notification sent successfully via Axios.');
+    } catch (e) {
+      console.error('Error sending security notification:', e);
+    }
+  }
+
+  return empresa;
+};
+
+/**
+ * Verifica si una empresa es Aurontek HQ
+ */
+export const isAurontekHQ = (empresa: any): boolean => {
+  return empresa.nombre?.toLowerCase().includes('aurontek') &&
+    empresa.nombre?.toLowerCase().includes('hq');
+};
+
+/**
+ * Elimina una empresa (hard delete - solo para Admin General)
+ */
+export const eliminarEmpresa = async (id: string) => {
+  const empresa = await Empresa.findById(id);
+  if (!empresa) throw new Error('Empresa no encontrada.');
+
+  // Delete associated users first
+  await Usuario.deleteMany({ empresa: id });
+
+  // Delete the company
+  await Empresa.findByIdAndDelete(id);
+
+  return { msg: 'Empresa eliminada correctamente' };
+};
+
+/**
+ * Suspende o activa la licencia de una empresa
+ */
+export const toggleLicenciaEmpresa = async (id: string, activo: boolean) => {
+  const empresa = await Empresa.findByIdAndUpdate(
+    id,
+    {
+      activo,
+      ...(activo ? {} : { baja: new Date() })
+    },
+    { new: true }
+  );
   if (!empresa) throw new Error('Empresa no encontrada.');
   return empresa;
 };
 
 /**
- * Desactiva una empresa (borrado lógico)
+ * Regenera el código de acceso de una empresa y notifica al admin-interno
  */
-export const desactivarEmpresa = async (id: string) => {
-  const empresa = await Empresa.findByIdAndUpdate(
-    id,
-    { activo: false, baja: new Date() },
-    { new: true }
-  );
+export const regenerarCodigoAcceso = async (id: string) => {
+  const empresa = await Empresa.findById(id);
   if (!empresa) throw new Error('Empresa no encontrada.');
-  return empresa;
+
+  const nuevoCodigoAcceso = generarCodigoAcceso();
+  empresa.codigo_acceso = nuevoCodigoAcceso;
+  await empresa.save();
+
+  // Find admin-interno for this company
+  const adminInterno = await Usuario.findOne({ empresa: id, rol: 'admin-interno' });
+
+  if (adminInterno) {
+    // TODO: Send email notification to admin-interno
+    console.log(`[SECURITY] New access code for ${empresa.nombre}: ${nuevoCodigoAcceso}`);
+    console.log(`[NOTIFICATION] Should send email to ${adminInterno.correo}`);
+  }
+
+  return nuevoCodigoAcceso;
 };
 
 /**
@@ -120,6 +187,9 @@ export default {
   obtenerEmpresaPorId,
   encontrarEmpresaPorId,
   actualizarEmpresa,
-  desactivarEmpresa,
+  eliminarEmpresa,
+  toggleLicenciaEmpresa,
   encontrarEmpresaPorCodigo,
+  regenerarCodigoAcceso,
+  isAurontekHQ,
 };

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useSocket } from '../hooks/useSocket';
-import { getToken } from '../api/api';
 
 const SocketContext = createContext(null);
 
@@ -9,24 +8,7 @@ const SocketContext = createContext(null);
  * Proporciona una conexión única compartida en toda la aplicación
  */
 export const SocketProvider = ({ children }) => {
-    const [token, setToken] = useState(null);
-
-    // Obtener token al montar y cuando cambie
-    useEffect(() => {
-        const currentToken = getToken();
-        setToken(currentToken);
-
-        // Escuchar cambios en localStorage
-        const handleStorageChange = () => {
-            const newToken = getToken();
-            setToken(newToken);
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
-    }, []);
-
-    const socketData = useSocket(token);
+    const socketData = useSocket();
 
     return (
         <SocketContext.Provider value={socketData}>

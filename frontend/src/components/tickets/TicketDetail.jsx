@@ -32,6 +32,7 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import FloatingChat from '../chat/FloatingChat';
 
 /**
  * Vista detallada de un ticket
@@ -451,6 +452,9 @@ const TicketDetail = ({
                     )}
                 </Grid>
             </Grid>
+
+            {/* Chat Flotante: Asistente Unificado */}
+            <FloatingChat ticketId={ticket._id} />
         </Box>
     );
 };

@@ -76,19 +76,38 @@ export const useAuth = () => {
     return userRole === roles;
   }, [user]);
 
+  // Verificar si el usuario tiene un permiso específico
+  const hasPermission = useCallback((permission) => {
+    if (!user) return false;
+
+    // 🛡️ SUPER ADMIN BYPASS
+    if (user.esAdminGeneral || user.rol === 'admin-general' || user.rol === 'admin-subroot') {
+        return true;
+    }
+
+    const perms = user.permisos || [];
+    return perms.includes(permission) || perms.includes('*');
+  }, [user]);
+
+  // Verificar si el usuario tiene TODOS los permisos listados
+  const hasAllPermissions = useCallback((permissions = []) => {
+      return permissions.every(p => hasPermission(p));
+  }, [hasPermission]);
+
   // Verificar si es admin
   const isAdmin = useCallback(() => {
-    return hasRole(['Admin', 'superadmin', 'admin-interno']);
+    return hasRole(['admin-general', 'admin-subroot', 'admin-interno']);
   }, [hasRole]);
 
   // Verificar si es admin de empresa
   const isAdminEmpresa = useCallback(() => {
-    return hasRole('admin_empresa');
-  }, [hasRole]);
+    // Legacy support via Role OR Permission
+    return hasRole('admin-interno') || hasPermission('company.users.manage');
+  }, [hasRole, hasPermission]);
 
   // Verificar si es soporte
   const isSoporte = useCallback(() => {
-    return hasRole(['soporte', 'beca-soporte']);
+    return hasRole(['soporte', 'beca-soporte', 'soporte-plataforma', 'resolutor-interno', 'resolutor-empresa']);
   }, [hasRole]);
 
   // Actualizar usuario
@@ -107,6 +126,8 @@ export const useAuth = () => {
     login,
     logout,
     hasRole,
+    hasPermission,       // NEW
+    hasAllPermissions,   // NEW
     isAdmin,
     isAdminEmpresa,
     isSoporte,

@@ -81,7 +81,11 @@ const LoginEmpresa = () => {
           localStorage.removeItem('empresa_email_recordado');
         }
 
-        navigate('/empresa/dashboard');
+        if (JSON.stringify(res.usuario).includes('admin-general') || res.usuario?.rol === 'admin-general' || res.admin?.rol === 'admin-general') {
+          navigate('/dashboard');
+        } else {
+          navigate('/empresa/dashboard');
+        }
       }
     } catch (err) {
       setError(err.msg || 'Credenciales incorrectas o usuario no activo.');

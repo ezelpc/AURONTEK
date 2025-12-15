@@ -44,6 +44,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Middleware de Seguridad (Service Token)
+@app.middleware("http")
+async def verify_service_token(request, call_next):
+    # Skip helatcheck and root
+    if request.url.path in ["/health", "/", "/docs", "/openapi.json"]:
+        return await call_next(request)
+
+    # Check Headers
+    auth_header = request.headers.get('Authorization')
+    service_header = request.headers.get('X-Service-Token')
+    
+    expected_token = os.getenv('SERVICE_TOKEN')
+    
+    if not expected_token:
+        # Si no hay token configurado, dejar pasar (Modo inseguro/Dev)
+        # print("⚠️ SERVICE_TOKEN no configurado en IA-SVC")
+        return await call_next(request)
+        
+    token_received = None
+    if auth_header and auth_header.startswith('Bearer '):
+        token_received = auth_header.split(' ')[1]
+    elif service_header:
+        token_received = service_header
+        
+    if token_received != expected_token:
+        # return JSONResponse(status_code=401, content={"detail": "Unauthorized Service Call"})
+        # FastAPI middleware needs Response object
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized Service Call"})
+
+    return await call_next(request)
+
 # Configuración de servicios
 if os.getenv('DOCKER_ENV') == 'true':
     RABBITMQ_URL = os.getenv('RABBITMQ_URL')
@@ -291,6 +323,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app", 
         host="0.0.0.0", 
-        port=int(os.getenv('PORT', 3005)), 
+        port=int(os.getenv('IA_PORT', 3005)), 
         reload=True
     )

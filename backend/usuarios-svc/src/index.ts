@@ -9,6 +9,9 @@ import authRoutes from './Routes/auth.routes';
 import { initLogger } from './common/logger';
 import empresasRoutes from './Routes/empresas.routes';
 import usuariosRoutes from './Routes/usuarios.routes';
+import adminsRoutes from './Routes/admins.routes';
+import roleRoutes from './Routes/role.routes';
+import habilidadesRoutes from './Routes/habilidades.routes';
 
 // Cargar el .env desde AURONTEK/.env
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -32,6 +35,9 @@ async function main() {
     app.use('/auth', authRoutes);
     app.use('/empresas', empresasRoutes);
     app.use('/usuarios', usuariosRoutes);
+    app.use('/admins', adminsRoutes);
+    app.use('/roles', roleRoutes);
+    app.use('/habilidades', habilidadesRoutes);
 
     // Healthcheck
     app.get('/health', (req: Request, res: Response) => {

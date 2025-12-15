@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import ticketController from '../Controllers/ticket.controller';
 import estadisticasController from '../Controllers/estadisticas.controller';
+import adminController from '../Controllers/ticket.admin.controller';
 import { auth, authorize } from '../Middleware/auth.middleware';
 import { validateServiceToken } from '../Middleware/service.middleware';
 
@@ -57,5 +58,13 @@ router.put('/:id/delegar',
   authorize('soporte'),
   ticketController.delegar
 );
+
+// ===== RUTAS DE ADMIN GENERAL =====
+router.get('/admin/empresas', authorize('admin-general'), adminController.listarTicketsEmpresas);
+router.get('/admin/internos', authorize('admin-general'), adminController.listarTicketsInternos);
+router.get('/admin/:id', authorize('admin-general'), adminController.obtenerTicketDetalle);
+router.patch('/admin/:id/asignar', authorize('admin-general'), adminController.asignarAgente);
+router.patch('/admin/:id/estado', authorize('admin-general'), adminController.cambiarEstado);
+router.patch('/admin/:id/prioridad', authorize('admin-general'), adminController.cambiarPrioridad);
 
 export default router;

@@ -3,6 +3,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { connectRabbitMQ } from './config/rabbitmq.config';
 import { loadSMTP } from './config/smtp.config';
+import { connectRedis } from './config/redis';
 import { initLogger } from './common/logger';
 
 // Cargar el .env desde AURONTEK/.env
@@ -10,6 +11,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // Inicializar logger según rama
 initLogger();
+
+import mongoose from 'mongoose';
+import notificationRoutes from './Routes/notificacion.routes';
+
+// ... imports ...
 
 async function main() {
     // Inicialización del servidor
@@ -19,9 +25,20 @@ async function main() {
     // Middlewares globales
     app.use(express.json());
 
+    // Conectar a MongoDB
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/aurontek';
+    try {
+        await mongoose.connect(mongoUri);
+        console.log('✅ Notificaciones-SVC conectado a MongoDB');
+    } catch (err) {
+        console.error('❌ Error conectando a MongoDB:', err);
+        process.exit(1);
+    }
+
     // Conectar servicios externos
     await loadSMTP();
     await connectRabbitMQ();
+    await connectRedis(); // 🚩 Connect to Redis for Pub/Sub
 
     // Inicializar consumidores (importar después de conectar)
     await import('./events/consumer');
@@ -34,6 +51,9 @@ async function main() {
             timestamp: new Date().toISOString()
         });
     });
+
+    // Rutas API
+    app.use('/', notificationRoutes);
 
     // Iniciar servidor
     app.listen(PORT, () => {

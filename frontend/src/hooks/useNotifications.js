@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as notificacionesService from '../services/notificacionesService';
+import notificacionesService from '../services/notificacionesService';
 
 /**
  * Hook personalizado para gestión de notificaciones
@@ -49,6 +49,16 @@ export const useNotifications = (autoRefresh = true, refreshInterval = 30000) =>
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, loadNotifications]);
 
+  // Listen for Socket events (via Window dispatch)
+  useEffect(() => {
+      const handleReload = () => {
+          // console.log('🔄 Reloading notifications from socket event');
+          loadNotifications();
+      };
+      window.addEventListener('notification:reload', handleReload);
+      return () => window.removeEventListener('notification:reload', handleReload);
+  }, [loadNotifications]);
+
   // Marcar como leída
   const markAsRead = useCallback(async (id) => {
     try {
@@ -88,6 +98,14 @@ export const useNotifications = (autoRefresh = true, refreshInterval = 30000) =>
     setNotifications(prev => [notification, ...prev]);
     if (!notification.leida) {
       setUnreadCount(prev => prev + 1);
+      // Play sound
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // Simple beep
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log('Audio play blocked:', e));
+      } catch (e) {
+        console.error('Error playing sound:', e);
+      }
     }
   }, []);
 

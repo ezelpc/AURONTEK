@@ -1,6 +1,6 @@
 import express from 'express';
 import usuarioController from '../Controllers/usuario.controller';
-import { verificarToken, esAdminInterno } from '../Middleware/auth.middleware';
+import { verificarToken, esGestorUsuarios } from '../Middleware/auth.middleware';
 import { validateUserOrService } from '../Middleware/service.middleware';
 import { upload, uploadToCloudinary } from '../Utils/cloudinary';
 
@@ -21,19 +21,36 @@ router.get('/:id',
   usuarioController.detalleUsuarioFlexible
 );
 
-// GET /api/usuarios - Listar usuarios (para servicios con query params o admin interno)
+// GET /api/usuarios - Listar usuarios (para servicios con query params o admins)
 router.get('/',
   validateUserOrService,
   usuarioController.listarUsuariosFlexible
 );
 
-// --- 🔹 Rutas solo para Admin Interno ---
-router.use(verificarToken, esAdminInterno);
+// --- 🔹 Rutas de Gestión (Admin General, Subroot, Interno) ---
+// Validar permiso según la acción
+import { requirePermission } from '../Middleware/requirePermission';
+import { PERMISSIONS } from '../Constants/permissions';
 
-// PUT /api/usuarios/:id - Modificar un usuario de MI empresa
-router.put('/:id', usuarioController.modificarUsuario);
+// POST /api/usuarios - Crear usuario
+router.post('/', 
+  verificarToken, 
+  requirePermission(PERMISSIONS.USERS_CREATE), 
+  usuarioController.crearUsuario
+);
 
-// DELETE /api/usuarios/:id - Eliminar un usuario de MI empresa
-router.delete('/:id', usuarioController.eliminarUsuario);
+// PUT /api/usuarios/:id - Modificar un usuario
+router.put('/:id', 
+  verificarToken, 
+  requirePermission(PERMISSIONS.USERS_EDIT), 
+  usuarioController.modificarUsuario
+);
+
+// DELETE /api/usuarios/:id - Eliminar un usuario
+router.delete('/:id', 
+  verificarToken, 
+  requirePermission(PERMISSIONS.USERS_DELETE), 
+  usuarioController.eliminarUsuario
+);
 
 export default router;

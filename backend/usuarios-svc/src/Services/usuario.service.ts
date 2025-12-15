@@ -41,10 +41,22 @@ export const crearUsuario = async (datosUsuario: any) => {
       throw new Error('El correo ya está registrado.');
     }
 
+    // Validar que admin-subroot solo se cree en Aurontek HQ
+    if (datosUsuario.rol === 'admin-subroot') {
+      const empresaService = await import('./empresa.service');
+      const empresa = await empresaService.default.obtenerEmpresaPorId(datosUsuario.empresa);
+
+      if (!empresaService.default.isAurontekHQ(empresa)) {
+        throw new Error('El rol admin-subroot solo puede ser asignado en Aurontek HQ.');
+      }
+    }
+
     const datosFormateados = {
       nombre: datosUsuario.nombre,
       correo: datosUsuario.email.toLowerCase(),
       contraseña: datosUsuario.password,
+      telefono: datosUsuario.telefono,
+      puesto: datosUsuario.puesto,
       rol: datosUsuario.rol,
       habilidades: datosUsuario.habilidades || [],
       empresa: datosUsuario.empresa,
@@ -89,7 +101,7 @@ export const actualizarFotoPerfil = async (userId: string, imageUrl: string) => 
  * Obtiene todos los usuarios de UNA empresa (para Admin Interno)
  */
 export const obtenerUsuariosPorEmpresa = async (empresaId: string) => {
-  return await Usuario.find({ empresa: empresaId }).select('-contraseña');
+  return await Usuario.find({ empresa: empresaId }).select('-contraseña').populate('empresa', 'nombre');
 };
 
 /**
@@ -122,11 +134,23 @@ export const actualizarUsuario = async (usuarioId: string, datosActualizados: an
 };
 
 /**
- * Elimina un usuario (para Admin Interno)
+ * Elimina un usuario (con validación de jerarquía de roles)
+ * @param usuarioId - ID del usuario a eliminar
+ * @param solicitanteRol - Rol del usuario que solicita la eliminación
  */
-export const eliminarUsuario = async (usuarioId: string) => {
-  const usuario = await Usuario.findByIdAndDelete(usuarioId);
+export const eliminarUsuario = async (usuarioId: string, solicitanteRol?: string) => {
+  const usuario = await Usuario.findById(usuarioId);
   if (!usuario) throw new Error('Usuario no encontrado.');
+
+  // Validar jerarquía de roles si se proporciona el rol del solicitante
+  if (solicitanteRol) {
+    // admin-subroot no puede eliminar a otros admin-subroot (solo admin-general puede)
+    if (solicitanteRol === 'admin-subroot' && usuario.rol === 'admin-subroot') {
+      throw new Error('No tienes permisos para eliminar este usuario.');
+    }
+  }
+
+  await Usuario.findByIdAndDelete(usuarioId);
   return { msg: 'Usuario eliminado exitosamente.' };
 };
 
@@ -142,7 +166,7 @@ export const encontrarUsuarioPorId = async (usuarioId: string) => {
  * ✅ NUEVO: Obtener usuarios por filtros (para servicios)
  */
 export const obtenerUsuariosPorFiltros = async (filtros: any = {}) => {
-  return await Usuario.find(filtros).select('-contraseña');
+  return await Usuario.find(filtros).select('-contraseña').populate('empresa', 'nombre');
 };
 
 export default {

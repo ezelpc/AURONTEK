@@ -26,7 +26,7 @@ const Tickets = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/tickets/nuevo')}
+          onClick={() => navigate('nuevo')}
         >
           Nuevo Ticket
         </Button>

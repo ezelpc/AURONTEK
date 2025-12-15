@@ -20,9 +20,17 @@ class TicketService {
 
     const url = process.env.RABBITMQ_URL || 'amqp://localhost';
     let attempt = 0;
+    const MAX_ATTEMPTS = 3; // Limitar intentos
 
     const connectWithRetry = async (): Promise<void> => {
       attempt++;
+
+      if (attempt > MAX_ATTEMPTS) {
+        console.warn(`⚠️  No se pudo conectar a RabbitMQ después de ${MAX_ATTEMPTS} intentos. Continuando sin RabbitMQ...`);
+        this._connecting = false;
+        return;
+      }
+
       try {
         this.connection = await amqp.connect(url);
         this.channel = await this.connection.createConfirmChannel();
@@ -33,17 +41,22 @@ class TicketService {
         });
 
         this.connection.on('close', () => {
-          console.warn('RabbitMQ conexión cerrada, reintentando...');
+          console.warn('RabbitMQ conexión cerrada.');
           this.channel = null;
           this.connection = null;
-          setTimeout(connectWithRetry, 1000 * Math.min(30, attempt));
+          this._connecting = false;
         });
 
-        console.log('Conexión establecida con RabbitMQ');
+        console.log('✅ Conexión establecida con RabbitMQ');
         this._connecting = false;
       } catch (err) {
-        console.error(`Error al conectar con RabbitMQ (intento ${attempt}):`, err);
-        setTimeout(connectWithRetry, 1000 * Math.min(30, attempt));
+        console.error(`Error al conectar con RabbitMQ (intento ${attempt}/${MAX_ATTEMPTS}):`, err);
+        if (attempt < MAX_ATTEMPTS) {
+          setTimeout(connectWithRetry, 1000);
+        } else {
+          console.warn('⚠️  RabbitMQ no disponible. Las funciones de mensajería estarán deshabilitadas.');
+          this._connecting = false;
+        }
       }
     };
 
@@ -52,9 +65,8 @@ class TicketService {
 
   async publicarEvento(routingKey: string, data: any) {
     if (!this.channel) {
-      console.warn('Intento publicar sin conexión con RabbitMQ. Reintentando conexión...');
-      this.initializeRabbitMQ();
-      throw new Error('No hay conexión con RabbitMQ');
+      console.warn(`⚠️  No hay conexión con RabbitMQ. Evento '${routingKey}' no publicado.`);
+      return; // No lanzar error, solo advertir
     }
 
     try {
@@ -68,7 +80,7 @@ class TicketService {
       });
     } catch (error) {
       console.error('Error al publicar evento:', error);
-      throw error;
+      // No lanzar error, solo registrar
     }
   }
 
@@ -92,9 +104,9 @@ class TicketService {
         throw new Error('El agente no pertenece a la empresa del ticket');
       }
 
-      // Validar que sea soporte o beca-soporte
-      if (!['soporte', 'beca-soporte'].includes(agente.rol)) {
-        throw new Error('El usuario asignado debe tener rol de soporte o beca-soporte');
+      // Validar que sea soporte, beca-soporte o admin-interno (para tickets de IT/Sistema)
+      if (!['soporte', 'beca-soporte', 'admin-interno'].includes(agente.rol)) {
+        throw new Error('El usuario asignado debe tener rol de soporte, beca-soporte o admin-interno');
       }
 
       return agente;
@@ -115,6 +127,7 @@ class TicketService {
           titulo: nuevoTicket.titulo,
           descripcion: nuevoTicket.descripcion,
           empresaId: nuevoTicket.empresaId.toString(),
+          usuarioCreador: nuevoTicket.usuarioCreador?.toString(),
           servicioNombre: nuevoTicket.servicioNombre || null,
           tipo: nuevoTicket.tipo || null,
           prioridad: nuevoTicket.prioridad || null,
@@ -363,6 +376,67 @@ class TicketService {
       console.error('No se pudo publicar ticket.asignado_automaticamente:', e.message);
     }
 
+    return ticket;
+  }
+
+  // ==========================================
+  // MÉTODOS PARA ADMIN GENERAL
+  // ==========================================
+
+  async obtenerAurontekHQId(): Promise<string | null> {
+    try {
+      const response = await axios.get(
+        `${process.env.USUARIOS_SVC_URL}/empresas`,
+        { headers: { 'Authorization': `Bearer ${process.env.SERVICE_TOKEN}`, 'X-Service-Name': 'tickets-svc' } }
+      );
+      const empresas = response.data;
+      const aurontekHQ = empresas.find((emp: any) =>
+        emp.nombre?.toLowerCase().includes('aurontek') && emp.nombre?.toLowerCase().includes('hq')
+      );
+      return aurontekHQ?._id || null;
+    } catch (error) {
+      console.error('Error obteniendo Aurontek HQ ID:', error);
+      return null;
+    }
+  }
+
+  async listarTicketsEmpresas(filtros: any = {}) {
+    const aurontekHQId = await this.obtenerAurontekHQId();
+    const query: any = { ...filtros };
+    if (aurontekHQId) query.empresaId = { $ne: aurontekHQId };
+    return await (Ticket as any).find(query)
+      .populate('empresaId', 'nombre rfc')
+      .populate('usuarioCreador', 'nombre correo')
+      .populate('agenteAsignado', 'nombre correo rol')
+      .populate('tutor', 'nombre correo')
+      .sort({ createdAt: -1 }).exec();
+  }
+
+  async listarTicketsInternos(filtros: any = {}) {
+    const aurontekHQId = await this.obtenerAurontekHQId();
+    if (!aurontekHQId) return [];
+    const query: any = { ...filtros, empresaId: aurontekHQId };
+    return await (Ticket as any).find(query)
+      .populate('empresaId', 'nombre rfc')
+      .populate('usuarioCreador', 'nombre correo')
+      .populate('agenteAsignado', 'nombre correo rol')
+      .populate('tutor', 'nombre correo')
+      .sort({ createdAt: -1 }).exec();
+  }
+
+  async cambiarPrioridad(ticketId: string, prioridad: string) {
+    const ticket: any = await (Ticket as any).findById(ticketId);
+    if (!ticket) throw new Error('Ticket no encontrado');
+    const prioridadAnterior = ticket.prioridad;
+    ticket.prioridad = prioridad;
+    await ticket.save();
+    try {
+      await this.publicarEvento('ticket.prioridad_actualizada', {
+        ticket: { id: ticket._id.toString(), prioridad, prioridadAnterior }
+      });
+    } catch (e: any) {
+      console.error('No se pudo publicar prioridad actualizada:', e.message);
+    }
     return ticket;
   }
 }

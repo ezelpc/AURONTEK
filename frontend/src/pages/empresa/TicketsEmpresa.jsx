@@ -5,13 +5,21 @@ import { useNavigate } from 'react-router-dom';
 import TicketList from '../../components/tickets/TicketList';
 import { useTickets } from '../../hooks/useTickets';
 import { useAuth } from '../../hooks/useAuth';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const TicketsEmpresa = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { tickets, loading, loadTickets, updateFilters } = useTickets({
-    empresaId: user?.empresaId
-  });
+  const { user, hasPermission } = useAuth();
+
+  // Determine filters based on permissions
+  const getInitialFilters = () => {
+    if (hasPermission(PERMISSIONS.TICKETS_VIEW_ALL)) return {};
+    if (hasPermission(PERMISSIONS.TICKETS_VIEW_COMPANY)) return { empresaId: user?.empresaId };
+    if (hasPermission(PERMISSIONS.TICKETS_VIEW_OWN)) return { creador: user?.id }; // Or backend handles "view_own" logic?
+    return { creador: user?.id }; // Failsafe
+  };
+
+  const { tickets, loading, loadTickets, updateFilters } = useTickets(getInitialFilters());
 
   const handleRefresh = () => {
     loadTickets();
@@ -21,19 +29,21 @@ const TicketsEmpresa = () => {
     updateFilters(filters);
   };
 
-  const pageTitle = user?.rol === 'usuario_final' ? 'Mis Solicitudes' : 'Gestión de Tickets';
+  const pageTitle = hasPermission(PERMISSIONS.TICKETS_VIEW_COMPANY) ? 'Gestión de Tickets' : 'Mis Solicitudes';
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4" fontWeight="bold">{pageTitle}</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/empresa/tickets/nuevo')}
-        >
-          Nuevo Ticket
-        </Button>
+        {hasPermission(PERMISSIONS.TICKETS_CREATE) && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/empresa/tickets/nuevo')}
+          >
+            Nuevo Ticket
+          </Button>
+        )}
       </Box>
 
       <TicketList

@@ -3,11 +3,11 @@ import { Navigate } from 'react-router-dom';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  
+
   // Intentamos obtener "admin" (Sistema) o "usuario" (Empresa)
-  const userStr = localStorage.getItem('admin') || sessionStorage.getItem('admin') || 
-                  localStorage.getItem('usuario') || sessionStorage.getItem('usuario');
-  
+  const userStr = localStorage.getItem('admin') || sessionStorage.getItem('admin') ||
+    localStorage.getItem('usuario') || sessionStorage.getItem('usuario');
+
   const user = userStr ? JSON.parse(userStr) : null;
 
   if (!token || !user) {

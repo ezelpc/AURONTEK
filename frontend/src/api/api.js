@@ -17,7 +17,7 @@ const api = axios.create({
 // ===============================
 // 🔑 TOKENS EN LOCALSTORAGE
 // ===============================
-const TOKEN_KEY = "access_token";
+const TOKEN_KEY = "token";
 const REFRESH_KEY = "refresh_token";
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
@@ -56,6 +56,16 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // ⛔ MANEJO DE 403 FORBIDDEN (Permisos)
+    if (error.response && error.response.status === 403) {
+      console.warn('⛔ Acceso Denegado:', error.response.data?.msg);
+      // Disparar evento para que la UI muestre un Toast
+      window.dispatchEvent(new CustomEvent('auth:forbidden', { 
+        detail: { message: error.response.data?.msg || 'No tienes permisos para realizar esta acción.' }
+      }));
+      return Promise.reject(error);
+    }
 
     // Si el token expiró y no se ha reintentado aún
     if (

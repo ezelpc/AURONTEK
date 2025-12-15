@@ -9,7 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 // Inicializar logger lo antes posible para controlar console.* según la rama
 initLogger();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.GATEWAY_PORT || 3000;
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 const startServer = async () => {

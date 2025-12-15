@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Servicio de Chat en tiempo real para la plataforma de Help Desk",
   "main": "index.js",
- 
   "scripts": {
     "dev": "nodemon src/index.ts",
     "clean": "rimraf dist",
@@ -12,12 +11,14 @@
     "cache": "rimraf node_modules package-lock.json && npm install"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "amqplib": "^0.10.3",
     "axios": "^1.13.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.6.3",
+    "redis": "^5.10.0",
     "socket.io": "^4.7.2"
   },
   "devDependencies": {

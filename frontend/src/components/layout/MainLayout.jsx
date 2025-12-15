@@ -16,7 +16,8 @@ import {
   ConfirmationNumber as TicketIcon,
   AddBox as AddBoxIcon,
   People as PeopleIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  Category as CategoryIcon
 } from '@mui/icons-material';
 
 // Ancho del sidebar
@@ -50,6 +51,7 @@ const MainLayout = () => {
     { text: 'Mis Tickets', icon: <TicketIcon />, path: '/tickets' },
     { text: 'Crear Ticket', icon: <AddBoxIcon />, path: '/tickets/nuevo' },
     { text: 'Usuarios', icon: <PeopleIcon />, path: '/usuarios' },
+    { text: 'Catálogo de Servicios', icon: <CategoryIcon />, path: '/servicios' },
     { text: 'Registrar Empresa', icon: <BusinessIcon />, path: '/registrar-empresa' },
     { text: 'Mi Perfil', icon: <PersonIcon />, path: '/perfil' },
   ];

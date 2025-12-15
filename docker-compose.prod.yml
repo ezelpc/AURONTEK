@@ -40,11 +40,11 @@ services:
       redis:
         condition: service_healthy
       usuarios-svc:
-        condition: service_started
+        condition: service_healthy
       tickets-svc:
-        condition: service_started
+        condition: service_healthy
       chat-svc:
-        condition: service_started
+        condition: service_healthy
     mem_limit: 150m
     restart: always
     logging:
@@ -126,9 +126,11 @@ services:
       PORT: 3003
       BRANCH: ${BRANCH:-main}
       LOG_DIR: ${LOG_DIR:-/var/log/aurontek}
-      MONGODB_URI: ${MONGODB_URI}  # MongoDB Atlas
+      MONGODB_URI: ${MONGODB_URI}
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: ${RABBITMQ_URL}  # CloudAMQP
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL} # Added
+      FRONTEND_URL: ${FRONTEND_URL} # Added for CORS
       NODE_OPTIONS: "--max-old-space-size=256"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health"]
@@ -155,7 +157,8 @@ services:
       PORT: 3004
       BRANCH: ${BRANCH:-main}
       LOG_DIR: ${LOG_DIR:-/var/log/aurontek}
-      RABBITMQ_URL: ${RABBITMQ_URL}  # CloudAMQP
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL} # Added
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
       EMAIL_USER: ${EMAIL_USER}
@@ -185,9 +188,11 @@ services:
       - "3005:3005"
     environment:
       PORT: 3005
-      RABBITMQ_URL: ${RABBITMQ_URL}  # CloudAMQP
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL} # Added (though not explicitly used by python yet, good practice)
       USUARIOS_SERVICE_URL: http://usuarios-svc:3001
       TICKETS_SERVICE_URL: http://tickets-svc:3002
+      SERVICE_TOKEN: ${SERVICE_TOKEN} # Added
       DOCKER_ENV: "true"
       BRANCH: ${BRANCH:-main}
       LOG_DIR: ${LOG_DIR:-/var/log/aurontek}

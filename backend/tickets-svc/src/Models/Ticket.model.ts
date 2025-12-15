@@ -4,6 +4,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ITicket extends Document {
   titulo: string;
   descripcion: string;
+  servicioId?: mongoose.Types.ObjectId;
   servicioNombre?: string;
   estado: 'abierto' | 'en_proceso' | 'en_espera' | 'resuelto' | 'cerrado';
   tipo?: 'incidente' | 'solicitud' | 'consulta' | 'problema' | 'requerimiento';
@@ -42,6 +43,7 @@ export const tipos = ['incidente', 'solicitud', 'consulta', 'problema', 'requeri
 const ticketSchema = new Schema<ITicket>({
   titulo: { type: String, required: true },
   descripcion: { type: String, required: true },
+  servicioId: { type: Schema.Types.ObjectId, ref: 'Servicio' },
   servicioNombre: String,
 
   estado: { type: String, enum: estadosTicket, default: 'abierto' },

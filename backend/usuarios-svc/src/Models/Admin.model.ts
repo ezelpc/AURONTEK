@@ -8,9 +8,14 @@ const adminSchema = new Schema({
   telefono: { type: String },
   puesto: { type: String },
   activo: { type: Boolean, default: true },
-  rol: { type: String, default: 'admin-general' },
+  rol: {
+    type: String,
+    enum: ['admin-general', 'admin-subroot'],
+    default: 'admin-general'
+  },
+  empresa: { type: Schema.Types.ObjectId, ref: 'Empresa' },
   creado: { type: Date, default: Date.now }
-}, { 
+}, {
   collection: 'admins' // <--- ESTO CONECTA CON TU BASE DE DATOS REAL
 });
 

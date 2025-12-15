@@ -1,4 +1,5 @@
-import axios from 'axios';
+// Usar la instancia compartida que tiene los interceptores de autenticación
+import api from '../api/api.js';
 
 // Claves para LocalStorage
 const KEY_EMPRESAS = 'aurontek_empresas_db';
@@ -90,24 +91,7 @@ const setData = (key, data) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-// ==========================================
-// 3. CONFIGURACIÓN API
-// ==========================================
-const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL}/api`,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Interceptor para manejar errores y extraer el mensaje del backend
-api.interceptors.response.use(
-  response => response,
-  error => {
-    console.error("API Error:", error.response ? error.response.data : error.message);
-    return Promise.reject(error.response ? error.response.data : { msg: 'Error de red o servidor' });
-  }
-);
+// API configurada en la parte superior del archivo
 
 // ==========================================
 // 4. FUNCIONES DE AUTENTICACIÓN (REAL API)
@@ -245,48 +229,88 @@ export const crearUsuario = async (usuarioData, creador) => {
 // 7. FUNCIONES ADMIN SISTEMA (SuperAdmin)
 // ==========================================
 
+// --- 7. FUNCIONES ADMIN SISTEMA (REAL API) ---
+
 export const registrarEmpresa = async (empresaData, token) => {
-  const empresas = getData(KEY_EMPRESAS, MOCK_EMPRESAS);
-  const nuevaEmpresa = {
-    id: `emp_${Date.now()}`,
-    nombre: empresaData.nombre_empresa,
-    rfc: empresaData.rfc,
-    codigo_acceso: Math.random().toString(36).substring(7).toUpperCase(),
-    plan: empresaData.licencia[0].plan,
-    estado: true,
-    creado: new Date().toISOString().split('T')[0],
-    direccion: empresaData.direccion
-  };
-  setData(KEY_EMPRESAS, [...empresas, nuevaEmpresa]);
+  // Map frontend data structure to backend expected structure
+  // Backend expects:
+  // - nombreEmpresa, rfc, direccion, telefono, correo
+  // - plan, fecha_inicio
+  // - nombreContratante, telefonoContratante, puestoContratante
+  // - nombreAdminInterno, emailAdminInterno, passwordAdminInterno
 
-  const usuarios = getData(KEY_USUARIOS, MOCK_USUARIOS);
+  // We map 'contratante' data to both 'contratante' and 'adminInterno' fields 
+  // because the frontend assumes the contractor IS the admin.
+  // And we generate a temporary password here or let the user decide?
+  // Frontend generated a temp pass in mock logic. Let's do it here or better, 
+  // Backend relies on passwordAdminInterno. Frontend modal shows a generated pass.
+  // So we generate it here to send to backend AND show in modal.
+
   const passTemp = Math.random().toString(36).slice(-8);
-  
-  const nuevoAdmin = {
-    id: `u_admin_${Date.now()}`,
-    empresaId: nuevaEmpresa.id,
-    nombre: empresaData.contratante.nombre,
-    correo: empresaData.contratante.correo,
-    telefono: empresaData.contratante.telefono,
-    puesto: empresaData.contratante.puesto,
-    rol: 'admin_empresa',
-    permisos: ['all'],
-    estado: true
-  };
-  setData(KEY_USUARIOS, [...usuarios, nuevoAdmin]);
 
-  return Promise.resolve({
-    mensaje: 'Empresa registrada y cuenta administrativa creada.',
-    codigo_acceso: nuevaEmpresa.codigo_acceso,
-    contratante_usuario: {
-      correo: nuevoAdmin.correo,
-      contraseña_temporal: passTemp
-    }
-  });
+  const payload = {
+    nombreEmpresa: empresaData.nombre_empresa,
+    rfc: empresaData.rfc,
+    direccion: empresaData.direccion,
+    telefono: empresaData.telefono,
+    correo: empresaData.correo_contacto,
+    
+    plan: empresaData.licencia[0].plan,
+    fecha_inicio: empresaData.licencia[0].fecha_inicio,
+
+    nombreContratante: empresaData.contratante.nombre,
+    telefonoContratante: empresaData.contratante.telefono,
+    puestoContratante: empresaData.contratante.puesto,
+    
+    // Admin Interno defaults to Contratante info
+    nombreAdminInterno: empresaData.contratante.nombre,
+    emailAdminInterno: empresaData.contratante.correo,
+    passwordAdminInterno: passTemp
+  };
+
+  try {
+    const response = await api.post('/companies', payload);
+    
+    // Return format expected by RegistrarEmpresa.jsx
+    return {
+      mensaje: response.data.msg,
+      codigo_acceso: response.data.codigo_acceso,
+      contratante_usuario: {
+        correo: payload.emailAdminInterno,
+        contraseña_temporal: passTemp
+      }
+    };
+  } catch (error) {
+    console.error('Error al registrar empresa en API:', error);
+    throw { error: error.response?.data?.msg || 'Error al conectar con el servidor' };
+  }
 };
 
 export const getTodasEmpresas = async () => {
-  return Promise.resolve(getData(KEY_EMPRESAS, MOCK_EMPRESAS));
+  const response = await api.get('/companies');
+  return response.data;
+};
+
+export const actualizarEmpresa = async (id, datos, hqCode = null) => {
+  const payload = hqCode ? { ...datos, hqCode } : datos;
+  const response = await api.put(`/companies/${id}`, payload);
+  return response.data;
+};
+
+export const eliminarEmpresa = async (id, hqCode = null) => {
+  const config = hqCode ? { data: { hqCode } } : { data: {} };
+  const response = await api.delete(`/companies/${id}`, config);
+  return response.data;
+};
+
+export const toggleLicenciaEmpresa = async (id, activo) => {
+  const response = await api.patch(`/companies/${id}/licencia`, { activo });
+  return response.data;
+};
+
+export const regenerarCodigoAcceso = async (id) => {
+  const response = await api.post(`/companies/${id}/regenerar-codigo`);
+  return response.data;
 };
 
 // ==========================================

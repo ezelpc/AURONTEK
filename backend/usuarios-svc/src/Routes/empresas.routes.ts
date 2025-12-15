@@ -19,7 +19,13 @@ router.get('/:id', empresaController.detalleEmpresa);
 // PUT /api/empresas/:id - Actualizar Empresa
 router.put('/:id', empresaController.modificarEmpresa);
 
-// DELETE /api/empresas/:id - Desactivar Empresa
+// DELETE /api/empresas/:id - Eliminar Empresa
 router.delete('/:id', empresaController.eliminarEmpresa);
+
+// PATCH /api/empresas/:id/licencia - Suspender/Activar Licencia
+router.patch('/:id/licencia', empresaController.toggleLicencia);
+
+// POST /api/empresas/:id/regenerar-codigo - Regenerar Código de Acceso
+router.post('/:id/regenerar-codigo', empresaController.regenerarCodigoAcceso);
 
 export default router;

@@ -1,0 +1,72 @@
+[
+  {
+    "nombre": "Falla de Impresora",
+    "tipo": "Incidente",
+    "categoria": "Impresión",
+    "alcance": "INTERNO",
+    "prioridad": "Media"
+  },
+  {
+    "nombre": "Solicitud de Toner",
+    "tipo": "Requerimiento",
+    "categoria": "Impresión",
+    "alcance": "INTERNO",
+    "prioridad": "Baja"
+  },
+  {
+    "nombre": "Acceso a VPN",
+    "tipo": "Requerimiento",
+    "categoria": "Redes",
+    "alcance": "INTERNO",
+    "prioridad": "Alta"
+  },
+  {
+    "nombre": "Computadora Lenta",
+    "tipo": "Incidente",
+    "categoria": "Computo Personal",
+    "alcance": "INTERNO",
+    "prioridad": "Media"
+  },
+  {
+    "nombre": "Instalación de Software",
+    "tipo": "Requerimiento",
+    "categoria": "Computo Personal",
+    "alcance": "INTERNO",
+    "prioridad": "Media"
+  },
+  {
+    "nombre": "Error en Facturación (Bug)",
+    "tipo": "Incidente",
+    "categoria": "Plataforma Aurontek",
+    "alcance": "PLATAFORMA",
+    "prioridad": "Alta"
+  },
+  {
+    "nombre": "Caída del Servicio Web",
+    "tipo": "Incidente",
+    "categoria": "Plataforma Aurontek",
+    "alcance": "PLATAFORMA",
+    "prioridad": "Critica"
+  },
+  {
+    "nombre": "Solicitud de Nueva Funcionalidad",
+    "tipo": "Requerimiento",
+    "categoria": "Plataforma Aurontek",
+    "alcance": "PLATAFORMA",
+    "prioridad": "Baja"
+  },
+  {
+    "nombre": "Duda sobre Módulo X",
+    "tipo": "Requerimiento",
+    "categoria": "Soporte Funcional",
+    "alcance": "PLATAFORMA",
+    "prioridad": "Media"
+  },
+  {
+    "nombre": "Reporte de Vulnerabilidad",
+    "tipo": "Incidente",
+    "categoria": "Seguridad",
+    "alcance": "PLATAFORMA",
+    "prioridad": "Alta"
+  }
+]

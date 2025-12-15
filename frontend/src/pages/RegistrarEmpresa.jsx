@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, Paper, Typography, Grid, TextField, Button, 
-  MenuItem, Divider, Alert, Dialog, DialogTitle, 
-  DialogContent, DialogContentText, DialogActions, 
-  CircularProgress, InputAdornment 
+import {
+  Box, Paper, Typography, Grid, TextField, Button,
+  MenuItem, Divider, Alert, Dialog, DialogTitle,
+  DialogContent, DialogContentText, DialogActions,
+  CircularProgress, InputAdornment
 } from '@mui/material';
-import { 
-  Save as SaveIcon, 
-  Send as SendIcon, 
+import {
+  Save as SaveIcon,
+  Send as SendIcon,
   Close as CloseIcon,
   Business as BusinessIcon,
   Person as PersonIcon,
@@ -20,7 +20,7 @@ import { registrarEmpresa } from '../services/empresaService.js';
 
 const RegistrarEmpresa = () => {
   const navigate = useNavigate();
-  
+
   // --- ESTADOS ORIGINALES ---
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
@@ -67,7 +67,7 @@ const RegistrarEmpresa = () => {
       const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
       const token = storage.getItem('token');
       const res = await registrarEmpresa(form, token);
-      
+
       setMensaje(res.mensaje || 'Empresa registrada correctamente');
       setError('');
       setModal({
@@ -76,7 +76,7 @@ const RegistrarEmpresa = () => {
         correo: res.contratante_usuario?.correo,
         pass: res.contratante_usuario?.contraseña_temporal
       });
-      
+
       // Limpiar formulario
       setForm({
         nombre_empresa: '', rfc: '', telefono: '', direccion: '', correo_contacto: '',
@@ -95,21 +95,16 @@ const RegistrarEmpresa = () => {
     setEnviando(true);
     setEnviado(false);
     try {
-      await fetch('http://localhost:3000/api/admin/empresas/enviar-credenciales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          correo: modal.correo,
-          codigo_acceso: modal.codigo,
-          contraseña_temporal: modal.pass
-        })
+      // SIMULACIÓN: El backend aún no tiene este endpoint implementado.
+      // Las credenciales ya se mostraron en el modal.
+      console.log('Enviando credenciales por correo (Simulado):', {
+        correo: modal.correo,
+        codigo: modal.codigo
       });
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setEnviado(true);
       setTimeout(() => {
-        navigate('/dashboard'); // Redirigir tras éxito
+        navigate('/admin/empresas'); // Redirigir a la lista de empresas
       }, 1500);
     } catch (e) {
       setEnviado(false);
@@ -120,7 +115,7 @@ const RegistrarEmpresa = () => {
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', pb: 5 }}>
-      
+
       {/* --- TITULO Y FORMULARIO --- */}
       <Paper elevation={3} sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -136,40 +131,40 @@ const RegistrarEmpresa = () => {
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
-            
+
             {/* SECCIÓN 1: DATOS EMPRESA */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
                 Datos Generales
               </Typography>
               <Divider sx={{ mb: 2 }} />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Nombre de la Empresa" name="nombre_empresa" value={form.nombre_empresa} onChange={handleChange} required variant="outlined" />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="RFC" name="rfc" value={form.rfc} onChange={handleChange} required variant="outlined" />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Teléfono Empresa" name="telefono" value={form.telefono} onChange={handleChange} variant="outlined" />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Correo Contacto General" name="correo_contacto" type="email" value={form.correo_contacto} onChange={handleChange} required variant="outlined" />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField fullWidth label="Dirección Fiscal" name="direccion" value={form.direccion} onChange={handleChange} multiline rows={2} variant="outlined" />
             </Grid>
 
             {/* SECCIÓN 2: LICENCIA */}
-            <Grid item xs={12} sx={{ mt: 2 }}>
+            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
                 Configuración de Licencia
               </Typography>
               <Divider sx={{ mb: 2 }} />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 label="Fecha de Inicio"
@@ -181,7 +176,7 @@ const RegistrarEmpresa = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 select
                 fullWidth
@@ -198,39 +193,39 @@ const RegistrarEmpresa = () => {
             </Grid>
 
             {/* SECCIÓN 3: CONTRATANTE (ADMIN DE LA EMPRESA) */}
-            <Grid item xs={12} sx={{ mt: 2 }}>
+            <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                 <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
                   Datos del Contratante (Admin Inicial)
                 </Typography>
               </Box>
               <Divider sx={{ mb: 2 }} />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Nombre Completo" name="nombre" value={form.contratante.nombre} onChange={handleContratanteChange} required />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Correo Electrónico (Login)" name="correo" type="email" value={form.contratante.correo} onChange={handleContratanteChange} required />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField fullWidth label="Teléfono Directo" name="telefono" value={form.contratante.telefono} onChange={handleContratanteChange} />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid size={{ xs: 12, md: 2 }}>
               <TextField fullWidth label="Ext." name="ext" value={form.contratante.ext} onChange={handleContratanteChange} />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Puesto / Cargo" name="puesto" value={form.contratante.puesto} onChange={handleContratanteChange} />
             </Grid>
 
             {/* BOTÓN GUARDAR */}
-            <Grid item xs={12} sx={{ mt: 3 }}>
-              <Button 
-                type="submit" 
-                variant="contained" 
-                size="large" 
-                fullWidth 
+            <Grid size={{ xs: 12 }} sx={{ mt: 3 }}>
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                fullWidth
                 startIcon={<SaveIcon />}
                 sx={{ py: 1.5, fontWeight: 'bold' }}
               >
@@ -243,8 +238,8 @@ const RegistrarEmpresa = () => {
       </Paper>
 
       {/* --- MODAL (DIALOG) DE ÉXITO --- */}
-      <Dialog 
-        open={modal.open} 
+      <Dialog
+        open={modal.open}
         onClose={() => !enviando && setModal({ ...modal, open: false })}
         maxWidth="sm"
         fullWidth
@@ -252,38 +247,38 @@ const RegistrarEmpresa = () => {
         <DialogTitle sx={{ bgcolor: 'success.main', color: 'white', display: 'flex', alignItems: 'center' }}>
           <KeyIcon sx={{ mr: 1 }} /> Empresa Registrada con Éxito
         </DialogTitle>
-        
+
         <DialogContent sx={{ mt: 2 }}>
           <DialogContentText sx={{ mb: 2 }}>
             Se han generado las siguientes credenciales temporales para el administrador de la empresa:
           </DialogContentText>
-          
+
           <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f5f5f5' }}>
             <Typography variant="body1"><b>Código de Acceso:</b> {modal.codigo}</Typography>
             <Typography variant="body1"><b>Usuario:</b> {modal.correo}</Typography>
             <Typography variant="body1"><b>Contraseña Temporal:</b> {modal.pass}</Typography>
           </Paper>
-          
+
           {enviado && (
             <Alert severity="success" sx={{ mt: 2 }}>
               ¡Credenciales enviadas por correo correctamente! Redirigiendo...
             </Alert>
           )}
         </DialogContent>
-        
+
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setModal({ ...modal, open: false })} 
-            color="inherit" 
+          <Button
+            onClick={() => setModal({ ...modal, open: false })}
+            color="inherit"
             disabled={enviando}
             startIcon={<CloseIcon />}
           >
             Cerrar
           </Button>
-          
-          <Button 
-            onClick={handleEnviarCredenciales} 
-            variant="contained" 
+
+          <Button
+            onClick={handleEnviarCredenciales}
+            variant="contained"
             color="primary"
             disabled={enviando || enviado}
             endIcon={enviando ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}

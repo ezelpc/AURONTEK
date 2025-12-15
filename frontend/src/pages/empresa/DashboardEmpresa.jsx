@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   Box,
   Grid,
@@ -24,28 +25,62 @@ import ResolverStatsCard from '../../components/dashboard/ResolverStatsCard';
 import BurnedTicketsCard from '../../components/dashboard/BurnedTicketsCard';
 import RatingsCard from '../../components/dashboard/RatingsCard';
 
-const StatCard = ({ title, value, color, icon, loading }) => (
-  <Card sx={{
-    borderLeft: `5px solid ${color}`,
-    height: '100%',
-    transition: 'transform 0.2s',
-    '&:hover': { transform: 'translateY(-4px)' }
-  }}>
-    <CardContent>
-      <Typography color="textSecondary" variant="overline" fontWeight={600}>
-        {title}
-      </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, justifyContent: 'space-between' }}>
-        {loading ? (
-          <CircularProgress size={32} />
-        ) : (
-          <Typography variant="h3" fontWeight="bold">{value}</Typography>
-        )}
-        <Box sx={{ color: color }}>{icon}</Box>
+const StatCard = ({ title, value, color, icon, loading }) => {
+  const theme = useTheme();
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        height: '100%',
+        borderRadius: 4,
+        background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+        border: '1px solid',
+        borderColor: 'divider',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        overflow: 'visible',
+        position: 'relative',
+        '&:hover': {
+          transform: 'translateY(-5px)',
+          boxShadow: `0 12px 24px -10px ${color}40`, // Colored shadow based on prop
+          borderColor: color,
+        }
+      }}
+    >
+      <Box
+        sx={{
+          position: 'absolute',
+          top: -10,
+          right: 20,
+          width: 60,
+          height: 60,
+          borderRadius: 3,
+          background: `linear-gradient(45deg, ${color}, ${color}dd)`,
+          boxShadow: `0 4px 12px ${color}60`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff'
+        }}
+      >
+        {React.cloneElement(icon, { sx: { fontSize: 32 } })}
       </Box>
-    </CardContent>
-  </Card>
-);
+      <CardContent sx={{ pt: 5, px: 3 }}>
+        <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1.2 }}>
+          {title}
+        </Typography>
+        <Box sx={{ mt: 1 }}>
+          {loading ? (
+            <CircularProgress size={28} sx={{ color: color }} />
+          ) : (
+            <Typography variant="h3" fontWeight="800" sx={{ color: 'text.primary' }}>
+              {value}
+            </Typography>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
 
 const DashboardEmpresa = () => {
   const { user } = useAuth();
@@ -239,8 +274,8 @@ const DashboardEmpresa = () => {
         </>
       )}
 
-      {/* VISTA: SOPORTE Y BECARIOS */}
-      {(rol === 'soporte' || rol === 'beca-soporte') && (
+      {/* VISTA: RESOLUTORES (Soporte, Becarios, Internos y Plataforma) */}
+      {['soporte', 'beca-soporte', 'resolutor-interno', 'soporte-plataforma', 'resolutor-empresa'].includes(rol) && (
         <>
           <Alert severity="success" sx={{ mb: 3 }}>
             <strong>Vista {rol === 'soporte' ? 'Soporte' : 'Becario Soporte'}:</strong> Métricas de tickets propios asignados.

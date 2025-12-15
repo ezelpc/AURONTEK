@@ -44,32 +44,89 @@ const ticketController = {
     try {
       const { pagina = 1, limite = 10, estado, prioridad, asignado } = req.query;
 
-      // Construir filtros
-      const filtros: any = { empresaId: req.usuario?.empresaId };
+      const rol = req.usuario?.rol || '';
+      const empresaIdUsuario = req.usuario?.empresaId;
+
+      // Construir filtros según ROL
+      let filtros: any = {};
+
+      // 1. Admin General / Subroot: Vén todo (o filtran por query)
+      if (['admin-general', 'admin-subroot'].includes(rol)) {
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+      }
+      // 2. Soporte Plataforma: Vé tickets EXTERNOS (De clientes, no de HQ)
+      else if (rol === 'soporte-plataforma') {
+        // Si busca uno específico lo permitimos, si no, traemos todos los que NO son de su empresa (HQ)
+        if (req.query.empresaId) {
+          // Validar que no sea su propia empresa (HQ) para mantener la lógica? 
+          // O simplemente confiar. Mejor forzar externo.
+          if (req.query.empresaId !== empresaIdUsuario) {
+            filtros.empresaId = req.query.empresaId;
+          } else {
+            // Si intenta ver HQ, no devolver nada O bloquear.
+            // Bloqueo suave: filtro imposible
+            filtros.empresaId = '000000000000000000000000';
+          }
+        } else {
+          filtros.empresaId = { $ne: empresaIdUsuario };
+        }
+      }
+      // 3. Resolutor Interno / Admin Interno / Otros Soporte: Vén solo SU empresa
+      else {
+        filtros.empresaId = empresaIdUsuario;
+
+        // 4. Filtros adicionales por Rol especifico dentro de la empresa
+
+        // Usuario / Cliente Final: Solo SUS tickets
+        if (['usuario', 'cliente-final'].includes(rol)) {
+          filtros.usuarioCreador = req.usuario?.id;
+        }
+        // Becario: ¿Solo los suyos o asignados? User: "becario de cualquier area...".
+        // Asumimos ver solo sus tickets creados o si se le delegan (asignado).
+        else if (rol === 'becario') {
+          filtros.$or = [
+            { usuarioCreador: req.usuario?.id },
+            { agenteAsignado: req.usuario?.id },
+            { tutor: req.usuario?.id } // Si fuera tutor?
+          ];
+        }
+        // Soporte (Empresa) / Beca-Soporte / Resolutor Empresa: Ver asignados
+        else if (['soporte', 'beca-soporte', 'resolutor-empresa'].includes(rol)) {
+          filtros.agenteAsignado = req.usuario?.id;
+        }
+        // Resolutor Interno (HQ): Vé todos los de su depto?
+        // User: "ver tikets internos de las areas de aurontek hq. asigandos a ellos"
+        else if (rol === 'resolutor-interno') {
+          // Puede ver todos los de HQ o filtrar?
+          // "ver todas las funciones de un ticket... si se le asignan permisos"
+          // Por ahora ve todos los de HQ (filtros.empresaId base)
+          // O podríamos restringir a asignados si 'asignado=true' viene en query.
+        }
+      }
+
+      // Filtros query params adicionales
       if (estado) filtros.estado = estado;
       if (prioridad) filtros.prioridad = prioridad;
 
-      // asignado: 'true' => solo con agente asignado, 'false' => sin agente
-      if (typeof asignado !== 'undefined') {
+      // asignado query override (si el rol lo permite)
+      // Si el rol ya forzó filtros (ej. soporte solo asignados), esto podría entrar en conflicto.
+      // Pero si el usuario es 'admin-interno' y quiere ver 'asignados', aquí se lo permitimos.
+      if (typeof asignado !== 'undefined' && !['soporte', 'beca-soporte', 'resolutor-empresa'].includes(rol)) {
         if (asignado === 'true') filtros.agenteAsignado = { $ne: null };
         else if (asignado === 'false') filtros.agenteAsignado = null;
       }
 
-      // Si el usuario es 'usuario' ver solo los suyos
-      if (req.usuario?.rol === 'usuario') {
-        filtros.usuarioCreador = req.usuario.id;
-      }
-      // Si es 'soporte' o 'beca-soporte', ver los asignados a él
-      else if (['soporte', 'beca-soporte'].includes(req.usuario?.rol || '')) {
-        filtros.agenteAsignado = req.usuario?.id;
-      }
+      console.log('[DEBUG LISTAR] Usuario:', req.usuario);
+      console.log('[DEBUG LISTAR] Filtros base:', filtros);
 
       const tickets = await ticketService.listarTickets(filtros, {
         pagina: Number(pagina),
         limite: Number(limite),
         ordenar: { createdAt: -1 },
-        poblar: ['usuarioCreador', 'agenteAsignado', 'tutor']
+        poblar: ['usuarioCreador', 'agenteAsignado', 'tutor', 'servicioId']
       });
+
+      console.log('[DEBUG LISTAR] Resultados encontrados:', tickets?.data?.length || 0);
 
       res.json(tickets);
     } catch (error: any) {
@@ -89,7 +146,7 @@ const ticketController = {
       }
 
       const ticket: any = await ticketService.obtenerTicket(id, {
-        poblar: ['usuarioCreador', 'agenteAsignado', 'tutor']
+        poblar: ['usuarioCreador', 'agenteAsignado', 'tutor', 'servicioId']
       });
 
       if (!ticket) {
@@ -97,16 +154,20 @@ const ticketController = {
         return;
       }
 
-      // Verificar permisos por empresa
-      if (ticket.empresaId.toString() !== req.usuario?.empresaId) {
+      // Modificación: Permitir acceso global a admins de sistema
+      const isGlobalAdmin = ['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '');
+
+      // Verificar permisos por empresa (Si NO es admin global)
+      if (!isGlobalAdmin && ticket.empresaId.toString() !== req.usuario?.empresaId) {
         res.status(403).json({ msg: 'No autorizado para ver este ticket' });
         return;
       }
 
       // Validar acceso según rol
       const tieneAcceso = (
+        isGlobalAdmin ||
         req.usuario?.rol === 'admin-interno' ||
-        req.usuario?.rol === 'admin-general' ||
+        // req.usuario?.rol === 'admin-general' || // Already covered by isGlobalAdmin
         ticket.usuarioCreador?._id?.toString() === req.usuario?.id ||
         ticket.agenteAsignado?._id?.toString() === req.usuario?.id ||
         ticket.tutor?._id?.toString() === req.usuario?.id
@@ -142,8 +203,8 @@ const ticketController = {
         return;
       }
 
-      // Autorización: soporte, beca-soporte, admin-interno
-      if (!['soporte', 'beca-soporte', 'admin-interno'].includes(req.usuario?.rol || '')) {
+      // Autorización: soporte, beca-soporte, admin-interno, admin-general, admin-subroot
+      if (!['soporte', 'beca-soporte', 'admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario?.rol || '')) {
         res.status(403).json({ msg: 'No autorizado para actualizar el estado' });
         return;
       }
@@ -172,7 +233,7 @@ const ticketController = {
         return;
       }
 
-      if (req.usuario.rol !== 'admin-interno') {
+      if (!['admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario.rol)) {
         res.status(403).json({ msg: 'No autorizado para asignar tickets' });
         return;
       }

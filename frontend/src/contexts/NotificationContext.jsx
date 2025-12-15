@@ -40,6 +40,17 @@ export const NotificationProvider = ({ children }) => {
     const showWarning = useCallback((message) => showNotification(message, 'warning'), [showNotification]);
     const showInfo = useCallback((message) => showNotification(message, 'info'), [showNotification]);
 
+    // 🛡️ LISTENER GLOBAL PARA 403 FORBIDDEN
+    // Escucha eventos disparados por api.js
+    React.useEffect(() => {
+        const handleForbidden = (event) => {
+            const msg = event.detail?.message || 'Acceso Denegado: No tienes permisos.';
+            showError(msg);
+        };
+        window.addEventListener('auth:forbidden', handleForbidden);
+        return () => window.removeEventListener('auth:forbidden', handleForbidden);
+    }, [showError]);
+
     const value = {
         ...notificationsData,
         showNotification,
