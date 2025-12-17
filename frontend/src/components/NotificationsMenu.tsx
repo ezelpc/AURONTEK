@@ -116,7 +116,7 @@ export const NotificationsMenu = () => {
         socketService.on('notificacion', handleNotification);
 
         return () => {
-            socketService.off('notificacion', handleNotification);
+            socketService.off('notificacion');
         };
     }, []);
 
