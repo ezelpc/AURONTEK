@@ -8,6 +8,9 @@ import {
     Ticket,
     Users,
     Building2,
+    ShieldAlert,
+    Globe,
+    Briefcase,
     ShieldCheck
 } from 'lucide-react';
 import { UserMenu } from '@/components/UserMenu';
