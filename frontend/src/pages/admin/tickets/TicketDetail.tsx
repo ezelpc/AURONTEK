@@ -16,7 +16,7 @@ import { es } from 'date-fns/locale';
 const TicketDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { user } = useAuthStore();
+
     const queryClient = useQueryClient();
     const [showChat, setShowChat] = useState(false);
 

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rolesService, Role } from '@/api/roles.service';
 import { useAuthStore } from '@/auth/auth.store';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, ShieldCheck, Pencil, Trash2, X, Save } from 'lucide-react';
@@ -36,7 +36,7 @@ import { useTranslation } from 'react-i18next';
 
 const RolesPage = () => {
     const { user } = useAuthStore();
-    const { t } = useTranslation();
+
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
