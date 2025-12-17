@@ -27,7 +27,7 @@ export const socketAuthMiddleware = (socket: SocketWithUser, next: (err?: Error)
     }
 
     try {
-        const secret = process.env.JWT_SECRET || 'secret_dev'; // Fallback for dev
+        const secret = process.env.JWT_SECRET || 'secret'; // Fallback to match usuarios-svc
         const decoded = jwt.verify(token, secret);
         socket.user = decoded;
 

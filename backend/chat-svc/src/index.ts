@@ -14,8 +14,16 @@ import { socketAuthMiddleware } from './Middleware/socket.auth';
 import { setupInternalListener } from './Events/internal.listener';
 import { setupSocketHandlers } from './Events/socket.handlers';
 
-// Configuración de entorno
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// ✅ Cargar variables de entorno solo en desarrollo
+const ENV = process.env.NODE_ENV || 'development';
+
+if (ENV === 'development') {
+    const localEnvPath = path.resolve(__dirname, '../.env');
+    dotenv.config({ path: localEnvPath });
+    console.log(`[${ENV}] 📄 Cargando variables desde .env local`);
+}
+
+console.log(`[${ENV}] 🌍 Entorno detectado`);
 
 // Inicializar logger
 initLogger();

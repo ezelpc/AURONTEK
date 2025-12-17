@@ -16,21 +16,25 @@ interface ObtenerHistorialOpciones {
 }
 
 class ChatService {
-    async validarAcceso(usuarioId: string, ticketId: string): Promise<boolean> {
+    async validarAcceso(usuarioId: string, ticketId: string, userToken?: string): Promise<boolean> {
         try {
+            const headers: any = {
+                'X-Service-Name': 'chat-svc',
+                'X-User-Id': usuarioId
+            };
+
+            // Si tenemos el token del usuario, usarlo para autenticación
+            if (userToken) {
+                headers['Authorization'] = userToken.startsWith('Bearer ') ? userToken : `Bearer ${userToken}`;
+            }
+
             const ticketResponse = await axios.get(
-                `${process.env.TICKETS_SVC_URL || 'http://localhost:3002'}/tickets/${ticketId}/verificar-acceso-chat`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${process.env.SERVICE_TOKEN}`,
-                        'X-Service-Name': 'chat-svc',
-                        'X-User-Id': usuarioId
-                    }
-                }
+                `${process.env.TICKETS_SVC_URL || 'http://localhost:3002'}/tickets/${ticketId}`,
+                { headers }
             );
 
-            const result = ticketResponse.data;
-            return result.acceso || false;
+            // Si podemos obtener el ticket, el usuario tiene acceso
+            return ticketResponse.status === 200;
 
         } catch (error: any) {
             console.error('Error validando acceso via tickets-svc:', error.message);
@@ -38,8 +42,8 @@ class ChatService {
         }
     }
 
-    async guardarMensaje(data: GuardarMensajeData) {
-        const accesoValido = await this.validarAcceso(data.emisorId, data.ticketId);
+    async guardarMensaje(data: GuardarMensajeData, userToken?: string) {
+        const accesoValido = await this.validarAcceso(data.emisorId, data.ticketId, userToken);
         if (!accesoValido) throw new Error('No tienes permiso para participar en este chat.');
 
         const mensaje: any = new Mensaje({
@@ -55,8 +59,8 @@ class ChatService {
         return await mensaje.save();
     }
 
-    async obtenerHistorialChat(ticketId: string, usuarioId: string, opciones: ObtenerHistorialOpciones = {}) {
-        const accesoValido = await this.validarAcceso(usuarioId, ticketId);
+    async obtenerHistorialChat(ticketId: string, usuarioId: string, opciones: ObtenerHistorialOpciones = {}, userToken?: string) {
+        const accesoValido = await this.validarAcceso(usuarioId, ticketId, userToken);
         if (!accesoValido) throw new Error('No autorizado para ver este historial');
 
         const { limite = 50, desde } = opciones;
