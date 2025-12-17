@@ -16,7 +16,7 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+
     DialogFooter
 } from "@/components/ui/dialog";
 import {
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { GROUPED_PERMISSIONS, PERMISSIONS_MAP } from '@/constants/permissions';
+import { GROUPED_PERMISSIONS } from '@/constants/permissions';
 
 
 const RolesPage = () => {
