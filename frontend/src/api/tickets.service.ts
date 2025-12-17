@@ -9,6 +9,7 @@ export const ticketsService = {
         asignado?: boolean; // true = solo asignados a mi
         empresaId?: string; // filtrar por empresa específica
         tipo?: string;
+        usuarioCreador?: string;
     }): Promise<Ticket[]> => {
         // Backend endpoint: GET /api/tickets
         // El backend ya filtra por permisos gracias al middleware
@@ -19,6 +20,7 @@ export const ticketsService = {
         if (filters?.asignado) params.append('asignado', 'true');
         if (filters?.empresaId) params.append('empresaId', filters.empresaId);
         if (filters?.tipo) params.append('tipo', filters.tipo);
+        if (filters?.usuarioCreador) params.append('usuarioCreador', filters.usuarioCreador);
 
         const queryString = params.toString();
         const url = queryString ? `/tickets?${queryString}` : '/tickets';

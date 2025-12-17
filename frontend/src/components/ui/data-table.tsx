@@ -33,6 +33,7 @@ export function DataTable<TData, TValue>({
     columns,
     data,
     onRowClick,
+    meta,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
 
@@ -46,7 +47,7 @@ export function DataTable<TData, TValue>({
         state: {
             sorting,
         },
-        meta: props.meta,
+        meta: meta,
     })
 
     return (
