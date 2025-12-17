@@ -552,6 +552,7 @@ async function seed() {
         empresa: testSA._id,
         rol: 'admin-interno',
         puesto: 'Gerente TI',
+        gruposDeAtencion: ['Administración'],
         permissions: ['companies.view_all', 'users.view', 'users.create', 'tickets.create', 'tickets.view_all', 'servicios.manage_local', 'servicios.import', 'users.recover_password_local'],
         estado_actividad: 'offline'
       },
@@ -561,6 +562,7 @@ async function seed() {
         empresa: testSA._id,
         rol: 'cliente-final',
         puesto: 'Contador',
+        gruposDeAtencion: [],
         permissions: ['tickets.create', 'tickets.view_created', 'chat.create'],
         estado_actividad: 'available'
       },
@@ -571,6 +573,7 @@ async function seed() {
         empresa: innovatech._id,
         rol: 'admin-interno',
         puesto: 'CTO',
+        gruposDeAtencion: ['Administración', 'Soporte IT'],
         permissions: ['companies.view_all', 'users.create', 'tickets.create', 'tickets.view_all', 'servicios.manage_local'],
         estado_actividad: 'busy'
       },
@@ -580,6 +583,7 @@ async function seed() {
         empresa: innovatech._id,
         rol: 'dev',
         puesto: 'Senior Developer',
+        gruposDeAtencion: [],
         permissions: ['tickets.create', 'tickets.view_created'],
         estado_actividad: 'offline'
       },
@@ -590,6 +594,7 @@ async function seed() {
         empresa: globalLogistics._id,
         rol: 'admin-interno',
         puesto: 'Gerente Operaciones',
+        gruposDeAtencion: ['Administración', 'Taller'],
         permissions: ['companies.view_all', 'users.create', 'tickets.create'],
         estado_actividad: 'available'
       },
@@ -600,6 +605,7 @@ async function seed() {
         empresa: ecoEnergy._id,
         rol: 'admin-interno',
         puesto: 'Director',
+        gruposDeAtencion: ['Administración'],
         permissions: ['companies.view_all', 'users.create', 'tickets.create'],
         estado_actividad: 'offline'
       }
