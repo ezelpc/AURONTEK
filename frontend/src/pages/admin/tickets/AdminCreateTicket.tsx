@@ -49,7 +49,7 @@ const AdminCreateTicket = () => {
     const subcategories = Array.from(
         new Set(
             servicios
-                .filter((s: any) => {
+                .filter((_) => {
                     if (selectedArea === 'TI') return true;
                     return false;
                 })
