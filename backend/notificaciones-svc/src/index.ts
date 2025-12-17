@@ -6,11 +6,17 @@ import { loadSMTP } from './config/smtp.config';
 import { connectRedis } from './config/redis';
 import { initLogger } from './common/logger';
 
-// Cargar el .env desde AURONTEK/.env
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// ✅ Cargar variables de entorno solo en desarrollo
+const ENV = process.env.NODE_ENV || 'development';
 
-// Inicializar logger según rama
-initLogger();
+if (ENV === 'development') {
+    const localEnvPath = path.resolve(__dirname, '../.env');
+    dotenv.config({ path: localEnvPath });
+    console.log(`[${ENV}] 📄 Cargando variables desde .env local`);
+}
+
+console.log(`[${ENV}] 🌍 Entorno detectado`);
+
 
 import mongoose from 'mongoose';
 import notificationRoutes from './Routes/notificacion.routes';

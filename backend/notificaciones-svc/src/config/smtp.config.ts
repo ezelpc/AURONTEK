@@ -9,7 +9,7 @@ export const loadSMTP = async (): Promise<void> => {
             port: Number(process.env.EMAIL_PORT),
             secure: process.env.EMAIL_SECURE === 'true',
             auth: {
-                user: process.env.EMAIL_USER, 
+                user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASSWORD,
             }
         });
@@ -17,8 +17,14 @@ export const loadSMTP = async (): Promise<void> => {
         await transporter.verify();
         console.log('📨 SMTP listo');
     } catch (err) {
-        console.error('❌ Error al configurar SMTP', err);
-        throw err;
+        if (process.env.NODE_ENV === 'production') {
+            console.error('❌ Error CRÍTICO al configurar SMTP (Producción)', err);
+            throw err;
+        } else {
+            const errorMessage = (err as any).message || 'Error desconocido';
+            console.warn('⚠️  ADVERTENCIA: Falló la conexión SMTP. El servicio de notificaciones iniciará sin envío de correos.', errorMessage);
+            transporter = null; // Ensure null so service checks fail gracefully
+        }
     }
 };
 
