@@ -1,5 +1,6 @@
 import api from '@/api/axios';
-import { LoginResponse, User } from '@/types/api.types';
+import api from '@/api/axios';
+import { LoginResponse } from '@/types/api.types';
 
 export const authService = {
     // Login para Staff Aurontek (Admin System)

@@ -1,13 +1,31 @@
 export interface User {
-    id: string;
+    _id?: string;
+    id: string; // Used by frontend logic often
     nombre: string;
     email: string;
-    rol: string; // 'admin-general', 'soporte', 'usuario', etc.
+    rol: string;
     empresaId?: string;
+    empresa?: string; // Sometimes populated with name
     esAdminGeneral: boolean;
-    permisos: string[]; // <--- CRITICAL: Array de permisos inyectado
+    permisos: string[];
     activo: boolean;
     foto?: string;
+}
+
+export interface Service {
+    _id?: string;
+    nombre: string;
+    descripcion: string;
+    alcance: 'global' | 'local';
+    empresa?: string; // ID if local
+    tipo: string;
+    area: string;
+    prioridad: 'Baja' | 'Media' | 'Alta' | 'Crítica';
+    sla: string;
+    gruposDeAtencion: string;
+    precio: number;
+    activo: boolean;
+    categoria?: string; // Added for frontend compatibility if needed
 }
 
 export interface Licencia {
@@ -24,8 +42,8 @@ export interface Contratante {
 }
 
 export interface Empresa {
-    _id: string; // Backend uses _id
-    id?: string; // Frontend might use id for compatibility
+    _id: string;
+    id?: string;
     nombre: string;
     rfc: string;
     correo: string;
@@ -45,10 +63,15 @@ export interface Ticket {
     descripcion: string;
     estado: 'ABIERTO' | 'EN_PROCESO' | 'RESUELTO' | 'CERRADO';
     prioridad: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
-    usuarioCreador: User | string;
+    usuarioCreador: User | string; // Can be ID or populated object
     agenteAsignado?: User | string;
-    empresaId: string;
-    imagenes?: string[]; // URLs de imágenes adjuntas
+    empresaId?: Empresa | string; // Can be ID or populated object
+    tipo?: string;
+    categoria?: string;
+    servicioNombre?: string;
+    tiempoEnEspera?: number;
+    adjuntos?: { url: string; nombre: string; tipo: string }[];
+    imagenes?: string[];
     createdAt: string;
     updatedAt: string;
 }

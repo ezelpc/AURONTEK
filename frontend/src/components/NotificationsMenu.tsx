@@ -25,14 +25,18 @@ export const NotificationsMenu = () => {
     const [unreadCount, setUnreadCount] = useState(0);
 
     // Fetch initial notifications from backend
+    // Fetch initial notifications from backend
     const { data: initialNotifications } = useQuery({
         queryKey: ['notifications'],
-        queryFn: notificacionesService.getAll,
-        onSuccess: (data) => {
-            setNotifications(data);
-            setUnreadCount(data.filter(n => !n.leida).length);
-        }
+        queryFn: notificacionesService.getAll
     });
+
+    useEffect(() => {
+        if (initialNotifications) {
+            setNotifications(initialNotifications);
+            setUnreadCount(initialNotifications.filter(n => !n.leida).length);
+        }
+    }, [initialNotifications]);
 
     // Mark as read mutation
     const markAsReadMutation = useMutation({

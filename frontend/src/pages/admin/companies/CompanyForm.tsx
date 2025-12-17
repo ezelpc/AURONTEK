@@ -229,7 +229,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                 <div className="space-y-2">
                                     <Label className="text-xs">Nombre *</Label>
                                     <Input
-                                        size="sm"
+                                        className="h-8"
                                         value={nuevoContratante.nombre}
                                         onChange={e => setNuevoContratante({ ...nuevoContratante, nombre: e.target.value })}
                                         placeholder="Juan Pérez"
@@ -238,7 +238,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                 <div className="space-y-2">
                                     <Label className="text-xs">Correo *</Label>
                                     <Input
-                                        size="sm"
+                                        className="h-8"
                                         type="email"
                                         value={nuevoContratante.correo}
                                         onChange={e => setNuevoContratante({ ...nuevoContratante, correo: e.target.value })}
@@ -248,7 +248,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                 <div className="space-y-2">
                                     <Label className="text-xs">Teléfono</Label>
                                     <Input
-                                        size="sm"
+                                        className="h-9"
                                         value={nuevoContratante.telefono}
                                         onChange={e => setNuevoContratante({ ...nuevoContratante, telefono: e.target.value })}
                                         placeholder="+52 123 456 7890"
@@ -257,7 +257,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                 <div className="space-y-2">
                                     <Label className="text-xs">Extensión</Label>
                                     <Input
-                                        size="sm"
+                                        className="h-8"
                                         value={nuevoContratante.ext}
                                         onChange={e => setNuevoContratante({ ...nuevoContratante, ext: e.target.value })}
                                         placeholder="1234"
@@ -266,7 +266,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                 <div className="space-y-2">
                                     <Label className="text-xs dark:text-slate-200">Puesto</Label>
                                     <Input
-                                        size="sm"
+                                        className="h-8"
                                         value={nuevoContratante.puesto}
                                         onChange={e => setNuevoContratante({ ...nuevoContratante, puesto: e.target.value })}
                                         placeholder="Director General"

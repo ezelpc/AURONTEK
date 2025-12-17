@@ -35,7 +35,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ service, onSuccess, onCancel 
     });
 
     // Fetch care groups
-    const { data: careGroups = [] } = useQuery({
+    const { data: careGroups = [] } = useQuery<any[]>({
         queryKey: ['careGroups'],
         queryFn: careGroupsService.getCareGroups
     });

@@ -4,11 +4,10 @@ import { chatService, Mensaje } from '@/api/chat.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, Loader2, User as UserIcon } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface ChatWindowProps {
     ticketId: string;
