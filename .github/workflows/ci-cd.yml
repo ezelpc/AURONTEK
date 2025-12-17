@@ -147,6 +147,7 @@ jobs:
             REDIS_URL=${{ secrets.REDIS_URL }}
             SERVICE_TOKEN=${{ secrets.SERVICE_TOKEN }}
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            RECAPTCHA_TEST_TOKEN=${{ secrets.RECAPTCHA_TEST_TOKEN }}
             RATE_LIMIT=100
             LOG_LEVEL=info
             EOF
