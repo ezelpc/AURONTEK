@@ -1,5 +1,6 @@
 services:
   # --- Base de datos MongoDB ---
+
   redis:
     image: redis:7-alpine
     # container_name removed to let Compose generate name
@@ -7,7 +8,7 @@ services:
       - "6379:6379"
     command: redis-server --maxmemory 50mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -21,7 +22,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET}
       USUARIOS_SERVICE_URL: http://usuarios-svc:3001
@@ -30,7 +31,10 @@ services:
       NOTIFICATIONS_SERVICE_URL: http://notificaciones-svc:3004
       RATE_LIMIT: ${RATE_LIMIT:-100}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      REDIS_URL: redis://redis:6379
     depends_on:
+      redis:
+        condition: service_healthy
       usuarios-svc:
         condition: service_started
       tickets-svc:
@@ -46,9 +50,9 @@ services:
     ports:
       - "3001:3001"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3001
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URI: mongodb://host.docker.internal:27017/aurontek
       JWT_SECRET: ${JWT_SECRET}
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
       RECAPTCHA_TEST_TOKEN: ${RECAPTCHA_TEST_TOKEN:-6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe}
@@ -64,16 +68,11 @@ services:
     ports:
       - "3002:3002"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3002
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URI: mongodb://host.docker.internal:27017/aurontek
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      RABBITMQ_URL: amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev
     restart: unless-stopped
 
   # --- Servicio de Chat ---
@@ -85,15 +84,16 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3003
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URI: mongodb://host.docker.internal:27017/aurontek
       JWT_SECRET: ${JWT_SECRET}
-      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_URL: amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev
       REDIS_URL: redis://redis:6379
-      FRONTEND_URL: http://localhost:5173
+      FRONTEND_URL: http://localhost:5000
     depends_on:
       - redis
+
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health" ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -108,7 +108,8 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3004
-      RABBITMQ_URL: ${RABBITMQ_URL}
+      MONGODB_URI: mongodb://host.docker.internal:27017/aurontek
+      RABBITMQ_URL: amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev
       REDIS_URL: redis://redis:6379
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
@@ -118,8 +119,9 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
     depends_on:
       - redis
+
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3004/health"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3004/health" ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -133,17 +135,19 @@ services:
       - "3005:3005"
     environment:
       PORT: 3005
-      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_URL: amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev
       USUARIOS_SERVICE_URL: http://usuarios-svc:3001
       TICKETS_SERVICE_URL: http://tickets-svc:3002
       SERVICE_TOKEN: ${SERVICE_TOKEN}
       DOCKER_ENV: "true"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3005/health" ]
       interval: 15s
       timeout: 5s
       retries: 3
     restart: unless-stopped
 volumes:
-  
-  redis_data:  
+
+  redis_data:
+
+
