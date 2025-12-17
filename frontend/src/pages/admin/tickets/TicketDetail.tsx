@@ -177,9 +177,9 @@ const TicketDetail = () => {
                                         <span className="text-xs font-bold uppercase">Solicitante</span>
                                     </div>
                                     <div className="font-medium text-slate-800">
-                                        {ticket.usuarioCreador?.nombre || 'Usuario Desconocido'}
+                                        {(ticket.usuarioCreador as any)?.nombre || 'Usuario Desconocido'}
                                     </div>
-                                    <div className="text-xs text-slate-500">{ticket.usuarioCreador?.email}</div>
+                                    <div className="text-xs text-slate-500">{(ticket.usuarioCreador as any)?.email}</div>
                                 </div>
 
                                 <div className="p-3 border rounded-md">
@@ -188,7 +188,7 @@ const TicketDetail = () => {
                                         <span className="text-xs font-bold uppercase">Empresa / Área</span>
                                     </div>
                                     <div className="font-medium text-slate-800">
-                                        {ticket.empresaId?.nombre || 'Interno'}
+                                        {(ticket.empresaId as any)?.nombre || 'Interno'}
                                     </div>
                                     <div className="text-xs text-slate-500 uppercase">{ticket.categoria || 'General'}</div>
                                 </div>
@@ -201,9 +201,9 @@ const TicketDetail = () => {
                                     {ticket.agenteAsignado ? (
                                         <>
                                             <div className="font-medium text-blue-700">
-                                                {ticket.agenteAsignado.nombre}
+                                                {(ticket.agenteAsignado as any).nombre}
                                             </div>
-                                            <div className="text-xs text-slate-500">{ticket.agenteAsignado.rol}</div>
+                                            <div className="text-xs text-slate-500">{(ticket.agenteAsignado as any).rol}</div>
                                         </>
                                     ) : (
                                         <div className="text-slate-400 italic text-sm">Sin asignar</div>

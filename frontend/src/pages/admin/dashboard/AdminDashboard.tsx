@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import { userService } from '@/api/user.service';
 import { ticketsService } from '@/api/tickets.service';
