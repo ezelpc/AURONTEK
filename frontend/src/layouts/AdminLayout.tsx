@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
 import { cn } from '@/lib/utils';
@@ -35,7 +36,6 @@ const SidebarItem = ({ to, icon: Icon, label, end = false }: { to: string, icon:
 );
 
 const AdminLayout = () => {
-    const { user } = useAuthStore();
     const { user } = useAuthStore();
     const { t } = useTranslation();
 
