@@ -1,4 +1,3 @@
-import React from 'react';
 import { useChatStore } from '@/store/chat.store';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { X, Minus, MessageSquare } from 'lucide-react';

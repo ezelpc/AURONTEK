@@ -266,11 +266,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                 <div className="space-y-2">
                                     <Label className="text-xs dark:text-slate-200">Puesto</Label>
                                     <Input
-                                        className="h-8"
-                                        value={nuevoContratante.puesto}
-                                        onChange={e => setNuevoContratante({ ...nuevoContratante, puesto: e.target.value })}
-                                        placeholder="Director General"
-                                        className="dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
+                                        className="h-8 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
                                     />
                                 </div>
                                 <div className="space-y-2">

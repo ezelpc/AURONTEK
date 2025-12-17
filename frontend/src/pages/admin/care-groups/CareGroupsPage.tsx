@@ -36,7 +36,7 @@ import {
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { Badge } from '@/components/ui/badge';
+
 
 const CareGroupsPage = () => {
     const queryClient = useQueryClient();
@@ -209,7 +209,7 @@ const CareGroupsPage = () => {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => setDeletingId(group._id)}
+                                                    onClick={() => setDeletingId(group._id || '')}
                                                 >
                                                     <Trash2 className="h-4 w-4 text-red-600" />
                                                 </Button>

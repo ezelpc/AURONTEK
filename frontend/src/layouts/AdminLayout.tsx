@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,7 @@ import {
     Ticket,
     Users,
     Building2,
-    LogOut,
-    ShieldAlert,
-    Globe,
-    Briefcase,
-    ShieldCheck,
-    Bell
+    ShieldCheck
 } from 'lucide-react';
 import { UserMenu } from '@/components/UserMenu';
 import { NotificationsMenu } from '@/components/NotificationsMenu';
@@ -42,7 +36,7 @@ const SidebarItem = ({ to, icon: Icon, label, end = false }: { to: string, icon:
 
 const AdminLayout = () => {
     const { user } = useAuthStore();
-    const navigate = useNavigate();
+    const { user } = useAuthStore();
     const { t } = useTranslation();
 
     // Efecto para conectar socket y escuchar notificaciones

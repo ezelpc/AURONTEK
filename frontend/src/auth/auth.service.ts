@@ -1,5 +1,4 @@
 import api from '@/api/axios';
-import api from '@/api/axios';
 import { LoginResponse } from '@/types/api.types';
 
 export const authService = {

@@ -1,5 +1,4 @@
-import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, PlusCircle, Building2, Users, Globe, ShieldCheck } from 'lucide-react';
@@ -25,8 +24,7 @@ const NavbarItem = ({ to, icon: Icon, label, end = false }: { to: string, icon: 
 );
 
 const EmpresaLayout = () => {
-    const { user, logout } = useAuthStore();
-    const navigate = useNavigate();
+    const { user } = useAuthStore();
     const { t } = useTranslation();
 
     if (!user) return null;
