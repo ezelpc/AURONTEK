@@ -16,6 +16,7 @@ const UsuarioSchema = new mongoose.Schema({
   rol: String,
   puesto: String,
   habilidades: [String],
+  gruposDeAtencion: [String], // Grupos técnicos de atención
   permissions: [String], // RBAC User-Centric
   estado_actividad: { type: String, enum: ['available', 'busy', 'offline'], default: 'offline' },
   activo: { type: Boolean, default: true },
@@ -529,6 +530,7 @@ async function seed() {
         rol: 'soporte-plataforma',
         puesto: 'Agente N2',
         habilidades: ['Plataforma Aurontek', 'Facturación'],
+        gruposDeAtencion: ['Mesa de Servicio', 'Soporte'],
         permissions: ['tickets.view_all_global', 'tickets.change_status', 'chat.read', 'chat.write', 'users.view_global'],
         estado_actividad: 'available'
       },
@@ -539,6 +541,7 @@ async function seed() {
         rol: 'soporte-plataforma', // Using generic support role for now or could create sales role
         puesto: 'Ejecutivo Ventas',
         habilidades: ['Ventas', 'Facturación'],
+        gruposDeAtencion: ['Ventas'],
         permissions: ['tickets.view_all_global', 'chat.read', 'chat.write'],
         estado_actividad: 'busy'
       },
