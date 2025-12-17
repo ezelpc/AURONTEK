@@ -81,9 +81,7 @@ const UsersPage = () => {
         setEditingUser(null);
     };
 
-    const handleDelete = (userId: string) => {
-        setDeletingUserId(userId);
-    };
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">

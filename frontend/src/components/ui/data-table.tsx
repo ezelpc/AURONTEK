@@ -26,6 +26,7 @@ interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
     onRowClick?: (row: TData) => void
+    meta?: any
 }
 
 export function DataTable<TData, TValue>({
@@ -45,6 +46,7 @@ export function DataTable<TData, TValue>({
         state: {
             sorting,
         },
+        meta: props.meta,
     })
 
     return (

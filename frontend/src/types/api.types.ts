@@ -69,6 +69,9 @@ export interface Ticket {
     tipo?: string;
     categoria?: string;
     servicioNombre?: string;
+    servicioId?: string;
+    servicio?: string;
+    metadata?: any;
     tiempoEnEspera?: number;
     adjuntos?: { url: string; nombre: string; tipo: string }[];
     imagenes?: string[];
