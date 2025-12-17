@@ -13,6 +13,7 @@ export interface Service {
     gruposDeAtencion: string;
     precio: number;
     activo: boolean;
+    categoria?: string; // Populated or string
 }
 
 export const servicesService = {

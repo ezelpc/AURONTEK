@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import {
     LayoutDashboard,
     Ticket,
