@@ -41,5 +41,24 @@ export const createApp = () => {
         });
     });
 
+    // WebSocket Proxy for Socket.IO (chat-svc)
+    const CHAT_SVC_URL = process.env.CHAT_SERVICE_URL || 'http://localhost:3003';
+    app.use('/socket.io', createProxyMiddleware({
+        target: CHAT_SVC_URL,
+        changeOrigin: true,
+        ws: true, // Enable WebSocket proxying
+        logLevel: 'debug',
+        pathRewrite: (path: string, req: any) => {
+            // Re-add /socket.io prefix to ensure backend receives exact path
+            return '/socket.io' + path;
+        },
+        onProxyReqWs: (proxyReq: any, req: any, socket: any) => {
+            console.log('[GATEWAY WS] WebSocket proxying to chat-svc:', req.url);
+        },
+        onError: (err: any, req: any, res: any) => {
+            console.error('[GATEWAY WS ERROR]', err.message);
+        }
+    } as any));
+
     return app;
 };
