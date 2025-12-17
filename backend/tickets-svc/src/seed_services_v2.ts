@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Service from './Models/Servicio.ts'; // Adjust path if needed (Servicio.ts is in Models)
+import Service from './Models/Servicio'; // Adjust path if needed (Servicio.ts is in Models)
 
 dotenv.config();
 
