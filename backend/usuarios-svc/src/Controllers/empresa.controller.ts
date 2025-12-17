@@ -7,10 +7,10 @@ const crearNuevaEmpresa = async (req: Request, res: Response) => {
     nombreEmpresa, rfc, direccion, telefono, correo, // Datos Empresa
     plan, fecha_inicio, // Datos Licencia
     nombreContratante, telefonoContratante, puestoContratante, // Datos Contratante
-    nombreAdminInterno, emailAdminInterno, passwordAdminInterno // Datos Admin
+    nombreAdminInterno, correoAdminInterno, passwordAdminInterno // Datos Admin
   } = req.body;
 
-  if (!nombreEmpresa || !rfc || !correo || !plan || !emailAdminInterno || !passwordAdminInterno) {
+  if (!nombreEmpresa || !rfc || !correo || !plan || !correoAdminInterno || !passwordAdminInterno) {
     return res.status(400).json({ msg: 'Faltan campos obligatorios.' });
   }
 
@@ -19,7 +19,7 @@ const crearNuevaEmpresa = async (req: Request, res: Response) => {
       { nombre: nombreEmpresa, rfc, direccion, telefono, correo },
       { plan, fecha_inicio: fecha_inicio ? new Date(fecha_inicio) : new Date() },
       { nombre: nombreContratante || nombreAdminInterno, telefono: telefonoContratante, puesto: puestoContratante },
-      { nombre: nombreAdminInterno || nombreContratante, email: emailAdminInterno, password: passwordAdminInterno }
+      { nombre: nombreAdminInterno || nombreContratante, correo: correoAdminInterno, password: passwordAdminInterno }
     );
 
     res.status(201).json({

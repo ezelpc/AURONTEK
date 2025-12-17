@@ -1,115 +1,84 @@
 import { Request, Response } from 'express';
 import Admin from '../Models/Admin.model';
-import { Empresa } from '../Models/AltaEmpresas.models';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
-/**
- * Controlador para gestión de Admins (admin-general y admin-subroot)
- */
-
-// POST /api/admins - Crear admin
-export const crearAdmin = async (req: Request, res: Response) => {
+// GET /api/admins
+const listarAdmins = async (req: Request, res: Response) => {
     try {
-        const { nombre, correo, contraseña, telefono, puesto, rol, empresa } = req.body;
+        // Exclude password from the result
+        const admins = await Admin.find({}, '-contraseña').sort({ rol: 1, nombre: 1 });
+        res.json(admins);
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error al listar administradores', error: error.message });
+    }
+};
 
-        // Validar campos requeridos
-        if (!nombre || !correo || !contraseña || !rol) {
-            return res.status(400).json({ msg: 'Faltan campos requeridos' });
-        }
+// POST /api/admins
+const crearAdmin = async (req: Request, res: Response) => {
+    const { nombre, correo, password, rol, puesto, permisos } = req.body;
 
-        // Validar que el rol sea válido
-        if (!['admin-general', 'admin-subroot'].includes(rol)) {
-            return res.status(400).json({ msg: 'Rol inválido para Admin' });
-        }
+    if (!nombre || !correo || !password || !rol) {
+        return res.status(400).json({ msg: 'Los campos nombre, correo, password y rol son requeridos.' });
+    }
 
-        // Validar permisos de creación de roles de admin
-        const solicitanteRol = (req as any).usuario?.rol;
-        if (rol === 'admin-subroot' && solicitanteRol === 'admin-subroot') {
-            return res.status(403).json({ msg: 'Un Admin Subroot no puede crear otros Admins Subroot.' });
-        }
+    // Prevent creating another root admin
+    if (rol === 'admin-general') {
+        return res.status(403).json({ msg: 'No se puede crear otro Super Administrador.' });
+    }
 
-        // Verificar si el correo ya existe
-        const adminExistente = await Admin.findOne({ correo: correo.toLowerCase() });
-        if (adminExistente) {
-            return res.status(400).json({ msg: 'El correo ya está registrado' });
-        }
-
-        // Si es Admin de Sistema y no tiene empresa, asignar Aurontek HQ (si existe)
-        // Si el usuario seleccionó una empresa (empresaId), usar esa.
-        let empresaFinal = empresa;
-        if (!empresaFinal && ['admin-general', 'admin-subroot'].includes(rol)) {
-            const hq = await Empresa.findOne({ rfc: 'AURONTEK001' });
-            if (hq) {
-                empresaFinal = hq._id;
-            }
-        }
-
-        // Hash de contraseña
+    try {
         const salt = await bcrypt.genSalt(10);
-        const contraseñaHash = await bcrypt.hash(contraseña, salt);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Crear admin
         const nuevoAdmin = new Admin({
             nombre,
             correo: correo.toLowerCase(),
-            contraseña: contraseñaHash,
-            telefono,
-            puesto,
+            contraseña: hashedPassword,
             rol,
-            empresa: empresaFinal || undefined, // undefined prevents casting error if empty string passed
+            puesto,
+            permisos: permisos || [], // Default to empty array if not provided
             activo: true
         });
 
         await nuevoAdmin.save();
 
-        // Remover contraseña de la respuesta
-        const adminRespuesta: any = nuevoAdmin.toObject();
-        delete adminRespuesta.contraseña;
+        // Return the new admin without the password
+        // Use destructuring to exclude the password safely
+        const { contraseña, ...adminResponse } = nuevoAdmin.toObject();
 
-        res.status(201).json(adminRespuesta);
+        res.status(201).json(adminResponse);
+
     } catch (error: any) {
-        console.error('Error creando admin:', error);
-        res.status(500).json({ msg: 'Error al crear admin', error: error.message });
+        if (error.code === 11000) {
+            return res.status(409).json({ msg: `El correo "${correo}" ya está en uso.` });
+        }
+        res.status(500).json({ msg: 'Error al crear el administrador', error: error.message });
     }
 };
 
-// GET /api/admins - Listar admins
-export const listarAdmins = async (req: Request, res: Response) => {
-    try {
-        const admins = await Admin.find().select('-contraseña').populate('empresa', 'nombre');
-        res.json(admins);
-    } catch (error: any) {
-        console.error('Error listando admins:', error);
-        res.status(500).json({ msg: 'Error al listar admins', error: error.message });
+// DELETE /api/admins/:id
+const eliminarAdmin = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const adminSolicitanteId = req.usuario.id;
+
+    // Self-deletion protection
+    if (id === adminSolicitanteId) {
+        return res.status(403).json({ msg: 'No puedes eliminar tu propia cuenta de administrador.' });
     }
-};
 
-// DELETE /api/admins/:id - Eliminar admin
-export const eliminarAdmin = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
-        const solicitanteRol = (req as any).usuario?.rol;
-
-        const admin = await Admin.findById(id);
-        if (!admin) {
-            return res.status(404).json({ msg: 'Admin no encontrado' });
+        const adminEliminado = await Admin.findByIdAndDelete(id);
+        if (!adminEliminado) {
+            return res.status(404).json({ msg: 'Administrador no encontrado.' });
         }
-
-        // Solo admin-general puede eliminar admins
-        if (solicitanteRol !== 'admin-general') {
-            return res.status(403).json({ msg: 'Solo admin-general puede eliminar administradores' });
-        }
-
-        await Admin.findByIdAndDelete(id);
-        res.json({ msg: 'Admin eliminado exitosamente' });
+        res.json({ msg: 'Administrador eliminado correctamente.' });
     } catch (error: any) {
-        console.error('Error eliminando admin:', error);
-        res.status(500).json({ msg: 'Error al eliminar admin', error: error.message });
+        res.status(500).json({ msg: 'Error al eliminar el administrador', error: error.message });
     }
 };
 
 export default {
-    crearAdmin,
     listarAdmins,
+    crearAdmin,
     eliminarAdmin
 };

@@ -20,7 +20,7 @@ export const crearEmpresaLicenciaAdmin = async (
       ...datosEmpresa,
       codigo_acceso,
       licencia: [datosLicencia],
-      contratantes: [{ ...datosAdminContratante, correo: datosAdminInterno.email }],
+      contratantes: [{ ...datosAdminContratante, correo: datosAdminInterno.correo }],
     });
 
     // Guardar la empresa
@@ -29,7 +29,7 @@ export const crearEmpresaLicenciaAdmin = async (
     // Se crea el admin interno, asociándolo a la empresa
     const adminInterno = new Usuario({
       nombre: datosAdminInterno.nombre,
-      correo: datosAdminInterno.email,
+      correo: datosAdminInterno.correo,
       contraseña: datosAdminInterno.password,
       rol: 'admin-interno',
       empresa: nuevaEmpresa._id, // Asignación del ID de la empresa
@@ -41,7 +41,7 @@ export const crearEmpresaLicenciaAdmin = async (
     return nuevaEmpresa;
   } catch (error: any) {
     if (error.code === 11000) {
-      throw new Error('Conflicto: El RFC, correo de empresa o email de admin ya existe.');
+      throw new Error('Conflicto: El RFC, correo de empresa o correo de admin ya existe.');
     }
     throw error;
   }

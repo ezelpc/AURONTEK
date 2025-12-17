@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import Usuario from '../Models/AltaUsuario.models';
-import Role from '../Models/Role.model';
+
+
+import Admin from '../Models/Admin.model';
 
 // Extend Express Request to include usuario
 declare global {
@@ -24,42 +26,56 @@ export const verificarToken = async (req: Request, res: Response, next: NextFunc
   }
 
   try {
+    console.log('[AUTH DEBUG] Token received:', token?.substring(0, 20) + '...');
+    console.log('[AUTH DEBUG] Token length:', token?.length);
     const decodificado: any = jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
-    // Fetch full user and permissions
-    const usuarioFound = await Usuario.findById(decodificado.id).select('-contraseña');
+    // 1. Buscar en Colección Usuarios
+    let usuarioFound: any = await Usuario.findById(decodificado.id).select('-contraseña');
 
-    // Also check Admin collection if not found in Usuario? 
-    // Usually Admin General is in 'admins' collection.
-    // Logic: if not found in Usuario, check Admin.
-    // However, for simplicity, let's assume we handle standard users first.
-    // Admin General (Root) typically has *all* permissions or bypasses checks.
+    // 2. Si no es usuario, buscar en Colección Admins
+    if (!usuarioFound) {
+      usuarioFound = await Admin.findById(decodificado.id); // Admin doesn't have select param in finding logic usually but let's be safe
+    }
 
     if (usuarioFound) {
-      // Load Dynamic Role Permissions
-      // Search by Role Name AND (Company ID OR Global)
-      const roleDef = await Role.findOne({
-        nombre: usuarioFound.rol,
-        $or: [
-          { empresa: usuarioFound.empresa },
-          { empresa: null }
-        ],
-        activo: true
-      });
+      const userObj = usuarioFound.toObject();
+      // Normalizar permisos: DB usa 'permiso' (singular) en algunos registros antiguos/manuales
+      let permisos = userObj.permisos || userObj.permissions || [];
+      const permisoSingular = (userObj as any).permiso || (usuarioFound as any).permiso; // Check both obj and doc
+
+      if (permisos.length === 0 && permisoSingular) {
+        console.log('[AUTH DEBUG] Normalizing singular permission:', permisoSingular);
+        permisos = [permisoSingular];
+      }
 
       req.usuario = {
-        ...usuarioFound.toObject(),
-        permissions: roleDef ? roleDef.permisos : []
+        ...userObj,
+        permisos: permisos
       };
     } else {
-      // Fallback or Admin check
+      // Fallback: si no existe en BD (raro si tiene token válido), usar datos del token
       req.usuario = decodificado;
     }
 
     next();
   } catch (error) {
+    // FALLBACK: Service Token Authentication
+    // Si el JWT falla, verificamos si es un token de servicio (API Key)
+    if (process.env.SERVICE_TOKEN && token === process.env.SERVICE_TOKEN) {
+      console.log('[AUTH DEBUG] Authenticated via SERVICE_TOKEN');
+      (req as any).usuario = {
+        id: 'service-account',
+        nombre: 'System Service',
+        rol: 'admin-general', // Use admin-general for full system access
+        permisos: ['*'],
+        esService: true
+      };
+      return next();
+    }
+
     console.error('Auth Middleware Error:', error);
-    return res.status(400).json({ msg: 'Token no válido o expirado.' });
+    return res.status(401).json({ msg: 'Token no válido o expirado.' });
   }
 };
 
@@ -136,17 +152,31 @@ export const esGestorUsuarios = (req: Request, res: Response, next: NextFunction
  */
 export const tienePermiso = (permisoKey: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    console.log('[PERMISO DEBUG] Checking permission:', permisoKey);
+    console.log('[PERMISO DEBUG] User rol:', req.usuario?.rol);
+    console.log('[PERMISO DEBUG] User permisos:', req.usuario?.permisos);
+
     // Admin General (Super Admin) bypasses permission checks (Optionally)
     // Or we assume they have all permissions injected.
     if (req.usuario.rol === 'admin-general') {
+      console.log('[PERMISO DEBUG] Admin-general bypass activated');
       return next();
     }
 
-    const permisosUsuario = req.usuario.permissions || []; // Changed from 'permisos' to 'permissions' based on line 52
+    const permisosUsuario = req.usuario.permisos || []; // Usar 'permisos' consistentemente
+
+    // Check for wildcard permission
+    if (permisosUsuario.includes('*')) {
+      console.log('[PERMISO DEBUG] Wildcard permission (*) granted');
+      return next();
+    }
+
     if (permisosUsuario.includes(permisoKey)) {
+      console.log('[PERMISO DEBUG] Specific permission granted');
       return next();
     }
 
+    console.log('[PERMISO DEBUG] Permission DENIED');
     return res.status(403).json({ msg: `Acceso denegado. Se requiere el permiso: ${permisoKey}` });
   };
 };
@@ -169,15 +199,12 @@ export const verificarTokenOpcional = async (req: Request, res: Response, next: 
     const usuarioFound = await Usuario.findById(decodificado.id).select('-contraseña');
 
     if (usuarioFound) {
-      const roleDef = await Role.findOne({
-        nombre: usuarioFound.rol,
-        $or: [{ empresa: usuarioFound.empresa }, { empresa: null }],
-        activo: true
-      });
       req.usuario = {
         ...usuarioFound.toObject(),
-        permissions: roleDef ? roleDef.permisos : []
+        // Soporte para ambos nombres de campo
+        permisos: usuarioFound.permisos || usuarioFound.permissions || []
       };
+
     } else {
       req.usuario = decodificado;
     }

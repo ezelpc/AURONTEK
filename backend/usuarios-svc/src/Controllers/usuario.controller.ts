@@ -1,5 +1,10 @@
 import { Request, Response } from 'express';
 import usuarioService from '../Services/usuario.service';
+import Usuario from '../Models/AltaUsuario.models';
+import csv from 'csv-parser';
+import { Readable } from 'stream';
+import bcrypt from 'bcryptjs';
+
 
 // PATCH /api/usuarios/me/foto-perfil
 const subirFotoPerfil = async (req: Request, res: Response) => {
@@ -71,6 +76,43 @@ const listarUsuariosFlexible = async (req: Request, res: Response) => {
 };
 
 import { Empresa } from '../Models/AltaEmpresas.models';
+import {
+  PERMISOS,
+  PERMISOS_LOCALES_ADMIN,
+  PERMISOS_SOPORTE_LOCAL,
+  PERMISOS_USUARIO_FINAL,
+  PERMISOS_SOPORTE_GLOBAL,
+  PERMISOS_ROOT
+} from '../Constants/permissions';
+
+// Mapeo de Plantillas para la API
+const PLANTILLAS: any = {
+  'ADMIN_CLIENTE': PERMISOS_LOCALES_ADMIN,
+  'SOPORTE_LOCAL': PERMISOS_SOPORTE_LOCAL,
+  'USUARIO_FINAL': PERMISOS_USUARIO_FINAL,
+  'SOPORTE_GLOBAL': PERMISOS_SOPORTE_GLOBAL
+};
+
+// GET /api/usuarios/metadata-permisos
+const obtenerMetadataPermisos = async (req: Request, res: Response) => {
+  res.json({
+    permisos: PERMISOS,
+    plantillas: PLANTILLAS
+  });
+};
+
+
+// Helper para validar asignación de permisos
+const validarAsignacionPermisos = (permisosAsignados: string[], permisosCreador: string[], esRoot: boolean) => {
+  if (esRoot) return true; // Root puede todo
+
+  // Verificar que todos los asignados estén en los del creador
+  const invalidos = permisosAsignados.filter(p => !permisosCreador.includes(p));
+  if (invalidos.length > 0) {
+    throw new Error(`No tienes autorización para asignar estos permisos: ${invalidos.join(', ')}`);
+  }
+  return true;
+};
 
 // POST /api/usuarios (Crear usuario)
 const crearUsuario = async (req: Request, res: Response) => {
@@ -78,10 +120,30 @@ const crearUsuario = async (req: Request, res: Response) => {
     const rolUsuario = req.usuario.rol;
     const datosUsuario = req.body;
 
+    // Validar Permisos ("Nadie da lo que no tiene")
+    // Obtener permisos del creador desde el token (ya inyectados en middleware auth)
+    const permisosCreador = req.usuario.permisos || [];
+    const esRoot = req.usuario.esAdminGeneral && req.usuario.rol === 'admin-general';
+
+    if (datosUsuario.permisos && datosUsuario.permisos.length > 0) {
+      validarAsignacionPermisos(datosUsuario.permisos, permisosCreador, esRoot);
+    }
+
     // Si es admin-interno, forzar empresa
     if (rolUsuario === 'admin-interno') {
       datosUsuario.empresa = req.usuario.empresaId;
     }
+
+    // LÓGICA DE TEMPLATE (Fase 4)
+    if (datosUsuario.template && PLANTILLAS[datosUsuario.template]) {
+      // Expandir template a array de permisos
+      const permisosTemplate = PLANTILLAS[datosUsuario.template];
+      // Si ya traía permisos manuales, combinarlos o sobrescribir?
+      // Política: Template sobrescribe o se fusiona. Vamos a fusionar unique.
+      const actuales = datosUsuario.permisos || [];
+      datosUsuario.permisos = Array.from(new Set([...actuales, ...permisosTemplate]));
+    }
+
 
     // Sanitize empresa field (prevent empty string CastError)
     if (datosUsuario.empresa === '') {
@@ -90,8 +152,6 @@ const crearUsuario = async (req: Request, res: Response) => {
 
     // FIX: Si sigue siendo undefined (no se seleccionó empresa) y es un Admin de Sistema (General/Subroot),
     // Asignar por defecto a Aurontek HQ.
-    // Esto es necesario porque el Modelo de Usuario REQUIERE una empresa para roles que no sean 'admin-general'.
-    // Si creamos un 'Soporte' o 'Usuario' sin empresa, fallará.
     if (!datosUsuario.empresa && ['admin-general', 'admin-subroot'].includes(rolUsuario)) {
       const hq = await Empresa.findOne({ rfc: 'AURONTEK001' });
       if (hq) {
@@ -157,8 +217,31 @@ const modificarUsuario = async (req: Request, res: Response) => {
   const usuarioId = req.params.id;
   const rolUsuario = req.usuario.rol;
 
+  // Validar Permisos si se están actualizando
+  if (req.body.permisos) {
+    try {
+      const permisosCreador = req.usuario.permisos || [];
+      const esRoot = req.usuario.esAdminGeneral && req.usuario.rol === 'admin-general';
+      validarAsignacionPermisos(req.body.permisos, permisosCreador, esRoot);
+    } catch (e: any) {
+      return res.status(403).json({ msg: e.message });
+    }
+  }
+
   try {
     let usuario = await usuarioService.obtenerUsuarioPorId(usuarioId);
+
+    // Protección ROOT: Nadie puede modificar al Root excepto él mismo
+    if (usuario.rol === 'admin-general') {
+      // Asumiendo que req.usuario.correo no viene en el token, usamos ID o flag esAdminGeneral + check DB.
+      // Pero el token tiene ID.
+      // Mejor: Si el usuario objetivo es Root, BLOQUEAR.
+      // Excepción: El mismo root modificándose.
+      const soyRoot = req.usuario.esAdminGeneral && req.usuario.id === usuario._id.toString();
+      if (!soyRoot) {
+        return res.status(403).json({ msg: 'No se puede modificar al Super Administrador.' });
+      }
+    }
 
     // Si NO es admin global, validar empresa
     if (!['admin-general', 'admin-subroot'].includes(rolUsuario)) {
@@ -197,6 +280,101 @@ const eliminarUsuario = async (req: Request, res: Response) => {
   }
 };
 
+// POST /api/usuarios/:id/recover-password (Admin Local)
+const recuperarContrasenaUsuario = async (req: Request, res: Response) => {
+  const adminSolicitante = req.usuario;
+  const usuarioIdParaRecuperar = req.params.id;
+
+  try {
+    // 1. Validar que el admin solicitante tenga el permiso 'users.recover_password_local'
+    if (!adminSolicitante.permisos?.includes('users.recover_password_local')) {
+      return res.status(403).json({ msg: 'No tienes permisos para realizar esta acción.' });
+    }
+
+    // TODO: Implementar la lógica del servicio:
+    // - Verificar que el usuario a recuperar pertenece a la misma empresa que el admin.
+    // - Generar una contraseña temporal segura y enviarla por correo al usuario.
+    res.status(501).json({ msg: 'Funcionalidad de recuperación de contraseña pendiente de implementación.', usuarioId: usuarioIdParaRecuperar });
+  } catch (error: any) {
+    res.status(500).json({ msg: error.message });
+  }
+};
+
+// GET /api/usuarios/actions/layout
+const descargarLayoutUsuarios = async (req: Request, res: Response) => {
+  const headers = 'nombre,correo,password,rol,puesto';
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="layout_usuarios.csv"');
+  res.status(200).send(headers);
+};
+
+// POST /api/usuarios/actions/import
+const importarUsuarios = async (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ msg: 'No se ha subido ningún archivo CSV.' });
+  }
+
+  const admin = req.usuario;
+  // Solo los administradores de empresa pueden hacer cargas masivas a su propia empresa.
+  const empresaId = admin.empresaId;
+
+  if (!empresaId) {
+    return res.status(400).json({ msg: 'Las cargas masivas solo están permitidas para administradores de empresa.' });
+  }
+
+  const results: any[] = [];
+  const errors: any[] = [];
+  let rowCount = 0;
+
+  const stream = Readable.from(req.file.buffer);
+
+  stream
+    .pipe(csv())
+    .on('data', (data) => {
+      rowCount++;
+      // Validación básica de la fila
+      if (!data.correo || !data.password || !data.nombre) {
+        errors.push({ row: rowCount, error: 'Faltan campos requeridos (nombre, correo, password).', data });
+      } else {
+        results.push(data);
+      }
+    })
+    .on('end', async () => {
+      if (errors.length > 0) {
+        return res.status(400).json({
+          msg: `El archivo CSV contiene ${errors.length} errores. Por favor, corrígelos y vuelve a intentarlo.`,
+          errors
+        });
+      }
+
+      if (results.length === 0) {
+        return res.status(400).json({ msg: 'El archivo CSV está vacío o no tiene un formato válido.' });
+      }
+
+      try {
+        const salt = await bcrypt.genSalt(10);
+        const usuariosParaCrear = await Promise.all(results.map(async (user) => ({
+          ...user,
+          correo: user.correo.toLowerCase(),
+          contraseña: await bcrypt.hash(user.password, salt),
+          empresa: empresaId, // Asignar la empresa del admin que realiza la carga
+          activo: true,
+        })));
+
+        const usuariosCreados = await Usuario.insertMany(usuariosParaCrear, { ordered: false });
+
+        res.status(201).json({
+          msg: `Importación completada. ${usuariosCreados.length} usuarios creados.`,
+        });
+      } catch (error: any) {
+        if (error.code === 11000) { // Duplicate key error
+          return res.status(409).json({ msg: 'Error de duplicados. Uno o más correos electrónicos ya existen en la base de datos.', details: error.writeErrors?.map((e: any) => e.err.errmsg) });
+        }
+        res.status(500).json({ msg: 'Error al insertar los usuarios en la base de datos.', error: error.message });
+      }
+    });
+};
+
 export default {
   subirFotoPerfil,
   listarUsuarios,
@@ -205,5 +383,9 @@ export default {
   detalleUsuario,
   detalleUsuarioFlexible,
   modificarUsuario,
-  eliminarUsuario
+  eliminarUsuario,
+  obtenerMetadataPermisos,
+  recuperarContrasenaUsuario,
+  descargarLayoutUsuarios,
+  importarUsuarios
 };

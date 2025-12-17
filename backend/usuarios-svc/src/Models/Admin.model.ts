@@ -8,10 +8,19 @@ const adminSchema = new Schema({
   telefono: { type: String },
   puesto: { type: String },
   activo: { type: Boolean, default: true },
+  estado_actividad: {
+    type: String,
+    enum: ['available', 'busy', 'offline'],
+    default: 'offline'
+  },
   rol: {
     type: String,
     enum: ['admin-general', 'admin-subroot'],
     default: 'admin-general'
+  },
+  permisos: {
+    type: [String],
+    default: []
   },
   empresa: { type: Schema.Types.ObjectId, ref: 'Empresa' },
   creado: { type: Date, default: Date.now }

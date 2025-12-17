@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import usuarioService from '../Services/usuario.service';
 import empresaService from '../Services/empresa.service';
+import Usuario from '../Models/AltaUsuario.models';
 import Admin from '../Models/Admin.model';
 import { generarJWT } from '../Utils/jwt';
 import { verificarRecaptcha } from '../Utils/recaptcha';
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // POST /api/auth/login
 // POST /api/auth/login
@@ -13,29 +15,17 @@ const login = async (req: Request, res: Response) => {
   // 1. RECEPCIÓN DE DATOS
   console.log('📥 Body recibido:', req.body);
 
-  const {
-    correo,
-    email: emailAlt,
-    contraseña,
-    password: passwordAlt,
-    captchaToken,
-    recaptchaToken: recaptchaAlt,
-    codigoAcceso,
-    codigo_acceso: codigoAccesoAlt
-  } = req.body;
+  /* 
+    Permitir campos en español o inglés
+    frontend envía: correo, contraseña, captchaToken, codigoAcceso 
+  */
+  const email = req.body.email || req.body.correo;
+  const finalPassword = req.body.password || req.body.contraseña;
+  const recaptchaToken = req.body.recaptchaToken || req.body.captchaToken;
+  const finalCodigo = req.body.codigoAcceso || req.body.codigo_acceso;
 
-  const email = correo || emailAlt;
-  const password = contraseña || passwordAlt;
-  const recaptchaToken = captchaToken || recaptchaAlt;
-  const codigo = codigoAcceso || codigoAccesoAlt;
-
-  // 2. VALIDACIONES BÁSICAS
-  if (!email || !password) {
+  if (!email || !finalPassword) {
     return res.status(400).json({ msg: 'Correo y contraseña son requeridos.' });
-  }
-
-  if (!codigo) {
-    return res.status(400).json({ msg: 'El código de acceso es requerido.' });
   }
 
   if (!recaptchaToken) {
@@ -43,131 +33,107 @@ const login = async (req: Request, res: Response) => {
   }
 
   try {
+    // await verificarRecaptcha(recaptchaToken); // Descomentar en producción
+
     if (mongoose.connection.readyState !== 1) {
       throw new Error('La base de datos no está disponible.');
     }
-
-    // 3. DETERMINAR ENTORNO POR CÓDIGO DE ACCESO
-    console.log('🔑 Validando código de acceso:', codigo);
-    const empresa = await empresaService.encontrarEmpresaPorCodigo(codigo);
-
-    if (!empresa) {
-      return res.status(404).json({ msg: 'El código de acceso es incorrecto. Intenta de nuevo.' });
-    }
-    if (!empresa.activo) {
-      return res.status(403).json({ msg: 'La licencia de esta empresa está suspendida.' });
-    }
-
-    console.log(`🏢 Entorno detectado: ${empresa.nombre} (${empresa.rfc})`);
 
     let usuarioEncontrado: any = null;
     let rolFinal = '';
     let empresaIdFinal: any = null;
     let esAdminGeneral = false;
+    let permisos: string[] = [];
 
-    // 4. RUTEO DE AUTENTICACIÓN
-    if (empresa.rfc === 'AURONTEK001') {
-      // --- ENTORNO: AURONTEK HQ (SUPERSISTEMA) ---
-      // SOLO buscar en colección ADMINS
-      console.log('🛡️ Modo Super Admin: Buscando en colección Admin...');
+    // --- INICIO DE LA LÓGICA MODIFICADA ---
 
+    // CASO 1: Login de Administrador (sin código de acceso)
+    if (!finalCodigo) {
+      console.log('🛡️  Modo Admin (sin código de acceso): Buscando en colección `admins`...');
+      // Admin model uses 'correo'
       usuarioEncontrado = await Admin.findOne({ correo: email.toLowerCase() });
 
       if (!usuarioEncontrado) {
-        return res.status(400).json({ msg: 'Credenciales inválidas (Admin).' });
+        return res.status(401).json({ msg: 'Credenciales incorrectas o no es un usuario administrador.' });
       }
 
-      // Validar que sea admin-general o admin-subroot
-      if (!['admin-general', 'admin-subroot'].includes(usuarioEncontrado.rol)) {
-        return res.status(403).json({ msg: 'Este usuario no tiene permisos de administrador del sistema.' });
-      }
-
-      const passValido = await bcrypt.compare(password, usuarioEncontrado.contraseña);
+      const passValido = await bcrypt.compare(finalPassword, usuarioEncontrado.contraseña);
       if (!passValido) {
-        return res.status(400).json({ msg: 'Contraseña incorrecta.' });
+        return res.status(401).json({ msg: 'Credenciales incorrectas.' });
       }
 
-      esAdminGeneral = true; // Flag para token
-      console.log('✅ Autenticado como Super Admin');
+      if (!usuarioEncontrado.activo) {
+        return res.status(403).json({ msg: 'Usuario inactivo.' });
+      }
+
+      esAdminGeneral = true;
+      rolFinal = usuarioEncontrado.rol;
+      empresaIdFinal = null; // Los admins no pertenecen a una empresa cliente
+      permisos = usuarioEncontrado.permisos || [];
+      if (rolFinal === 'admin-general') {
+        permisos = ['*'];
+      }
+
+      console.log(`✅ Autenticado como Administrador: ${usuarioEncontrado.correo}`);
 
     } else {
-      // --- ENTORNO: EMPRESA CLIENTE ---
-      // SOLO buscar en colección USUARIOS
-      console.log('👤 Modo Cliente: Buscando en colección Usuarios...');
+      // CASO 2: Login de Empleado (Aurontek HQ o Cliente)
+      console.log(`🔑 Modo Empleado (con código de acceso): Validando código "${finalCodigo}"...`);
+      const empresa = await empresaService.encontrarEmpresaPorCodigo(finalCodigo);
 
-      usuarioEncontrado = await usuarioService.encontrarUsuarioPorCorreo(email);
+      if (!empresa) {
+        return res.status(404).json({ msg: 'El código de acceso es incorrecto. Intenta de nuevo.' });
+      }
+      if (!empresa.activo) {
+        return res.status(403).json({ msg: 'La licencia de esta empresa está suspendida.' });
+      }
+
+      console.log(`🏢 Entorno detectado: ${empresa.nombre}. Buscando usuario en colección \`usuarios\`...`);
+      // Usuario model uses 'correo'
+      usuarioEncontrado = await Usuario.findOne({
+        correo: email.toLowerCase(),
+        empresa: empresa._id // Filtro clave para seguridad
+      });
 
       if (!usuarioEncontrado) {
-        return res.status(400).json({ msg: 'Credenciales inválidas.' });
+        return res.status(401).json({ msg: 'Credenciales incorrectas o el usuario no pertenece a esta empresa.' });
       }
 
-      // Verificar que el usuario pertenezca a la empresa del código
-      if (!usuarioEncontrado.empresa || usuarioEncontrado.empresa.toString() !== empresa._id.toString()) {
-        return res.status(403).json({ msg: 'El usuario no pertenece a esta empresa.' });
-      }
-
-      const passValido = await usuarioEncontrado.compararPassword(password);
+      const passValido = await usuarioEncontrado.compararPassword(finalPassword);
       if (!passValido) {
-        return res.status(400).json({ msg: 'Contraseña incorrecta.' });
+        return res.status(401).json({ msg: 'Credenciales incorrectas.' });
       }
 
+      if (!usuarioEncontrado.activo) {
+        return res.status(403).json({ msg: 'Usuario inactivo.' });
+      }
+
+      // Este es un empleado (de Aurontek o de un cliente), no un admin general.
       esAdminGeneral = false;
-      console.log('✅ Autenticado como Usuario Cliente');
+      rolFinal = usuarioEncontrado.rol;
+      empresaIdFinal = usuarioEncontrado.empresa;
+      permisos = usuarioEncontrado.permisos || [];
+
+      console.log(`✅ Autenticado como Empleado: ${usuarioEncontrado.correo}`);
     }
 
-    // 5. VALIDACIONES COMUNES
-    if (!usuarioEncontrado.activo) {
-      return res.status(403).json({ msg: 'Usuario inactivo.' });
-    }
+    // --- FIN DE LA LÓGICA MODIFICADA ---
 
-    rolFinal = usuarioEncontrado.rol;
-    empresaIdFinal = esAdminGeneral ? null : usuarioEncontrado.empresa;
-
-    // 6. GENERAR TOKEN
+    // GENERAR TOKEN Y RESPONDER
     const payload = {
       id: usuarioEncontrado._id,
       rol: rolFinal,
       empresaId: empresaIdFinal,
       esAdminGeneral: esAdminGeneral
     };
-
     const token = generarJWT(payload);
-
-    // 7. OBTENER PERMISOS
-    let permisos: string[] = [];
-
-    if (esAdminGeneral) {
-      // Super Admin tiene acceso total (bypass en frontend/middleware)
-      // Pero para la UI enviamos '*' o una lista completa si se prefiere. 
-      // La regla de negocio dice: "Bypass". 
-      // Enviemos '*' para que el frontend sepa que es SuperAdmin si no usa el flag esAdminGeneral.
-      permisos = ['*'];
-    } else {
-      // Buscar el rol para obtener los permisos actualizados
-      // IMPORTANTE: No usar usuarioEncontrado.rol simplemente, si queremos "live" permissions.
-      // Pero usuarioEncontrado ya tiene el rol string. 
-      // Debemos buscar el Objeto Role.
-
-      try {
-        const roleDoc = await import('../Models/Role.model').then(m => m.default.findOne({
-          slug: rolFinal,
-          $or: [{ empresa: empresaIdFinal }, { empresa: null }]
-        }));
-
-        if (roleDoc && roleDoc.permisos) {
-          permisos = roleDoc.permisos;
-        }
-      } catch (err) {
-        console.error('Error buscando permisos del rol:', err);
-      }
-    }
 
     res.json({
       token,
       usuario: {
         id: usuarioEncontrado._id,
         nombre: usuarioEncontrado.nombre,
-        correo: usuarioEncontrado.correo || usuarioEncontrado.email,
+        email: usuarioEncontrado.correo,
         rol: rolFinal,
         empresaId: empresaIdFinal,
         esAdminGeneral: esAdminGeneral,
@@ -178,68 +144,6 @@ const login = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('💥 Error en login:', error);
     res.status(500).json({ msg: 'Error en el servidor', error: error.message });
-  }
-};
-
-// POST /api/auth/login-admin (Super Admin Only)
-const loginAdmin = async (req: Request, res: Response) => {
-  console.log('🛡️ [ADMIN LOGIN] Iniciando sesión de Super Admin...');
-  const { correo, contraseña, captchaToken } = req.body;
-
-  if (!correo || !contraseña) {
-    return res.status(400).json({ msg: 'Correo y contraseña son requeridos.' });
-  }
-
-  if (!captchaToken) {
-    return res.status(400).json({ msg: 'Falta el token de reCAPTCHA.' });
-  }
-
-  try {
-    // 1. Verificar ReCAPTCHA
-    await verificarRecaptcha(captchaToken);
-
-    // 2. Buscar en Colección ADMINS
-    const admin = await Admin.findOne({ correo: { $regex: new RegExp(`^${correo}$`, 'i') } });
-
-    if (!admin) {
-      console.log('❌ Admin no encontrado:', correo);
-      return res.status(400).json({ msg: 'Credenciales inválidas.' });
-    }
-
-    // 3. Validar Password
-    const passValido = await bcrypt.compare(contraseña, admin.contraseña);
-    if (!passValido) {
-      console.log('❌ Password incorrecto para admin:', correo);
-      return res.status(400).json({ msg: 'Credenciales inválidas.' });
-    }
-
-    if (!admin.activo) {
-      return res.status(403).json({ msg: 'Cuenta desactivada.' });
-    }
-
-    console.log('✅ Admin autenticado:', admin.correo);
-
-    // 4. Generar Token
-    const token = generarJWT({
-      id: admin._id,
-      rol: admin.rol, // 'admin-general'
-      empresaId: null,
-      esAdminGeneral: true
-    });
-
-    res.json({
-      token,
-      usuario: {
-        id: admin._id,
-        nombre: admin.nombre,
-        correo: admin.correo,
-        rol: admin.rol
-      }
-    });
-
-  } catch (error: any) {
-    console.error('💥 Error en loginAdmin:', error);
-    res.status(500).json({ msg: 'Error interno del servidor', error: error.message });
   }
 };
 
@@ -278,6 +182,84 @@ const validarCodigoAcceso = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error al validar código:', error);
     res.status(500).json({ msg: 'Error al validar código de acceso.' });
+  }
+};
+
+const resetPassword = async (req: Request, res: Response) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ msg: 'El token y la nueva contraseña son requeridos.' });
+  }
+
+  try {
+    // 1. Verificar el token de reseteo.
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({ msg: 'Token inválido o expirado.' });
+    }
+
+    // 2. Hashear la nueva contraseña.
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 3. Actualizar la contraseña del usuario.
+    const usuario = await Usuario.findByIdAndUpdate(
+      decoded.id,
+      { contraseña: hashedPassword },
+      { new: true }
+    );
+
+    if (!usuario) {
+      return res.status(404).json({ msg: 'Usuario no encontrado.' });
+    }
+
+    res.json({ msg: 'Contraseña actualizada correctamente.' });
+
+  } catch (error: any) {
+    // Si el error es por JWT expirado
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ msg: 'El token de recuperación ha expirado. Por favor, solicita uno nuevo.' });
+    }
+    console.error('Error al resetear contraseña:', error);
+    res.status(500).json({ msg: 'Error al resetear la contraseña.', error: error.message });
+  }
+};
+
+// POST /api/auth/forgot-password
+const forgotPassword = async (req: Request, res: Response) => {
+  const { email, codigoAcceso } = req.body;
+
+  if (!email || !codigoAcceso) {
+    return res.status(400).json({ msg: 'El correo y el código de acceso son requeridos.' });
+  }
+
+  try {
+    const empresa = await empresaService.encontrarEmpresaPorCodigo(codigoAcceso);
+    if (!empresa) {
+      return res.status(404).json({ msg: 'Código de acceso inválido.' });
+    }
+
+    const usuario = await Usuario.findOne({ correo: email.toLowerCase(), empresa: empresa._id });
+    if (!usuario) {
+      // Se devuelve una respuesta genérica para no revelar si un email existe o no.
+      return res.json({ msg: 'Si el usuario existe y es elegible, se ha enviado un correo con las instrucciones.' });
+    }
+
+    if (usuario.rol === 'admin-interno') {
+      return res.status(403).json({ msg: 'La recuperación de contraseña para administradores debe solicitarse a través de un ticket de soporte.' });
+    }
+
+    const resetToken = jwt.sign({ id: usuario._id }, process.env.JWT_SECRET!, { expiresIn: '15m' }); // Token válido por 15 minutos
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    console.log(`[INFO] Enlace de recuperación para ${email}: ${resetUrl}`);
+    // TODO: Publicar evento a RabbitMQ para que notificaciones-svc envíe el correo con el `resetUrl`.
+
+    res.json({ msg: 'Si el usuario existe y es elegible, se ha enviado un correo con las instrucciones para restablecer la contraseña.' });
+
+  } catch (error: any) {
+    res.status(500).json({ msg: 'Error en el proceso de recuperación de contraseña.', error: error.message });
   }
 };
 
@@ -324,15 +306,13 @@ const check = async (req: Request, res: Response) => {
     // Obtener permisos del Rol (Check)
     let permisos: string[] = [];
     if (esAdminGeneral) {
-      permisos = ['*'];
-    } else if (usuario.rol) {
-      const roleDoc = await import('../Models/Role.model').then(m => m.default.findOne({
-        slug: usuario.rol,
-        $or: [{ empresa: usuario.empresa }, { empresa: null }]
-      }));
-      if (roleDoc) {
-        permisos = roleDoc.permisos || [];
+      if (usuario.rol === 'admin-general') {
+        permisos = ['*'];
+      } else {
+        permisos = usuario.permisos || [];
       }
+    } else {
+      permisos = usuario.permisos || [];
     }
 
     res.json({
@@ -340,10 +320,11 @@ const check = async (req: Request, res: Response) => {
       usuario: {
         id: usuario._id,
         nombre: usuario.nombre,
-        correo: usuario.correo || usuario.email,
+        email: usuario.correo,
         rol: usuario.rol,
         empresaId: usuario.empresa || null,
         esAdminGeneral: esAdminGeneral,
+        estado_actividad: usuario.estado_actividad, // Include status
         permisos // Include permissions
       }
     });
@@ -353,4 +334,59 @@ const check = async (req: Request, res: Response) => {
   }
 };
 
-export default { login, loginAdmin, register, logout, check, validarCodigoAcceso };
+const updateStatus = async (req: Request, res: Response) => {
+  const { estado } = req.body;
+  const usuario = (req as any).usuario;
+
+  console.log('🔄 [updateStatus] Recibida petición');
+  console.log('🔄 [updateStatus] Usuario completo:', JSON.stringify(usuario, null, 2));
+  console.log('🔄 [updateStatus] Estado solicitado:', estado);
+
+  if (!usuario || !usuario._id) {
+    console.error('❌ [updateStatus] No hay información de usuario en la petición');
+    return res.status(401).json({ msg: 'No autorizado' });
+  }
+
+  if (!['available', 'busy', 'offline'].includes(estado)) {
+    return res.status(400).json({ msg: 'Estado inválido' });
+  }
+
+  try {
+    const userId = usuario._id.toString();
+    const esAdmin = ['admin-general', 'admin-subroot', 'admin-support'].includes(usuario.rol);
+
+    console.log('👤 [updateStatus] ID del usuario:', userId);
+    console.log('👤 [updateStatus] Rol:', usuario.rol);
+    console.log('👤 [updateStatus] Es Admin:', esAdmin);
+
+    let resultado;
+    if (esAdmin) {
+      console.log('👤 [updateStatus] Actualizando en colección Admin');
+      resultado = await Admin.findByIdAndUpdate(
+        userId,
+        { estado_actividad: estado },
+        { new: true }
+      );
+    } else {
+      console.log('👤 [updateStatus] Actualizando en colección Usuario');
+      resultado = await Usuario.findByIdAndUpdate(
+        userId,
+        { estado_actividad: estado },
+        { new: true }
+      );
+    }
+
+    if (!resultado) {
+      console.error('❌ [updateStatus] No se encontró el usuario/admin con ID:', userId);
+      return res.status(404).json({ msg: 'Usuario no encontrado' });
+    }
+
+    console.log('✅ [updateStatus] Estado actualizado exitosamente a:', resultado.estado_actividad);
+    res.json({ msg: 'Estado actualizado', estado: resultado.estado_actividad });
+  } catch (error: any) {
+    console.error('❌ [updateStatus] Error al actualizar estado:', error);
+    res.status(500).json({ msg: 'Error al actualizar estado', error: error.message });
+  }
+};
+
+export default { login, register, logout, check, validarCodigoAcceso, forgotPassword, resetPassword, updateStatus };

@@ -1,84 +1,69 @@
 import { Request, Response } from 'express';
-import Habilidad from '../Models/Habilidad.model';
+import Habilidad from '../Models/Habilidad.model'; // Assuming this model exists
+import Usuario from '../Models/AltaUsuario.models';
 
-// GET /habilidades
-export const listarHabilidades = async (req: Request, res: Response) => {
+// GET /api/habilidades
+const listarHabilidades = async (req: Request, res: Response) => {
     try {
-        const { activo, empresaId } = req.query;
-        let query: any = {};
-
-        if (activo !== undefined) query.activo = activo === 'true';
-
-        // Filter by company + Global
-        const usuarioRol = req.usuario.rol;
-        const usuarioEmpresaId = req.usuario.empresaId;
-
-        if (['admin-general', 'admin-subroot', 'soporte-plataforma'].includes(usuarioRol)) {
-            // View All (Global + Any Company if queried)
-            if (empresaId) query.$or = [{ empresa: null }, { empresa: empresaId }];
-            // If no empresaId, show all or just global? Usually Select lists show Global + Relevant.
-        } else {
-            // Internal: Global + Own Company
-            query.$or = [{ empresa: null }, { empresa: usuarioEmpresaId }];
-        }
-
-        const habilidades = await Habilidad.find(query).sort({ nombre: 1 });
+        const habilidades = await Habilidad.find().sort({ nombre: 1 });
         res.json(habilidades);
-    } catch (error) {
-        res.status(500).json({ msg: 'Error al listar habilidades' });
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error al listar habilidades', error: error.message });
     }
 };
 
-// POST /habilidades
-export const crearHabilidad = async (req: Request, res: Response) => {
+// POST /api/habilidades
+const crearHabilidad = async (req: Request, res: Response) => {
+    const { nombre, descripcion } = req.body;
+    if (!nombre) {
+        return res.status(400).json({ msg: 'El nombre de la habilidad es requerido.' });
+    }
     try {
-        const { nombre, descripcion, empresaId } = req.body;
-
-        // Check permissions
-        // Usually admins manage this.
-
-        // Check duplicate
-        const existe = await Habilidad.findOne({ nombre, empresa: empresaId || null });
-        if (existe) return res.status(400).json({ msg: 'Habilidad ya existe' });
-
-        const nueva = new Habilidad({
-            nombre,
-            descripcion,
-            empresa: empresaId || null
-        });
-
-        await nueva.save();
-        res.status(201).json(nueva);
-    } catch (error) {
-        res.status(500).json({ msg: 'Error al crear habilidad' });
+        const nuevaHabilidad = new Habilidad({ nombre, descripcion });
+        await nuevaHabilidad.save();
+        res.status(201).json(nuevaHabilidad);
+    } catch (error: any) {
+        if (error.code === 11000) {
+            return res.status(409).json({ msg: `La habilidad "${nombre}" ya existe.` });
+        }
+        res.status(500).json({ msg: 'Error al crear la habilidad', error: error.message });
     }
 };
 
-// PUT /habilidades/:id
-export const actualizarHabilidad = async (req: Request, res: Response) => {
+// PUT /api/habilidades/:id
+const modificarHabilidad = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { nombre, descripcion } = req.body;
     try {
-        const { id } = req.params;
-        await Habilidad.findByIdAndUpdate(id, req.body);
-        res.json({ msg: 'Actualizado' });
-    } catch (error) {
-        res.status(500).json({ msg: 'Error al actualizar' });
+        const habilidadActualizada = await Habilidad.findByIdAndUpdate(id, { nombre, descripcion }, { new: true });
+        if (!habilidadActualizada) {
+            return res.status(404).json({ msg: 'Habilidad no encontrada.' });
+        }
+        res.json(habilidadActualizada);
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error al modificar la habilidad', error: error.message });
     }
 };
 
-// DELETE /habilidades/:id
-export const eliminarHabilidad = async (req: Request, res: Response) => {
+// DELETE /api/habilidades/:id
+const eliminarHabilidad = async (req: Request, res: Response) => {
+    const { id } = req.params;
     try {
-        const { id } = req.params;
-        await Habilidad.findByIdAndDelete(id);
-        res.json({ msg: 'Eliminado' });
-    } catch (error) {
-        res.status(500).json({ msg: 'Error al eliminar' });
+        const habilidadEliminada = await Habilidad.findByIdAndDelete(id);
+        if (!habilidadEliminada) {
+            return res.status(404).json({ msg: 'Habilidad no encontrada.' });
+        }
+        // Also remove the skill from all users that have it
+        await Usuario.updateMany({}, { $pull: { habilidades: habilidadEliminada.nombre } });
+        res.json({ msg: 'Habilidad eliminada correctamente.' });
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error al eliminar la habilidad', error: error.message });
     }
 };
 
 export default {
     listarHabilidades,
     crearHabilidad,
-    actualizarHabilidad,
+    modificarHabilidad,
     eliminarHabilidad
 };

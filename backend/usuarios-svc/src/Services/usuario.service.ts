@@ -30,10 +30,10 @@ export const encontrarUsuarioPorCorreo = async (email: string) => {
  */
 export const crearUsuario = async (datosUsuario: any) => {
   try {
-    console.log('Verificando existencia de usuario con correo:', datosUsuario.email);
+    console.log('Verificando existencia de usuario con correo:', datosUsuario.correo);
 
     const usuarioExistente = await Usuario.findOne({
-      correo: datosUsuario.email.toLowerCase()
+      correo: datosUsuario.correo.toLowerCase()
     });
 
     if (usuarioExistente) {
@@ -53,7 +53,7 @@ export const crearUsuario = async (datosUsuario: any) => {
 
     const datosFormateados = {
       nombre: datosUsuario.nombre,
-      correo: datosUsuario.email.toLowerCase(),
+      correo: datosUsuario.correo.toLowerCase(),
       contraseña: datosUsuario.password,
       telefono: datosUsuario.telefono,
       puesto: datosUsuario.puesto,

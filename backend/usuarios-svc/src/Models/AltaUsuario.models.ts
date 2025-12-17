@@ -19,10 +19,19 @@ const UsuarioSchema = new Schema({
   telefono: { type: String },
   puesto: { type: String },
   activo: { type: Boolean, default: true },
+  estado_actividad: {
+    type: String,
+    enum: ['available', 'busy', 'offline'],
+    default: 'offline'
+  },
   rol: {
     type: String,
     // enum removed to support dynamic roles
     required: true
+  },
+  permisos: {
+    type: [String],
+    default: []
   },
   empresa: {
     type: Schema.Types.ObjectId,
