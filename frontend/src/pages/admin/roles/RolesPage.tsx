@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rolesService, Role } from '@/api/roles.service';
 import { useAuthStore } from '@/auth/auth.store';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, ShieldCheck, Pencil, Trash2, X, Save } from 'lucide-react';
+import { Plus, ShieldCheck, Pencil, Trash2, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,7 +33,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { GROUPED_PERMISSIONS, PERMISSIONS_MAP } from '@/constants/permissions';
-import { useTranslation } from 'react-i18next';
+
 
 const RolesPage = () => {
     const { user } = useAuthStore();
@@ -128,11 +129,11 @@ const RolesPage = () => {
         if (editingRole) {
             updateMutation.mutate({ id: editingRole._id, data: formData });
         } else {
-            // If admin-general, could select company, but defaulting to own or global for now as per controller logic.
-            // Requirement was simplistic: create/edit/add permissions.
             createMutation.mutate({ ...formData, empresaId: user?.empresaId });
         }
     };
+
+
 
     const isSystemRole = (role: Role) => ['admin-general', 'admin-subroot'].includes(role.slug);
 
