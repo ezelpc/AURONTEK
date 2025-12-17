@@ -51,4 +51,4 @@ export const GROUPED_PERMISSIONS = Object.entries(PERMISSIONS_MAP).reduce((acc, 
     if (!acc[value.group]) acc[value.group] = [];
     acc[value.group].push({ key, ...value });
     return acc;
-}, {} as Record<string, typeof PERMISSIONS_MAP[string] & { key: string }[]>);
+}, {} as Record<string, (typeof PERMISSIONS_MAP[string] & { key: string })[]>);

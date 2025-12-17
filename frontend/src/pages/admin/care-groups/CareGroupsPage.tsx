@@ -90,7 +90,7 @@ const CareGroupsPage = () => {
 
     const onSubmit = (data: { nombre: string; descripcion: string }) => {
         if (editingGroup) {
-            updateMutation.mutate({ id: editingGroup._id, data });
+            updateMutation.mutate({ id: editingGroup._id || '', data });
         } else {
             createMutation.mutate(data);
         }

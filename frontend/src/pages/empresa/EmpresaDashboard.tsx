@@ -27,7 +27,7 @@ const EmpresaDashboard = () => {
     // Fetch Tickets (Backend debe filtrar por empresa)
     const { data: tickets = [], isLoading } = useQuery({
         queryKey: ['my-tickets', user?.empresaId],
-        queryFn: ticketsService.getTickets
+        queryFn: () => ticketsService.getTickets()
     });
 
     // Calcular Estadísticas
