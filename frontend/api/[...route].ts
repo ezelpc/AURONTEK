@@ -3,7 +3,6 @@ export const config = {
 };
 
 export default async function handler(request: Request) {
-    const url = new URL(request.url);
     // @ts-ignore
     const backendUrl = process.env.BACKEND_URL;
 
@@ -11,23 +10,28 @@ export default async function handler(request: Request) {
         return new Response('Configuration Error: BACKEND_URL not set', { status: 500 });
     }
 
-    // Construct target URL
-    // Remove '/api' prefix if your backend expects paths without it, 
-    // OR keep it if backend is mounted at /api.
-    // Based on previous configs: Backend is http://.../api
-    // So we just replace the host.
+    const url = new URL(request.url);
 
-    // request.url comes as https://vercel-domain/api/users...
-    // We want http://backend-ip/api/users...
+    // 1. Handle CORS Preflight (OPTIONS)
+    if (request.method === 'OPTIONS') {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id',
+            },
+        });
+    }
 
-    // Logic: Replace local origin with backend url
+    // 2. Proxy Logic
+    // Replace the origin (https://vercel-app) with backend (http://ip:port)
     const targetUrl = request.url.replace(url.origin, backendUrl);
 
-    // Prepare headers
+    // Prepare headers: Remove host/origin to avoid backend rejection/loops
     const headers = new Headers(request.headers);
-    // Remove host header to avoid confusion at backend
     headers.delete('host');
-    // Ensure we communicate we are a proxy? (Optional)
+    headers.delete('origin');
 
     try {
         const response = await fetch(targetUrl, {
@@ -37,8 +41,18 @@ export default async function handler(request: Request) {
             redirect: 'follow',
         });
 
-        // Forward response
-        return response;
+        // 3. Forward response with CORS headers
+        const responseHeaders = new Headers(response.headers);
+        responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id');
+
+        return new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders,
+        });
+
     } catch (error) {
         console.error('Proxy Error:', error);
         return new Response('Proxy Error', { status: 502 });
