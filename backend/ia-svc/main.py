@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 import httpx
 from datetime import datetime
 import threading
@@ -12,8 +13,15 @@ from services.ticket_classifier import TicketClassifier
 from services.agent_assigner import AgentAssigner
 from services.rabbitmq_client import RabbitMQClient
 
-# Cargar variables de entorno
-load_dotenv()
+# ✅ Cargar variables de entorno solo en desarrollo
+ENV = os.getenv('NODE_ENV', 'development')
+
+if ENV == 'development':
+    local_env_path = Path(__file__).parent / '.env'
+    load_dotenv(dotenv_path=local_env_path)
+    print(f'[{ENV}] 📄 Cargando variables desde .env local')
+
+print(f'[{ENV}] 🌍 Entorno detectado')
 
 # Inicializar logger lo antes posible
 try:
