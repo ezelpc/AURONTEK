@@ -23,7 +23,7 @@ const run = async () => {
         console.log('\n--- ADMIN GENERAL ---');
         const admins = await Admin.find({});
         admins.forEach(a => {
-            console.log(`- ${a.email} (Rol: ${a.rol})`);
+            console.log(`- ${a.correo} (Rol: ${a.rol})`);
         });
 
         console.log('\n--- EMPRESAS ---');
@@ -40,8 +40,8 @@ const run = async () => {
             const emp = u.empresa ? empresaMap.get(u.empresa.toString()) : null;
             const empName = emp ? emp.nombre : 'SIN EMPRESA';
             const empCode = emp ? emp.codigo_acceso : 'N/A';
-            
-            console.log(`- [${u._id}] ${u.email} | Rol: ${u.rol} | Empresa: ${empName} (${u.empresa}) | Code Expected: ${empCode}`);
+
+            console.log(`- [${u._id}] ${u.correo} | Rol: ${u.rol} | Empresa: ${empName} (${u.empresa}) | Code Expected: ${empCode}`);
         });
 
     } catch (error) {
