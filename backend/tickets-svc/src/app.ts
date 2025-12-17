@@ -8,6 +8,8 @@ const app: Application = express();
 // Middlewares
 app.use(cors()); // Habilita CORS para todas las rutas
 app.use(express.json()); // Permite al servidor entender JSON en los bodies de las peticiones
+import path from 'path';
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // API Routes
 // El gateway ya agrega el prefijo /api, así que aquí solo usamos /services y /tickets

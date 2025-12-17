@@ -11,6 +11,7 @@ const router: Router = express.Router();
 router.use(auth);
 
 // ===== RUTAS DE ESTADÍSTICAS =====
+router.get('/estadisticas/global', authorize('admin-general'), estadisticasController.obtenerEstadisticasGlobales);
 router.get('/estadisticas/resolvers', estadisticasController.obtenerEstadisticasResolvers);
 router.get('/estadisticas/quemados', estadisticasController.obtenerTicketsQuemados);
 router.get('/estadisticas/calificaciones', estadisticasController.obtenerCalificaciones);
@@ -20,6 +21,10 @@ router.get('/estadisticas', estadisticasController.obtenerEstadisticasGenerales)
 // Crear ticket (cualquier usuario autenticado)
 router.post('/', ticketController.crear);
 
+// ✅ Subir adjuntos (Múltiples)
+import uploadController, { uploadConfig } from '../Controllers/upload.controller';
+router.post('/upload', uploadConfig.array('files', 10), uploadController.uploadFile);
+
 // Listar tickets (filtrado según rol)
 router.get('/', ticketController.listar);
 
@@ -27,7 +32,8 @@ router.get('/', ticketController.listar);
 router.get('/:id', ticketController.obtener);
 
 // ✅ Verificar acceso al chat
-router.get('/:id/acceso-chat', ticketController.verificarAccesoChat);
+// ✅ Verificar acceso al chat
+router.get('/:id/verificar-acceso-chat', validateServiceToken, ticketController.verificarAccesoChat);
 
 // ✅ NUEVO: Actualizar clasificación (solo IA service)
 router.patch('/:id/clasificacion',
@@ -57,6 +63,12 @@ router.put('/:id/asignar',
 router.put('/:id/delegar',
   authorize('soporte'),
   ticketController.delegar
+);
+
+// ✅ Eliminar ticket (Solo Admin)
+router.delete('/:id',
+  authorize('admin-general', 'admin-subroot'),
+  ticketController.eliminar
 );
 
 // ===== RUTAS DE ADMIN GENERAL =====

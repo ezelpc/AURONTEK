@@ -9,11 +9,27 @@ const ticketController = {
   // POST /tickets
   async crear(req: Request, res: Response): Promise<void> {
     try {
+      let empresaId: string | null | undefined = req.usuario?.empresaId;
+
+      // Si el usuario es admin y no tiene empresaId (ej. admin-general), asignar AurontekHQ
+      if (!empresaId && ['admin-general', 'admin-subroot', 'admin-interno'].includes(req.usuario?.rol || '')) {
+        console.log('Admin creando ticket sin empresaId, buscando AurontekHQ...');
+        const aurontekHQId = await ticketService.obtenerAurontekHQId();
+        if (!aurontekHQId) {
+          throw new Error('No se pudo determinar la empresa AurontekHQ para este ticket interno');
+        }
+        empresaId = aurontekHQId;
+      }
+
       const datosTicket = {
         ...req.body,
         usuarioCreador: req.usuario?.id,
-        empresaId: req.usuario?.empresaId
+        empresaId: empresaId
       };
+
+      console.log('[DEBUG CREAR] Usuario rol:', req.usuario?.rol);
+      console.log('[DEBUG CREAR] EmpresaId final:', empresaId);
+      console.log('[DEBUG CREAR] Datos ticket:', JSON.stringify(datosTicket, null, 2));
 
       // Validar tipo solo si se proporcionó
       if (datosTicket.tipo && !tipos.includes(datosTicket.tipo)) {
@@ -50,9 +66,12 @@ const ticketController = {
       // Construir filtros según ROL
       let filtros: any = {};
 
-      // 1. Admin General / Subroot: Vén todo (o filtran por query)
+      // 1. Admin General / Subroot: Ven todo (o filtran por query)
       if (['admin-general', 'admin-subroot'].includes(rol)) {
+        // Sin filtros = ver todos los tickets
+        // Con empresaId en query = filtrar por empresa específica
         if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        console.log('[DEBUG LISTAR] Admin filtros:', filtros);
       }
       // 2. Soporte Plataforma: Vé tickets EXTERNOS (De clientes, no de HQ)
       else if (rol === 'soporte-plataforma') {
@@ -351,6 +370,28 @@ const ticketController = {
       res.json({ msg: 'Ticket asignado automáticamente', ticket });
     } catch (error: any) {
       console.error('Error al asignar ticket (IA):', error);
+      res.status(500).json({ msg: error.message });
+    }
+  },
+
+  // DELETE /tickets/:id
+  async eliminar(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      if (!validarMongoId(id)) {
+        res.status(400).json({ msg: 'ID inválido' });
+        return;
+      }
+
+      // Solo admin-general/subroot pueden eliminar tickets fisicamente
+      if (!['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '')) {
+        res.status(403).json({ msg: 'No autorizado para eliminar tickets' });
+        return;
+      }
+
+      await ticketService.eliminarTicket(id);
+      res.json({ msg: 'Ticket eliminado correctamente' });
+    } catch (error: any) {
       res.status(500).json({ msg: error.message });
     }
   }

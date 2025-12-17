@@ -11,6 +11,7 @@ declare global {
         id: string;
         rol: string;
         empresaId?: string;
+        permisos?: string[];
       };
     }
   }

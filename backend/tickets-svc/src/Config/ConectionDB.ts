@@ -2,13 +2,18 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// __dirname y __filename ya existen en CommonJS, no uses import.meta.url
-// Solo hay que resolver la ruta al .env
+// ✅ Cargar variables de entorno solo en desarrollo
+const ENV = process.env.NODE_ENV || 'development';
 
-// Cargar .env desde AURONTEK/.env
-dotenv.config({
-    path: path.resolve(__dirname, '../../../../.env')
-});
+if (ENV === 'development') {
+    const localEnvPath = path.resolve(__dirname, '../../.env');
+    dotenv.config({ path: localEnvPath });
+    console.log(`[${ENV}] 🔍 Cargando .env desde:`, localEnvPath);
+}
+
+console.log(`[${ENV}] 🔍 MONGODB_URI:`, process.env.MONGODB_URI ? '✅ Configurada' : '❌ NO DEFINIDA');
+console.log(`[${ENV}] 🔍 RABBITMQ_URL:`, process.env.RABBITMQ_URL ? '✅ Configurada' : '❌ NO DEFINIDA');
+
 
 const connectDB = async (): Promise<void> => {
     try {

@@ -19,6 +19,11 @@ class TicketService {
     this._connecting = true;
 
     const url = process.env.RABBITMQ_URL || 'amqp://localhost';
+
+    // Debug: Mostrar valor de RABBITMQ_URL
+    console.log('🔍 DEBUG - RABBITMQ_URL:', process.env.RABBITMQ_URL ? 'Definida' : 'NO DEFINIDA');
+    console.log('🔍 DEBUG - URL a usar:', url.substring(0, 20) + '...');
+
     let attempt = 0;
     const MAX_ATTEMPTS = 3; // Limitar intentos
 
@@ -118,6 +123,33 @@ class TicketService {
 
   async crearTicket(datosTicket: any) {
     try {
+      // Calcular fecha de vencimiento basada en SLA del servicio (metadata)
+      if (datosTicket.metadata?.sla) {
+        const slaString = datosTicket.metadata.sla.toLowerCase();
+        let horas = 0;
+
+        // Parsear "X horas"
+        if (slaString.includes('horas') || slaString.includes('hora')) {
+          const matches = slaString.match(/(\d+)\s*horas?/);
+          if (matches && matches[1]) {
+            horas = parseInt(matches[1], 10);
+          }
+        }
+        // Parsear "X dias"
+        else if (slaString.includes('dias') || slaString.includes('día') || slaString.includes('días')) {
+          const matches = slaString.match(/(\d+)\s*d/);
+          if (matches && matches[1]) {
+            horas = parseInt(matches[1], 10) * 24;
+          }
+        }
+
+        if (horas > 0) {
+          datosTicket.tiempoResolucion = horas * 60; // Guardar en minutos para consistencia
+          datosTicket.fechaLimiteResolucion = new Date(Date.now() + horas * 60 * 60 * 1000);
+          console.log(`[SLA] Calculated due date: ${datosTicket.fechaLimiteResolucion} (${horas} hours)`);
+        }
+      }
+
       const nuevoTicket: any = await (Ticket as any).create(datosTicket);
 
       // Publicar evento para que la IA lo analice y sugiera asignación
@@ -152,26 +184,77 @@ class TicketService {
   async listarTickets(filtros: any = {}, options: any = {}) {
     const { pagina = 1, limite = 10, ordenar = { createdAt: -1 }, poblar = [] } = options;
     const skip = (Number(pagina) - 1) * Number(limite);
-    let query: any = (Ticket as any).find(filtros).sort(ordenar).skip(skip).limit(Number(limite));
-    poblar.forEach((p: string) => query = query.populate(p, 'nombre correo rol'));
-    const docs = await query.exec();
-    const total = await (Ticket as any).countDocuments(filtros);
-    return { data: docs, pagina: Number(pagina), limite: Number(limite), total };
+
+    try {
+      let query: any = (Ticket as any).find(filtros).sort(ordenar).skip(skip).limit(Number(limite));
+
+      // Only populate servicioId which is in the same database
+      // User references (usuarioCreador, agenteAsignado, tutor) are in usuarios-svc
+      const localPopulate = poblar.filter((p: string) => p === 'servicioId');
+      localPopulate.forEach((p: string) => query = query.populate(p));
+
+      const docs = await query.lean().exec();
+      const total = await (Ticket as any).countDocuments(filtros);
+
+      // Enrich tickets with user names
+      const enrichedDocs = await this.enrichTicketsWithUsers(docs);
+
+      return { data: enrichedDocs, pagina: Number(pagina), limite: Number(limite), total };
+    } catch (error) {
+      console.error('Error listing tickets:', error);
+      throw error;
+    }
   }
 
   async obtenerTicket(id: string, options: any = {}) {
     let q: any = (Ticket as any).findById(id);
-    (options.poblar || []).forEach((p: string) => (q = q.populate(p, 'nombre correo rol')));
-    const ticket = await q.exec();
+
+    // Only populate valid local refs (servicioId)
+    // Avoid populating users as they live in another service
+    const populateFields = (options.poblar || []).filter((p: string) => p === 'servicioId');
+    populateFields.forEach((p: string) => (q = q.populate(p)));
+
+    let ticket = await q.lean().exec();
     if (!ticket) throw new Error('Ticket no encontrado');
-    return ticket;
+
+    // Enrich single ticket with user data
+    const [enrichedTicket] = await this.enrichTicketsWithUsers([ticket]);
+    return enrichedTicket;
   }
 
-  async actualizarEstado(id: string, estado: string, usuarioId?: string) {
+  async actualizarEstado(id: string, estado: string, usuarioId?: string, motivo?: string) {
     const ticket: any = await (Ticket as any).findById(id);
     if (!ticket) throw new Error('Ticket no encontrado');
 
     const estadoAnterior = ticket.estado;
+
+    // Lógica de pausa de SLA
+    // Si está saliendo de "en_espera", calcular tiempo pausado
+    if (estadoAnterior === 'en_espera' && estado !== 'en_espera') {
+      if (ticket.fechaInicioEspera) {
+        const duracion = Date.now() - ticket.fechaInicioEspera.getTime();
+        ticket.tiempoEnEspera = (ticket.tiempoEnEspera || 0) + duracion;
+
+        // Agregar al historial
+        if (!ticket.historialEspera) ticket.historialEspera = [];
+        ticket.historialEspera.push({
+          inicio: ticket.fechaInicioEspera,
+          fin: new Date(),
+          duracion,
+          motivo: motivo || 'No especificado'
+        });
+
+        ticket.fechaInicioEspera = undefined;
+        console.log(`[SLA] Ticket ${id} salió de espera. Tiempo pausado: ${duracion}ms`);
+      }
+    }
+
+    // Si está entrando a "en_espera", marcar inicio
+    if (estadoAnterior !== 'en_espera' && estado === 'en_espera') {
+      ticket.fechaInicioEspera = new Date();
+      console.log(`[SLA] Ticket ${id} entró en espera. SLA pausado.`);
+    }
+
     ticket.estado = estado as any;
 
     // Actualizar fechas según el estado
@@ -191,7 +274,8 @@ class TicketService {
           id: ticket._id.toString(),
           estado,
           estadoAnterior,
-          actualizadoPor: usuarioId
+          actualizadoPor: usuarioId,
+          tiempoEnEspera: ticket.tiempoEnEspera
         }
       });
     } catch (e: any) {
@@ -400,28 +484,100 @@ class TicketService {
     }
   }
 
+  // Helper: Enrich tickets with user names from usuarios-svc
+  private async enrichTicketsWithUsers(tickets: any[]): Promise<any[]> {
+    try {
+      console.log('[ENRICH] Starting enrichment for', tickets.length, 'tickets');
+
+      // Collect unique user IDs
+      const userIds = new Set<string>();
+      tickets.forEach(ticket => {
+        if (ticket.usuarioCreador) userIds.add(ticket.usuarioCreador.toString());
+        if (ticket.agenteAsignado) userIds.add(ticket.agenteAsignado.toString());
+        if (ticket.tutor) userIds.add(ticket.tutor.toString());
+      });
+
+      console.log('[ENRICH] Found', userIds.size, 'unique user IDs:', Array.from(userIds));
+
+      if (userIds.size === 0) return tickets;
+
+      // Fetch user data from usuarios-svc
+      const USUARIOS_SVC_URL = process.env.USUARIOS_SVC_URL || 'http://localhost:3001';
+      const SERVICE_TOKEN = process.env.SERVICE_TOKEN;
+
+      console.log('[ENRICH] Using USUARIOS_SVC_URL:', USUARIOS_SVC_URL);
+      console.log('[ENRICH] SERVICE_TOKEN present:', !!SERVICE_TOKEN);
+
+      const userMap: Record<string, any> = {};
+
+      // Fetch users in parallel
+      await Promise.all(
+        Array.from(userIds).map(async (userId) => {
+          try {
+            const response = await axios.get(`${USUARIOS_SVC_URL}/usuarios/${userId}`, {
+              headers: {
+                'Authorization': `Bearer ${SERVICE_TOKEN}`
+              }
+            });
+            userMap[userId] = {
+              _id: userId,
+              nombre: response.data.nombre || 'N/A',
+              correo: response.data.correo || ''
+            };
+            console.log('[ENRICH] Fetched user', userId, ':', response.data.nombre);
+          } catch (error: any) {
+            console.error(`[ENRICH] Error fetching user ${userId}:`, error.message);
+            userMap[userId] = { _id: userId, nombre: userId.slice(-6), correo: '' };
+          }
+        })
+      );
+
+      console.log('[ENRICH] User map:', userMap);
+
+      // Enrich tickets
+      const enriched = tickets.map(ticket => ({
+        ...ticket,
+        usuarioCreador: ticket.usuarioCreador ? userMap[ticket.usuarioCreador.toString()] : null,
+        agenteAsignado: ticket.agenteAsignado ? userMap[ticket.agenteAsignado.toString()] : null,
+        tutor: ticket.tutor ? userMap[ticket.tutor.toString()] : null
+      }));
+
+      console.log('[ENRICH] Enrichment complete. Sample ticket:', enriched[0]);
+      return enriched;
+    } catch (error) {
+      console.error('[ENRICH] Error enriching tickets with users:', error);
+      return tickets; // Return original tickets if enrichment fails
+    }
+  }
+
   async listarTicketsEmpresas(filtros: any = {}) {
     const aurontekHQId = await this.obtenerAurontekHQId();
     const query: any = { ...filtros };
     if (aurontekHQId) query.empresaId = { $ne: aurontekHQId };
-    return await (Ticket as any).find(query)
-      .populate('empresaId', 'nombre rfc')
-      .populate('usuarioCreador', 'nombre correo')
-      .populate('agenteAsignado', 'nombre correo rol')
-      .populate('tutor', 'nombre correo')
-      .sort({ createdAt: -1 }).exec();
+    // Only populate servicioId - empresaId is just an ObjectId reference
+    const tickets = await (Ticket as any).find(query)
+      .populate('servicioId')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    // Enrich with user names
+    return await this.enrichTicketsWithUsers(tickets);
   }
 
   async listarTicketsInternos(filtros: any = {}) {
     const aurontekHQId = await this.obtenerAurontekHQId();
     if (!aurontekHQId) return [];
     const query: any = { ...filtros, empresaId: aurontekHQId };
-    return await (Ticket as any).find(query)
-      .populate('empresaId', 'nombre rfc')
-      .populate('usuarioCreador', 'nombre correo')
-      .populate('agenteAsignado', 'nombre correo rol')
-      .populate('tutor', 'nombre correo')
-      .sort({ createdAt: -1 }).exec();
+    // Only populate servicioId - empresaId is just an ObjectId reference
+    const tickets = await (Ticket as any).find(query)
+      .populate('servicioId')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    // Enrich with user names
+    return await this.enrichTicketsWithUsers(tickets);
   }
 
   async cambiarPrioridad(ticketId: string, prioridad: string) {
@@ -437,6 +593,17 @@ class TicketService {
     } catch (e: any) {
       console.error('No se pudo publicar prioridad actualizada:', e.message);
     }
+    return ticket;
+  }
+
+  async eliminarTicket(id: string) {
+    const ticket = await (Ticket as any).findByIdAndDelete(id);
+    if (!ticket) throw new Error('Ticket no encontrado');
+
+    try {
+      await this.publicarEvento('ticket.eliminado', { ticket: { id } });
+    } catch (e) { console.error('Error publicando ticket.eliminado', e); }
+
     return ticket;
   }
 }

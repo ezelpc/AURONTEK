@@ -1,10 +1,21 @@
-import app from './app';
-import mongoose from 'mongoose';
+// ✅ CRÍTICO: Cargar variables de entorno ANTES de cualquier importación
+// Esto asegura que las variables estén disponibles cuando los módulos se inicialicen
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Carga las variables de entorno de forma consistente
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+const ENV = process.env.NODE_ENV || 'development';
+
+if (ENV === 'development') {
+  const localEnvPath = path.resolve(__dirname, '../.env');
+  dotenv.config({ path: localEnvPath });
+  console.log(`[${ENV}] 📄 Cargando variables desde .env local`);
+}
+
+console.log(`[${ENV}] 🌍 Entorno detectado`);
+
+// Ahora sí, importar el resto de módulos
+import app from './app';
+import mongoose from 'mongoose';
 
 const PORT = process.env.TICKETS_PORT || 3002;
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;

@@ -1,6 +1,7 @@
 // Controllers/estadisticas.controller.ts
 import { Request, Response } from 'express';
 import estadisticasService from '../Services/estadisticas.service';
+import estadisticasAdminService from '../Services/estadisticas.admin.service';
 
 const estadisticasController = {
     /**
@@ -84,6 +85,15 @@ const estadisticasController = {
         } catch (error: any) {
             console.error('Error obteniendo estadísticas generales:', error);
             res.status(500).json({ msg: 'Error al obtener estadísticas', error: error.message });
+        }
+    },
+    async obtenerEstadisticasGlobales(req: Request, res: Response): Promise<void> {
+        try {
+            const stats = await estadisticasAdminService.getGlobalStats();
+            res.json(stats);
+        } catch (error: any) {
+            console.error('Error obteniendo estadísticas globales:', error);
+            res.status(500).json({ msg: 'Error al obtener estadísticas globales', error: error.message });
         }
     }
 };

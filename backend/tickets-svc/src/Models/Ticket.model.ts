@@ -31,6 +31,15 @@ export interface ITicket extends Document {
     comentario?: string;
     fecha: Date;
   };
+  // Campos para tracking de tiempo en espera (pausa de SLA)
+  tiempoEnEspera?: number; // Milisegundos acumulados en estado "en_espera"
+  fechaInicioEspera?: Date; // Cuando entró en estado "en_espera"
+  historialEspera?: Array<{
+    inicio: Date;
+    fin?: Date;
+    duracion?: number; // Milisegundos
+    motivo?: string;
+  }>;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -79,7 +88,17 @@ const ticketSchema = new Schema<ITicket>({
     puntuacion: { type: Number, min: 1, max: 5 },
     comentario: String,
     fecha: Date
-  }
+  },
+
+  // Campos para tracking de tiempo en espera
+  tiempoEnEspera: { type: Number, default: 0 }, // Milisegundos acumulados
+  fechaInicioEspera: Date,
+  historialEspera: [{
+    inicio: { type: Date, required: true },
+    fin: Date,
+    duracion: Number,
+    motivo: String
+  }]
 
 }, {
   collection: 'tickets',
