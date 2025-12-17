@@ -9,13 +9,12 @@ import { redisClient } from './config/redis';
 export const createApp = () => {
     const app = express();
 
-    // CORS - Permitir frontend en puerto 5000 (Vite) y 3000 (legacy)
-    // CORS - Permitir frontend en puerto 5000 (Vite) y 3000 (legacy) y 5173 (Vite default)
+    // CORS - Permitir todos los orígenes (el Edge Function de Vercel ya maneja CORS)
     app.use(cors({
-        origin: ['http://localhost:5000', 'http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+        origin: true, // Permitir cualquier origen (proxy maneja seguridad)
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
+        allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'X-Service-Token', 'X-Service-Name']
     }));
     app.use(helmet());
     app.use(morgan('dev'));

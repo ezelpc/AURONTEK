@@ -1,6 +1,7 @@
 # ia-svc/services/agent_assigner.py
 import httpx
 from typing import List, Dict
+from datetime import datetime, timedelta
 import os
 
 class AgentAssigner:
@@ -17,38 +18,56 @@ class AgentAssigner:
             'Content-Type': 'application/json'
         }
         
-    async def get_available_agents(self, empresa_id: str) -> List[Dict]:
-        """Obtener agentes disponibles (rol=soporte/RESOLUTOR) de una empresa"""
+    async def get_available_agents(self, grupo_atencion: str, empresa_id: str) -> List[Dict]:
+        """
+        Obtener agentes disponibles del grupo de atención específico
+        
+        Args:
+            grupo_atencion: Grupo técnico (ej: "Mesa de Servicio")
+            empresa_id: ID de la empresa
+        """
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                # Se buscan usuarios con rol 'soporte' que es el mapeo interno de Resolutor
+                # Buscar usuarios con rol 'resolutor-empresa' del grupo específico
                 response = await client.get(
                     f"{self.usuarios_service_url}/usuarios",
                     headers=self._get_headers(),
                     params={
                         "empresaId": empresa_id,
-                        "rol": "resolutor-empresa", # Updated from legacy 'soporte'
+                        "rol": "resolutor-empresa",
                         "activo": "true"
                     }
                 )
                 response.raise_for_status()
                 
                 data = response.json()
-                agents = data.get('data', data) if isinstance(data, dict) else data
+                all_agents = data.get('data', data) if isinstance(data, dict) else data
                 
-                print(f"✅ Obtenidos {len(agents)} agentes (Resolutores) para empresa {empresa_id}")
-                return agents
+                # Filtrar por grupo de atención
+                filtered_agents = [
+                    agent for agent in all_agents
+                    if grupo_atencion in agent.get('gruposDeAtencion', [])
+                ]
+                
+                print(f"✅ Obtenidos {len(filtered_agents)}/{len(all_agents)} agentes del grupo '{grupo_atencion}' para empresa {empresa_id}")
+                return filtered_agents
                 
             except Exception as e:
                 print(f"❌ Error al obtener agentes: {e}")
                 raise Exception(f"Error al obtener agentes: {e}")
             
-    async def get_agent_workload_details(self, agent_id: str, empresa_id: str) -> Dict:
+    async def get_tickets_for_agent(self, agent_id: str, empresa_id: str, states: List[str] = None) -> List[Dict]:
         """
-        Obtener detalles de carga de trabajo:
-        - Count total
-        - Weighted score (Critico=3, Alta=2, Media=1)
+        Obtener tickets de un agente
+        
+        Args:
+            agent_id: ID del agente
+            empresa_id: ID de la empresa
+            states: Lista de estados a filtrar (default: activos)
         """
+        if states is None:
+            states = ['abierto', 'en_proceso', 'en_espera']
+            
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
                 response = await client.get(
@@ -62,87 +81,262 @@ class AgentAssigner:
                 response.raise_for_status()
                 
                 data = response.json()
-                tickets = data.get('data', [])
+                all_tickets = data.get('data', [])
                 
-                # Filtrar activos
-                active_states = ['abierto', 'en_proceso', 'en_espera']
-                active_tickets = [t for t in tickets if t.get('estado') in active_states]
+                # Filtrar por estados
+                filtered_tickets = [
+                    t for t in all_tickets
+                    if t.get('estado') in states
+                ]
                 
-                count = len(active_tickets)
-                weighted_sum = 0
-                
-                # Calcular peso basado en prioridad
-                priority_weights = {
-                    'critica': 3,
-                    'alta': 2,
-                    'media': 1,
-                    'baja': 0.5
-                }
-                
-                for t in active_tickets:
-                    prio = t.get('prioridad', 'media').lower()
-                    weighted_sum += priority_weights.get(prio, 1)
-                
-                return {
-                    "count": count,
-                    "weighted_sum": weighted_sum
-                }
+                return filtered_tickets
                 
             except Exception as e:
-                print(f"⚠️ Error al obtener carga para agente {agent_id}: {e}. Asumiendo carga 0.")
-                return {"count": 0, "weighted_sum": 0}
+                print(f"⚠️ Error al obtener tickets para agente {agent_id}: {e}")
+                return []
+    
+    def calculate_ticket_age_days(self, ticket: Dict) -> float:
+        """Calcula la edad del ticket en días desde su asignación"""
+        fecha_asignacion = ticket.get('fechaAsignacion')
+        if not fecha_asignacion:
+            # Fallback a createdAt si no hay fechaAsignacion
+            fecha_asignacion = ticket.get('createdAt')
+        
+        if not fecha_asignacion:
+            return 0.0
+        
+        try:
+            # Parsear fecha (puede venir como string ISO o Date)
+            if isinstance(fecha_asignacion, str):
+                fecha = datetime.fromisoformat(fecha_asignacion.replace('Z', '+00:00'))
+            else:
+                fecha = fecha_asignacion
             
-    def calculate_agent_score(self, agent: Dict, ticket: Dict, workload_data: Dict) -> float:
+            delta = datetime.now() - fecha.replace(tzinfo=None)
+            return delta.total_seconds() / 86400  # Convertir a días
+        except:
+            return 0.0
+    
+    def is_ticket_stagnant(self, ticket: Dict, hours_threshold: int = 48) -> bool:
         """
-        Calcula el score de asignación.
-        Reglas:
-        1. Habilidad requerida obligatoria.
-        2. Prioridad absoluta: Menor cantidad de tickets.
-        3. Desempate: Menor carga ponderada (menos tickets críticos).
-        """
-        score = 1000.0 # Base alta
+        Determina si un ticket está estancado (sin actualización en X horas)
         
-        # 1. Filtro por Habilidad
-        required_skill = ticket.get('grupo_atencion')
-        if not required_skill:
-             # Si no tiene grupo, asumimos que cualquiera puede tomarlo o es Mesa de Servicio
-            pass 
+        Args:
+            ticket: Diccionario del ticket
+            hours_threshold: Horas sin actualización para considerar estancado
+        """
+        updated_at = ticket.get('updatedAt')
+        if not updated_at:
+            return False
+        
+        try:
+            if isinstance(updated_at, str):
+                fecha = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+            else:
+                fecha = updated_at
+            
+            delta = datetime.now() - fecha.replace(tzinfo=None)
+            hours_since_update = delta.total_seconds() / 3600
+            
+            return hours_since_update > hours_threshold
+        except:
+            return False
+            
+    async def calculate_agent_metrics(self, agent_id: str, empresa_id: str) -> Dict:
+        """
+        Calcula métricas completas del agente incluyendo anti-gaming
+        
+        Returns:
+            {
+                "active_count": int,
+                "active_weighted": float,
+                "avg_ticket_age_days": float,
+                "stagnant_count": int,
+                "resolution_velocity": float,
+                "efficiency_ratio": float,
+                "gaming_penalty": float
+            }
+        """
+        # Obtener tickets activos
+        active_tickets = await self.get_tickets_for_agent(agent_id, empresa_id)
+        
+        # Obtener tickets históricos (últimos 30 días para eficiencia)
+        now = datetime.now()
+        thirty_days_ago = now - timedelta(days=30)
+        seven_days_ago = now - timedelta(days=7)
+        
+        # Obtener todos los tickets del agente (activos + cerrados recientes)
+        all_states = ['abierto', 'en_proceso', 'en_espera', 'resuelto', 'cerrado']
+        all_tickets = await self.get_tickets_for_agent(agent_id, empresa_id, all_states)
+        
+        # Filtrar tickets de últimos 30 días
+        recent_tickets = [
+            t for t in all_tickets
+            if self._is_ticket_recent(t, thirty_days_ago)
+        ]
+        
+        # Calcular métricas básicas
+        active_count = len(active_tickets)
+        
+        # Peso ponderado por prioridad
+        priority_weights = {
+            'critica': 3,
+            'crítica': 3,
+            'alta': 2,
+            'media': 1,
+            'baja': 0.5
+        }
+        
+        active_weighted = sum(
+            priority_weights.get(t.get('prioridad', 'media').lower(), 1)
+            for t in active_tickets
+        )
+        
+        # Calcular edad promedio de tickets activos
+        if active_tickets:
+            ages = [self.calculate_ticket_age_days(t) for t in active_tickets]
+            avg_ticket_age_days = sum(ages) / len(ages)
         else:
-            agent_skills = set(agent.get('habilidades', []))
-            if required_skill not in agent_skills:
-                print(f"❌ Agente {agent.get('nombre')} NO tiene habilidad '{required_skill}'")
-                return -float('inf')
+            avg_ticket_age_days = 0.0
         
-        # 2. Penalización por Cantidad de Tickets (Factor Dominante)
-        # Queremos que la diferencia en cantidad pese MÁS que la seguridad propia.
-        # Ejemplo: 
-        # A tiene 2 tickets pesados (Weight 6). Penalty: (2 * 100) + 6 = 206
-        # B tiene 5 tickets ligeros (Weight 5). Penalty: (5 * 100) + 5 = 505
-        # Score A > Score B. A gana.
+        # Contar tickets estancados
+        stagnant_count = sum(
+            1 for t in active_tickets
+            if self.is_ticket_stagnant(t, hours_threshold=48)
+        )
         
-        count = workload_data['count']
-        weighted = workload_data['weighted_sum']
+        # Calcular velocidad de resolución (tickets cerrados últimos 7 días)
+        closed_last_7_days = [
+            t for t in recent_tickets
+            if t.get('estado') in ['resuelto', 'cerrado']
+            and self._is_ticket_recent(t, seven_days_ago)
+        ]
+        resolution_velocity = len(closed_last_7_days) / 7.0
         
-        count_penalty = count * 100  # Gran peso a la cantidad
-        weight_penalty = weighted * 1    # Peso menor a la severidad interna
+        # Calcular eficiencia (ratio de tickets cerrados vs asignados en 30 días)
+        assigned_last_30 = len(recent_tickets)
+        closed_last_30 = len([
+            t for t in recent_tickets
+            if t.get('estado') in ['resuelto', 'cerrado']
+        ])
         
-        score -= (count_penalty + weight_penalty)
+        efficiency_ratio = closed_last_30 / assigned_last_30 if assigned_last_30 > 0 else 1.0
         
-        return score
+        # Calcular penalización por gaming
+        gaming_penalty = self._calculate_gaming_penalty({
+            'avg_ticket_age_days': avg_ticket_age_days,
+            'stagnant_count': stagnant_count,
+            'resolution_velocity': resolution_velocity,
+            'efficiency_ratio': efficiency_ratio
+        })
+        
+        return {
+            'active_count': active_count,
+            'active_weighted': active_weighted,
+            'avg_ticket_age_days': round(avg_ticket_age_days, 2),
+            'stagnant_count': stagnant_count,
+            'resolution_velocity': round(resolution_velocity, 2),
+            'efficiency_ratio': round(efficiency_ratio, 2),
+            'gaming_penalty': round(gaming_penalty, 2)
+        }
+    
+    def _is_ticket_recent(self, ticket: Dict, since_date: datetime) -> bool:
+        """Verifica si un ticket fue creado después de una fecha"""
+        created_at = ticket.get('createdAt')
+        if not created_at:
+            return False
+        
+        try:
+            if isinstance(created_at, str):
+                fecha = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            else:
+                fecha = created_at
+            
+            return fecha.replace(tzinfo=None) >= since_date
+        except:
+            return False
+    
+    def _calculate_gaming_penalty(self, metrics: Dict) -> float:
+        """
+        Calcula penalización por comportamiento de gaming
+        
+        Retorna: Valor entre 0 (sin gaming) y 1000+ (gaming severo)
+        """
+        penalty = 0.0
+        
+        # 1. Penalización por Tickets Viejos
+        # Si promedio > 3 días, penalizar exponencialmente
+        if metrics['avg_ticket_age_days'] > 3:
+            penalty += (metrics['avg_ticket_age_days'] - 3) ** 2 * 50
+        
+        # 2. Penalización por Tickets Estancados
+        # Cada ticket sin actualización en 48h = 100 puntos
+        penalty += metrics['stagnant_count'] * 100
+        
+        # 3. Penalización por Baja Velocidad de Resolución
+        # Si resuelve < 0.5 tickets/día, penalizar
+        if metrics['resolution_velocity'] < 0.5:
+            penalty += (0.5 - metrics['resolution_velocity']) * 200
+        
+        # 4. Penalización por Baja Eficiencia
+        # Si eficiencia < 0.7 (cierra menos del 70% de lo asignado)
+        if metrics['efficiency_ratio'] < 0.7:
+            penalty += (0.7 - metrics['efficiency_ratio']) * 300
+        
+        return penalty
+        
+    def calculate_assignment_score(self, agent: Dict, metrics: Dict) -> float:
+        """
+        Calcula score final para asignación
+        
+        Mayor score = Mejor candidato
+        """
+        base_score = 10000
+        
+        # 1. Penalización por Cantidad (Prioridad #1)
+        count_penalty = metrics['active_count'] * 150
+        
+        # 2. Penalización por Peso de Prioridades
+        weight_penalty = metrics['active_weighted'] * 50
+        
+        # 3. Penalización por Gaming (NUEVO)
+        gaming_penalty = metrics['gaming_penalty']
+        
+        # 4. Bonus por Alta Velocidad de Resolución
+        velocity_bonus = metrics['resolution_velocity'] * 100
+        
+        # 5. Bonus por Alta Eficiencia
+        efficiency_bonus = metrics['efficiency_ratio'] * 200
+        
+        final_score = (
+            base_score 
+            - count_penalty 
+            - weight_penalty 
+            - gaming_penalty 
+            + velocity_bonus 
+            + efficiency_bonus
+        )
+        
+        return final_score
         
     async def assign_ticket(self, ticket: Dict) -> Dict:
         """Asignar el ticket al mejor Resolutor disponible"""
         
         empresa_id = ticket.get('empresaId')
+        grupo_atencion = ticket.get('grupo_atencion')
+        
         if not empresa_id:
             raise Exception("Ticket no tiene empresaId")
         
-        # 1. Obtener agentes
-        agents = await self.get_available_agents(empresa_id)
+        if not grupo_atencion:
+            raise Exception("Ticket no tiene grupo_atencion definido")
+        
+        # 1. Obtener agentes del grupo específico
+        agents = await self.get_available_agents(grupo_atencion, empresa_id)
         if not agents:
-            raise Exception(f"No hay Resolutores disponibles para empresaId {empresa_id}")
+            raise Exception(f"No hay Resolutores disponibles en el grupo '{grupo_atencion}' para empresaId {empresa_id}")
             
-        print(f"📋 Evaluando {len(agents)} Resolutores...")
+        print(f"📋 Evaluando {len(agents)} Resolutores del grupo '{grupo_atencion}'...")
         
         agent_scores = []
         
@@ -151,33 +345,31 @@ class AgentAssigner:
             agent_id = agent.get('_id') or agent.get('id')
             agent['id'] = agent_id
             
-            # Obtener carga detallada
-            workload = await self.get_agent_workload_details(agent_id, empresa_id)
-            agent['carga_detallada'] = workload
+            # Obtener métricas completas (incluyendo anti-gaming)
+            metrics = await self.calculate_agent_metrics(agent_id, empresa_id)
+            agent['metrics'] = metrics
             
             # Calcular Score
-            score = self.calculate_agent_score(agent, ticket, workload)
+            score = self.calculate_assignment_score(agent, metrics)
             
             agent_scores.append((agent, score))
-            print(f"   👤 {agent.get('nombre')} | Tickets: {workload['count']} (Peso: {workload['weighted_sum']}) | Score: {score}")
+            
+            # Log detallado
+            print(f"   👤 {agent.get('nombre')}")
+            print(f"      Tickets Activos: {metrics['active_count']} (Peso: {metrics['active_weighted']})")
+            print(f"      Edad Promedio: {metrics['avg_ticket_age_days']} días")
+            print(f"      Estancados: {metrics['stagnant_count']}")
+            print(f"      Velocidad: {metrics['resolution_velocity']} tickets/día")
+            print(f"      Eficiencia: {metrics['efficiency_ratio']*100:.0f}%")
+            print(f"      Gaming Penalty: {metrics['gaming_penalty']}")
+            print(f"      ⭐ Score Final: {score:.2f}")
         
-        # 3. Filtrar elegibles
-        valid_agents = [item for item in agent_scores if item[1] > -float('inf')]
-        
-        if not valid_agents:
-            print(f"⚠️ Ningún agente tiene la habilidad '{ticket.get('grupo_atencion', 'N/A')}'. Intentando fallback a Mesa de Servicio.")
-            # Fallback logic podría ir aquí si se requiere
-            # Por ahora, devolvemos el menos ocupado aunque no tenga la skill (o fail)
-            # User requirement imply strict matching usually, but fallback is safer.
-            # Vamos a asignar al que tenga menos carga general como último recurso
-            best_fallback = min(agent_scores, key=lambda x: (x[0]['carga_detallada']['count']))
-            print(f"⚠️ Asignación forzada por falta de skills a: {best_fallback[0].get('nombre')}")
-            return best_fallback[0]
-
-        # 4. Seleccionar Mejor Candidato
-        best_agent_tuple = max(valid_agents, key=lambda x: x[1])
+        # 3. Seleccionar Mejor Candidato
+        best_agent_tuple = max(agent_scores, key=lambda x: x[1])
         best_agent = best_agent_tuple[0]
+        best_score = best_agent_tuple[1]
         
-        print(f"✅ ASIGNADO A: {best_agent.get('nombre')} (Carga: {best_agent['carga_detallada']['count']})")
+        print(f"\n✅ ASIGNADO A: {best_agent.get('nombre')} (Score: {best_score:.2f})")
+        print(f"   Carga Actual: {best_agent['metrics']['active_count']} tickets")
         
         return best_agent

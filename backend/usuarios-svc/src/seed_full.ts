@@ -16,6 +16,7 @@ const UsuarioSchema = new mongoose.Schema({
   rol: String,
   puesto: String,
   habilidades: [String],
+  gruposDeAtencion: [String], // Grupos técnicos de atención
   permissions: [String], // RBAC User-Centric
   estado_actividad: { type: String, enum: ['available', 'busy', 'offline'], default: 'offline' },
   activo: { type: Boolean, default: true },
@@ -529,6 +530,7 @@ async function seed() {
         rol: 'soporte-plataforma',
         puesto: 'Agente N2',
         habilidades: ['Plataforma Aurontek', 'Facturación'],
+        gruposDeAtencion: ['Mesa de Servicio', 'Soporte'],
         permissions: ['tickets.view_all_global', 'tickets.change_status', 'chat.read', 'chat.write', 'users.view_global'],
         estado_actividad: 'available'
       },
@@ -539,6 +541,7 @@ async function seed() {
         rol: 'soporte-plataforma', // Using generic support role for now or could create sales role
         puesto: 'Ejecutivo Ventas',
         habilidades: ['Ventas', 'Facturación'],
+        gruposDeAtencion: ['Ventas'],
         permissions: ['tickets.view_all_global', 'chat.read', 'chat.write'],
         estado_actividad: 'busy'
       },
@@ -549,6 +552,7 @@ async function seed() {
         empresa: testSA._id,
         rol: 'admin-interno',
         puesto: 'Gerente TI',
+        gruposDeAtencion: ['Administración'],
         permissions: ['companies.view_all', 'users.view', 'users.create', 'tickets.create', 'tickets.view_all', 'servicios.manage_local', 'servicios.import', 'users.recover_password_local'],
         estado_actividad: 'offline'
       },
@@ -558,6 +562,7 @@ async function seed() {
         empresa: testSA._id,
         rol: 'cliente-final',
         puesto: 'Contador',
+        gruposDeAtencion: [],
         permissions: ['tickets.create', 'tickets.view_created', 'chat.create'],
         estado_actividad: 'available'
       },
@@ -568,6 +573,7 @@ async function seed() {
         empresa: innovatech._id,
         rol: 'admin-interno',
         puesto: 'CTO',
+        gruposDeAtencion: ['Administración', 'Soporte IT'],
         permissions: ['companies.view_all', 'users.create', 'tickets.create', 'tickets.view_all', 'servicios.manage_local'],
         estado_actividad: 'busy'
       },
@@ -577,6 +583,7 @@ async function seed() {
         empresa: innovatech._id,
         rol: 'dev',
         puesto: 'Senior Developer',
+        gruposDeAtencion: [],
         permissions: ['tickets.create', 'tickets.view_created'],
         estado_actividad: 'offline'
       },
@@ -587,6 +594,7 @@ async function seed() {
         empresa: globalLogistics._id,
         rol: 'admin-interno',
         puesto: 'Gerente Operaciones',
+        gruposDeAtencion: ['Administración', 'Taller'],
         permissions: ['companies.view_all', 'users.create', 'tickets.create'],
         estado_actividad: 'available'
       },
@@ -597,6 +605,7 @@ async function seed() {
         empresa: ecoEnergy._id,
         rol: 'admin-interno',
         puesto: 'Director',
+        gruposDeAtencion: ['Administración'],
         permissions: ['companies.view_all', 'users.create', 'tickets.create'],
         estado_actividad: 'offline'
       }

@@ -39,6 +39,7 @@ const UsuarioSchema = new Schema({
     required: function (this: any) { return this.rol !== 'admin-general'; }
   },
   habilidades: [{ type: String }],
+  gruposDeAtencion: [{ type: String }], // Grupos técnicos de atención (ej: "Mesa de Servicio", "Telecomunicaciones")
   fotoPerfil: { type: String, default: null }
 }, {
   timestamps: {

@@ -13,8 +13,10 @@ export interface ITicket extends Document {
   empresaId: mongoose.Types.ObjectId;
   usuarioCreador: mongoose.Types.ObjectId;
   agenteAsignado?: mongoose.Types.ObjectId;
+  fechaAsignacion?: Date; // Timestamp de asignación al agente (para detectar estancamiento)
   tutor?: mongoose.Types.ObjectId;
   etiquetas?: string[];
+  grupo_atencion?: string; // Grupo técnico responsable (ej: "Mesa de Servicio")
   adjuntos?: Array<{
     nombre: string;
     url: string;
@@ -69,12 +71,15 @@ const ticketSchema = new Schema<ITicket>({
     ref: 'Usuario'
   },
 
+  fechaAsignacion: Date, // Timestamp de cuando se asignó el agente
+
   tutor: {
     type: Schema.Types.ObjectId,
     ref: 'Usuario'
   },
 
   etiquetas: [String],
+  grupo_atencion: { type: String, trim: true }, // Grupo técnico asignado
   adjuntos: [{ nombre: String, url: String, tipo: String }],
 
   tiempoRespuesta: Number,
