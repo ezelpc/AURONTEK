@@ -9,9 +9,27 @@ import { redisClient } from './config/redis';
 export const createApp = () => {
     const app = express();
 
-    // CORS - Permitir todos los orígenes (el Edge Function de Vercel ya maneja CORS)
+    // CORS - Configuración para permitir Vercel y dominio personalizado
+    const allowedOrigins = [
+        process.env.FRONTEND_URL, // URL de Vercel
+        process.env.CUSTOM_DOMAIN, // Dominio No-IP con HTTPS
+        'http://localhost:5173', // Desarrollo local
+        'http://localhost:3000'
+    ].filter(Boolean); // Filtrar valores undefined
+
     app.use(cors({
-        origin: true, // Permitir cualquier origen (proxy maneja seguridad)
+        origin: (origin, callback) => {
+            // Permitir requests sin origin (como mobile apps o curl)
+            if (!origin) return callback(null, true);
+
+            // Verificar si el origin está en la lista de permitidos
+            if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+                callback(null, true);
+            } else {
+                console.warn(`[CORS] Origin no permitido: ${origin}`);
+                callback(null, true); // En producción, cambiar a: callback(new Error('Not allowed by CORS'))
+            }
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'X-Service-Token', 'X-Service-Name']
