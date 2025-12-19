@@ -4,33 +4,74 @@ Esta guía te ayudará a configurar SSL en tu servidor AWS EC2 usando un dominio
 
 ## 📋 Requisitos Previos
 
-Antes de comenzar, asegúrate de tener:
+> [!IMPORTANT]
+> Este script **DEBE ejecutarse en el servidor EC2**, NO en tu máquina local.
 
-1. ✅ **Dominio de No-IP** configurado y apuntando a tu IP pública de EC2
-2. ✅ **Acceso SSH** a tu instancia EC2
+> [!WARNING]
+> Asegúrate de tener acceso SSH a tu instancia EC2 antes de continuar.
+
+Antes de comenzar, verifica que tienes:
+
+1. ✅ **Acceso SSH a tu EC2**
+   ```bash
+   # Prueba la conexión SSH
+   ssh -i tu-llave.pem ubuntu@tu-ip-ec2
+   ```
+
+2. ✅ **Dominio de No-IP** configurado y apuntando a tu IP pública de EC2
+   ```bash
+   # Verifica que tu dominio apunta a tu EC2
+   nslookup aurontekhq-api.ddns.net
+   ```
+
 3. ✅ **Puertos abiertos** en el Security Group de AWS:
    - Puerto 22 (SSH)
-   - Puerto 80 (HTTP)
+   - Puerto 80 (HTTP) - **Requerido para validación de Certbot**
    - Puerto 443 (HTTPS)
+
 4. ✅ **Docker y Docker Compose** instalados en EC2
+
 5. ✅ **Backend corriendo** en el puerto 3000 (Gateway)
+   ```bash
+   # Verifica desde el servidor EC2
+   curl http://localhost:3000/health
+   ```
 
 ## 🚀 Instalación Rápida (Recomendado)
 
-### Paso 1: Conectar a tu EC2
+> [!CAUTION]
+> Todos estos comandos deben ejecutarse **DENTRO del servidor EC2**, no en tu máquina local.
+
+### Paso 1: Conectar a tu EC2 vía SSH
+
+**Desde tu máquina local Windows**, abre PowerShell o Git Bash y conéctate:
 
 ```bash
-ssh -i tu-llave.pem ubuntu@tu-ip-publica
+# Reemplaza con tu información
+ssh -i ruta/a/tu-llave.pem ubuntu@tu-ip-ec2
+
+# Ejemplo:
+# ssh -i C:/Users/tu-usuario/Downloads/aurontek-key.pem ubuntu@18.191.123.45
 ```
 
-### Paso 2: Clonar el repositorio (si no lo has hecho)
+### Paso 2: Verificar o clonar el repositorio en EC2
+
+**Ahora estás dentro del servidor EC2**. Verifica si el repositorio ya existe:
 
 ```bash
+# Verificar si existe el directorio
+ls -la AURONTEK
+
+# Si NO existe, clónalo:
 git clone https://github.com/tu-usuario/AURONTEK.git
+
+# Entrar al directorio
 cd AURONTEK
 ```
 
-### Paso 3: Ejecutar el script de instalación
+### Paso 3: Ejecutar el script de instalación SSL
+
+**Dentro del directorio AURONTEK en EC2**:
 
 ```bash
 # Dar permisos de ejecución al script
@@ -197,6 +238,25 @@ https://tu-dominio.ddns.net/api/health
 Deberías ver el candado verde de SSL y una respuesta JSON.
 
 ## 🔧 Troubleshooting
+
+### Problema: "No se encontró el archivo de configuración de Nginx"
+
+**Causa:** Estás ejecutando el script en tu máquina local en lugar del servidor EC2.
+
+**Solución:**
+1. Conéctate a tu servidor EC2 vía SSH
+2. Clona el repositorio en EC2 si no lo has hecho
+3. Ejecuta el script desde el directorio raíz del proyecto en EC2
+
+```bash
+# Desde tu máquina local, conéctate a EC2
+ssh -i tu-llave.pem ubuntu@tu-ip-ec2
+
+# Dentro de EC2, clona y ejecuta
+git clone https://github.com/tu-usuario/AURONTEK.git
+cd AURONTEK
+sudo ./scripts/setup-ssl.sh
+```
 
 ### Problema: "Connection refused" al acceder a HTTPS
 
