@@ -15,7 +15,7 @@ export const createApp = () => {
         process.env.CUSTOM_DOMAIN, // Dominio No-IP con HTTPS
         'http://localhost:5173', // Desarrollo local
         'http://localhost:3000'
-    ].filter(Boolean); // Filtrar valores undefined
+    ].filter(Boolean) as string[]; // Filtrar valores undefined y asegurar tipo string[]
 
     app.use(cors({
         origin: (origin, callback) => {
