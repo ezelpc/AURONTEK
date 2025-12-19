@@ -35,6 +35,8 @@ services:
       NOTIFICATIONS_SERVICE_URL: http://notificaciones-svc:3004
       RATE_LIMIT: ${RATE_LIMIT:-100}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      FRONTEND_URL: ${FRONTEND_URL} # URL de Vercel para CORS
+      CUSTOM_DOMAIN: ${CUSTOM_DOMAIN} # Dominio No-IP con HTTPS
       NODE_OPTIONS: "--max-old-space-size=256"
     depends_on:
       redis:
