@@ -58,9 +58,24 @@ Las siguientes variables deben estar configuradas en los secretos del repositori
 | `RABBITMQ_URL` | URL de conexión a RabbitMQ (CloudAMQP) |
 | `REDIS_URL` | **(Nuevo)** URL de conexión a Redis |
 | `SERVICE_TOKEN` | **(Nuevo)** Token para autenticación entre microservicios |
-| `FRONTEND_URL` | **(Nuevo)** URL del frontend para configuración CORS |
+| `FRONTEND_URL` | **(Nuevo)** URL del frontend en Vercel para configuración CORS |
+| `CUSTOM_DOMAIN` | **(Nuevo)** Dominio personalizado con HTTPS (ej: https://tuapp.ddns.net) |
 | `RECAPTCHA_TEST_TOKEN` | **(Nuevo)** Token de prueba para bypass de reCAPTCHA en tests |
 | `JWT_SECRET` | Secret para firma de tokens JWT |
+
+## 4. Configuración de SSL con Dominio Personalizado
+
+Si deseas usar un dominio personalizado (como No-IP) con SSL:
+
+1. **Configurar dominio**: Apunta tu dominio a la IP pública de EC2
+2. **Instalar SSL**: Ejecuta el script automatizado:
+   ```bash
+   sudo ./scripts/setup-ssl.sh
+   ```
+3. **Configurar variables**: Agrega `CUSTOM_DOMAIN` a tus variables de entorno
+4. **Actualizar Vercel**: Cambia `VITE_API_URL` a tu dominio personalizado
+
+Para más detalles, consulta [SSL_SETUP_GUIDE.md](./SSL_SETUP_GUIDE.md).
 
 ## 5. Monitoreo y Logs
 
