@@ -112,13 +112,37 @@ NGINX_ENABLED="/etc/nginx/sites-enabled/aurontek"
 
 # Buscar el archivo de configuración en el directorio actual
 if [ -f "./nginx/aurontek.conf" ]; then
+    print_info "Usando archivo local: ./nginx/aurontek.conf"
     cp ./nginx/aurontek.conf $NGINX_CONF
 elif [ -f "./aurontek.conf" ]; then
+    print_info "Usando archivo local: ./aurontek.conf"
     cp ./aurontek.conf $NGINX_CONF
 else
-    print_error "No se encontró el archivo de configuración de Nginx"
-    print_info "Asegúrate de ejecutar este script desde el directorio raíz del proyecto"
-    exit 1
+    print_warning "No se encontró el archivo de configuración localmente"
+    print_info "Descargando configuración desde GitHub..."
+    
+    # URL del archivo en GitHub (raw)
+    GITHUB_RAW_URL="https://raw.githubusercontent.com/ezelpc/AURONTEK/main/nginx/aurontek.conf"
+    
+    # Descargar usando curl o wget
+    if command -v curl &> /dev/null; then
+        curl -fsSL "$GITHUB_RAW_URL" -o $NGINX_CONF
+    elif command -v wget &> /dev/null; then
+        wget -q "$GITHUB_RAW_URL" -O $NGINX_CONF
+    else
+        print_error "No se encontró curl ni wget para descargar el archivo"
+        print_info "Por favor, instala curl o wget, o ejecuta el script desde el directorio del proyecto"
+        exit 1
+    fi
+    
+    if [ $? -eq 0 ]; then
+        print_info "Archivo de configuración descargado exitosamente"
+    else
+        print_error "Error al descargar el archivo de configuración"
+        print_info "Verifica tu conexión a internet o descarga manualmente desde:"
+        print_info "$GITHUB_RAW_URL"
+        exit 1
+    fi
 fi
 
 # Reemplazar variables en el archivo de configuración

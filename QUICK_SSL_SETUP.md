@@ -3,6 +3,9 @@
 > [!IMPORTANT]
 > Esta guía asume que ya tienes tu backend desplegado en EC2 y un dominio de No-IP configurado.
 
+> [!TIP]
+> **¿Quieres evitar clonar todo el repo en producción?** Consulta [PRODUCTION_SSL_SETUP.md](./PRODUCTION_SSL_SETUP.md) para métodos optimizados que solo descargan los archivos necesarios.
+
 ## ⚡ Pasos Rápidos
 
 ### 1️⃣ Conectar a EC2 (desde tu máquina local)

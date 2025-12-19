@@ -39,6 +39,9 @@ Antes de comenzar, verifica que tienes:
 
 ## 🚀 Instalación Rápida (Recomendado)
 
+> [!TIP]
+> **Para producción sin clonar el repo completo**: Consulta [PRODUCTION_SSL_SETUP.md](./PRODUCTION_SSL_SETUP.md) para configurar SSL descargando solo los archivos necesarios (~10 KB vs ~50+ MB).
+
 > [!CAUTION]
 > Todos estos comandos deben ejecutarse **DENTRO del servidor EC2**, no en tu máquina local.
 
