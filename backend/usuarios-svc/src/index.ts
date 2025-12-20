@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
-import express, { Request, Response, Application } from 'express';
+import express, { Request, Response } from 'express';
 import connectDB from './Config/ConectionDB';
-import cors from 'cors';
 import path from 'path';
 
 // Rutas
@@ -38,9 +37,8 @@ async function main() {
     const PORT = process.env.USUARIOS_PORT || 3001;
 
     // Middlewares globales
-    app.use(cors());
     app.use(express.json());
-
+    // CORS manejado por el Gateway, no agregar aquí
     // Conexión a MongoDB
     await connectDB();
 
