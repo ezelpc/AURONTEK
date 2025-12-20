@@ -19,15 +19,22 @@ export const createApp = () => {
 
     app.use(cors({
         origin: (origin, callback) => {
-            // Permitir requests sin origin (como mobile apps o curl)
-            if (!origin) return callback(null, true);
+            // Permitir requests sin origin SOLO en desarrollo (como Postman, curl)
+            if (!origin && process.env.NODE_ENV !== 'production') {
+                return callback(null, true);
+            }
+
+            // En producción, rechazar requests sin origin
+            if (!origin) {
+                return callback(new Error('Origin not allowed by CORS'));
+            }
 
             // Verificar si el origin está en la lista de permitidos
             if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
                 callback(null, true);
             } else {
                 console.warn(`[CORS] Origin no permitido: ${origin}`);
-                callback(null, true); // En producción, cambiar a: callback(new Error('Not allowed by CORS'))
+                callback(new Error('Not allowed by CORS'));
             }
         },
         credentials: true,
