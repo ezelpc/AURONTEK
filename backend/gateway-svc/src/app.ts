@@ -41,7 +41,11 @@ export const createApp = () => {
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'X-Service-Token', 'X-Service-Name']
     }));
-    app.use(helmet());
+
+    // Helmet - Security headers (CORS disabled, we handle it above)
+    app.use(helmet({
+        crossOriginResourcePolicy: false // Disable CORS in helmet, we handle it separately
+    }));
     app.use(morgan('dev'));
 
     // Logging Middleware
