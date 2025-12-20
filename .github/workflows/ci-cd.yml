@@ -68,18 +68,17 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       #########################################################################
-      # Build and Push all services to Docker Hub
+      # Build and Push all services to Docker Hub (NO CACHE)
       #########################################################################
       - name: Build & Push ${{ matrix.service }}
         uses: docker/build-push-action@v5
         with:
           context: ./backend/${{ matrix.service }}
           push: true
+          no-cache: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/aurontek-${{ matrix.service }}:latest
             ${{ secrets.DOCKER_USERNAME }}/aurontek-${{ matrix.service }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/aurontek-${{ matrix.service }}:latest
-          cache-to: type=inline
 
   deploy-to-ec2:
     name: Deploy to Production (EC2)
