@@ -37,7 +37,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       FRONTEND_URL: ${FRONTEND_URL} # URL de Vercel para CORS
       CUSTOM_DOMAIN: ${CUSTOM_DOMAIN} # Dominio No-IP con HTTPS
-      NODE_OPTIONS: "--max-old-space-size=256"
+      NODE_OPTIONS: "--max-old-space-size=300"
     depends_on:
       redis:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
         condition: service_healthy
       chat-svc:
         condition: service_healthy
-    mem_limit: 150m
+    mem_limit: 180m
     restart: always
     logging:
       driver: json-file
