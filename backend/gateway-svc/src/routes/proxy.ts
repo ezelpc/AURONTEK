@@ -41,6 +41,13 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
             console.log(`[PROXY AUTH] Rewriting: ${path} -> ${newPath}`);
             return newPath;
         },
+        onProxyRes: (proxyRes: any, req: any, res: any) => {
+            // Remove CORS headers from proxied response - Gateway handles CORS
+            delete proxyRes.headers['access-control-allow-origin'];
+            delete proxyRes.headers['access-control-allow-credentials'];
+            delete proxyRes.headers['access-control-allow-methods'];
+            delete proxyRes.headers['access-control-allow-headers'];
+        },
         logLevel: 'debug'
     } as Options));
 
