@@ -1,4 +1,4 @@
-import { transporter } from '../config/smtp.config';
+import { resendClient } from '../config/resend.config';
 
 interface EmailOptions {
   to: string;
@@ -8,18 +8,20 @@ interface EmailOptions {
 
 export const sendEmail = async ({ to, subject, html }: EmailOptions) => {
   try {
-    if (!transporter) {
-      throw new Error('SMTP no configurado');
+    if (!resendClient) {
+      throw new Error('Resend no configurado');
     }
 
-    const result = await transporter.sendMail({
-      from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+    const result = await resendClient.emails.send({
+      from: fromEmail,
       to,
       subject,
       html
     });
 
-    console.log(`📧 Correo enviado a ${to}`);
+    console.log(`📧 Correo enviado a ${to} - ID: ${result.data?.id}`);
     return result;
   } catch (err) {
     console.error('❌ Error enviando correo:', err);

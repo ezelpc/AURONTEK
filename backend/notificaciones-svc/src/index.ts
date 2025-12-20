@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { connectRabbitMQ } from './config/rabbitmq.config';
-import { loadSMTP } from './config/smtp.config';
+import { loadResend } from './config/resend.config';
 import { connectRedis } from './config/redis';
 import { initLogger } from './common/logger';
 
@@ -42,7 +42,7 @@ async function main() {
     }
 
     // Conectar servicios externos
-    await loadSMTP();
+    await loadResend();
     await connectRabbitMQ();
     await connectRedis(); // 🚩 Connect to Redis for Pub/Sub
 
@@ -64,7 +64,7 @@ async function main() {
     // Iniciar servidor
     app.listen(PORT, () => {
         console.log(`✅ Notificaciones-SVC escuchando en el puerto ${PORT}`);
-        console.log(`📧 SMTP: ${process.env.EMAIL_HOST}`);
+        console.log(`📧 Resend API configurado`);
         console.log(`🐰 RabbitMQ: ${process.env.RABBITMQ_URL}`);
     });
 }

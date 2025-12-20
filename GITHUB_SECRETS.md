@@ -108,21 +108,21 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 ---
 
-### 8. Email / SMTP (Obligatorio - Para notificaciones)
+### 8. Resend (Obligatorio - Para notificaciones por email)
 
-| Secret | Descripción | Ejemplo | Proveedor Recomendado |
-|--------|-------------|---------|----------------------|
-| `EMAIL_HOST` | Servidor SMTP | `smtp.gmail.com` | Gmail, SendGrid, Mailgun |
-| `EMAIL_PORT` | Puerto SMTP | `587` | 587 (TLS) o 465 (SSL) |
-| `EMAIL_USER` | Usuario/email SMTP | `notificaciones@aurontek.com` | Tu email |
-| `EMAIL_PASSWORD` | Contraseña o App Password | `abcd efgh ijkl mnop` | App Password de Gmail |
-| `EMAIL_SECURE` | Usar SSL/TLS | `true` | `true` para puerto 465, `false` para 587 |
-| `EMAIL_FROM` | Email remitente | `"AURONTEK Soporte" <notificaciones@aurontek.com>` | Tu email |
+| Secret | Descripción | Ejemplo | Dónde Obtenerlo |
+|--------|-------------|---------|----------------|
+| `RESEND_API_KEY` | API Key de Resend | `re_123456789_abcdefghijklmnop` | [Resend Dashboard](https://resend.com/api-keys) |
+| `RESEND_FROM_EMAIL` | Email verificado en Resend | `notificaciones@tudominio.com` | Tu dominio verificado en Resend |
 
-**Para Gmail:**
-1. Habilita verificación en 2 pasos
-2. Genera una "App Password": [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Usa esa contraseña en `EMAIL_PASSWORD`
+**Dónde obtenerlo:**
+1. Crea una cuenta en [Resend](https://resend.com)
+2. Ve a **API Keys** y crea una nueva API key
+3. Ve a **Domains** y verifica tu dominio
+4. Usa un email de tu dominio verificado para `RESEND_FROM_EMAIL`
+
+> [!TIP]
+> Resend ofrece 100 emails/día gratis y 3,000 emails/mes en el plan gratuito.
 
 ---
 
@@ -177,13 +177,9 @@ Marca cada secret a medida que lo configures:
 - [ ] `CLOUDINARY_API_KEY`
 - [ ] `CLOUDINARY_API_SECRET`
 
-### Email
-- [ ] `EMAIL_HOST`
-- [ ] `EMAIL_PORT`
-- [ ] `EMAIL_USER`
-- [ ] `EMAIL_PASSWORD`
-- [ ] `EMAIL_SECURE`
-- [ ] `EMAIL_FROM`
+### Resend (Email)
+- [ ] `RESEND_API_KEY`
+- [ ] `RESEND_FROM_EMAIL`
 
 ### URLs y CORS
 - [ ] `FRONTEND_URL`
@@ -256,7 +252,7 @@ type C:\Users\tu-usuario\.ssh\aurontek-key.pem
 
 ## 🎯 Resumen
 
-**Total de Secrets Obligatorios**: 21  
+**Total de Secrets Obligatorios**: 17  
 **Total de Secrets Opcionales**: 2
 
 Una vez configurados todos estos secrets, tu pipeline de CI/CD estará listo para:

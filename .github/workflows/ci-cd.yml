@@ -138,12 +138,8 @@ jobs:
             CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
             CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
             CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
-            EMAIL_HOST=${{ secrets.EMAIL_HOST }}
-            EMAIL_PORT=${{ secrets.EMAIL_PORT }}
-            EMAIL_USER=${{ secrets.EMAIL_USER }}
-            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
-            EMAIL_SECURE=${{ secrets.EMAIL_SECURE }}
-            EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
             REDIS_URL=${{ secrets.REDIS_URL }}
             SERVICE_TOKEN=${{ secrets.SERVICE_TOKEN }}
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
