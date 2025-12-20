@@ -2,6 +2,17 @@ import { Router } from 'express';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
 import { RequestHandler } from 'express';
 
+// Helper function to remove CORS headers from proxied responses
+// Gateway handles CORS, microservices should NOT send CORS headers
+const removeCorsHeaders = (proxyRes: any, req: any, res: any) => {
+    delete proxyRes.headers['access-control-allow-origin'];
+    delete proxyRes.headers['access-control-allow-credentials'];
+    delete proxyRes.headers['access-control-allow-methods'];
+    delete proxyRes.headers['access-control-allow-headers'];
+    delete proxyRes.headers['access-control-expose-headers'];
+    delete proxyRes.headers['access-control-max-age'];
+};
+
 export const createProxyRouter = (authLimiter: RequestHandler | null) => {
     const router = Router();
     const USUARIOS_SVC_URL = process.env.USUARIOS_SERVICE_URL || 'http://localhost:3001';
@@ -55,56 +66,64 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
     router.use('/users', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/usuarios' + path
+        pathRewrite: (path) => '/usuarios' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Usuarios routes
     router.use('/usuarios', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/usuarios' + path
+        pathRewrite: (path) => '/usuarios' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Admins routes
     router.use('/admins', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/admins' + path
+        pathRewrite: (path) => '/admins' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Roles routes
     router.use('/roles', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/roles' + path
+        pathRewrite: (path) => '/roles' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Habilidades routes
     router.use('/habilidades', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/habilidades' + path
+        pathRewrite: (path) => '/habilidades' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Companies routes (translate to empresas)
     router.use('/companies', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/empresas' + path
+        pathRewrite: (path) => '/empresas' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Empresas routes
     router.use('/empresas', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/empresas' + path
+        pathRewrite: (path) => '/empresas' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Services routes
     router.use('/services', createProxyMiddleware({
         target: TICKETS_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/services' + path
+        pathRewrite: (path) => '/services' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Tickets routes
@@ -122,6 +141,7 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
         onProxyReq: (proxyReq: any, req: any, res: any) => {
             console.log(`[PROXY TICKETS] Sending request to: ${TICKETS_SVC_URL}${proxyReq.path}`);
         },
+        onProxyRes: removeCorsHeaders,
         onError: (err: any, req: any, res: any) => {
             console.error(`[PROXY TICKETS ERROR]`, err.message);
         }
@@ -142,6 +162,7 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
         onProxyReq: (proxyReq: any, req: any, res: any) => {
             console.log(`[PROXY NOTIF] Sending request to: ${NOTIFICACIONES_SVC_URL}${proxyReq.path}`);
         },
+        onProxyRes: removeCorsHeaders,
         onError: (err: any, req: any, res: any) => {
             console.error(`[PROXY NOTIF ERROR]`, err.message);
         }
@@ -151,14 +172,16 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
     router.use('/chat', createProxyMiddleware({
         target: CHAT_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/chat' + path
+        pathRewrite: (path) => '/chat' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // IA routes
     router.use('/ia', createProxyMiddleware({
         target: IA_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/ia' + path
+        pathRewrite: (path) => '/ia' + path,
+        onProxyRes: removeCorsHeaders
     } as Options));
 
     // Uploads (static files from tickets-svc)
