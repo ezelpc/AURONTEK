@@ -1,6 +1,5 @@
 # ia-svc/main.py
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from dotenv import load_dotenv
@@ -43,14 +42,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuración de CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS manejado por el Gateway, no agregar aquí
 
 # Middleware de Seguridad (Service Token)
 @app.middleware("http")

@@ -1,12 +1,11 @@
 import express, { Application } from 'express';
-import cors from 'cors';
 import serviceRoutes from './Routes/service.routes';
 import ticketRoutes from './Routes/ticket.routes';
 
 const app: Application = express();
 
 // Middlewares
-app.use(cors()); // Habilita CORS para todas las rutas
+// CORS manejado por el Gateway, no agregar aquí
 app.use(express.json()); // Permite al servidor entender JSON en los bodies de las peticiones
 import path from 'path';
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
