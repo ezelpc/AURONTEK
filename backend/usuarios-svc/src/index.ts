@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import express, { Request, Response } from 'express';
+import express, { Request, Response, Application } from 'express';
 import connectDB from './Config/ConectionDB';
 import path from 'path';
 
