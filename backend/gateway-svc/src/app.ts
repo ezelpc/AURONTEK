@@ -31,7 +31,9 @@ export const createApp = () => {
 
             // Verificar si el origin está en la lista de permitidos
             if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
-                callback(null, true);
+                // CRITICAL FIX: Return the specific origin, not true
+                // callback(null, true) causes cors to send '*'
+                callback(null, origin);
             } else {
                 console.warn(`[CORS] Origin no permitido: ${origin}`);
                 callback(new Error('Not allowed by CORS'));
