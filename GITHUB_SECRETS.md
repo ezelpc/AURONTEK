@@ -81,16 +81,20 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 | Secret | Descripción | Ejemplo |
 |--------|-------------|---------|
-| `RECAPTCHA_SECRET_KEY` | Secret key de reCAPTCHA v2 | `6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe` |
+| `RECAPTCHA_SECRET_KEY` | Secret key de reCAPTCHA v2 (Backend) | `6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe` |
 | `RECAPTCHA_TEST_TOKEN` | Token de prueba (opcional) | `test-token-for-development` |
 
 **Dónde obtenerlo:**
 1. [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin)
 2. Crea un sitio con reCAPTCHA v2
-3. Copia la "Secret Key"
+3. Copia la "Secret Key" para `RECAPTCHA_SECRET_KEY`
 
-> [!NOTE]
-> También necesitarás la **Site Key** para el frontend (configurar en Vercel).
+> [!IMPORTANT]
+> **Para el Frontend (Vercel)**: También necesitas configurar `VITE_RECAPTCHA_SITE_KEY` en Vercel con la **Site Key** (pública) de reCAPTCHA. Esta NO va en GitHub Secrets, va en las variables de entorno de Vercel.
+
+**Variables de Vercel necesarias:**
+- `VITE_RECAPTCHA_SITE_KEY` - Site Key (pública) de reCAPTCHA
+- `VITE_API_URL` - URL de tu backend (ej: `https://aurontekhq-api.ddns.net/api`)
 
 ---
 
