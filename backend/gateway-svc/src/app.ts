@@ -52,6 +52,13 @@ export const createApp = () => {
     const { sanitizeMiddleware } = require('./middleware/sanitize');
     app.use(sanitizeMiddleware);
 
+    // CSRF Protection
+    const { csrfCookieParser, csrfProtection, getCsrfToken, csrfErrorHandler } = require('./middleware/csrf');
+    app.use(csrfCookieParser);
+
+    // Endpoint para obtener CSRF token (sin protección)
+    app.get('/api/csrf-token', getCsrfToken);
+
     // Logging Middleware
     app.use((req, res, next) => {
         console.log(`[GATEWAY DEBUG] ${req.method} ${req.url}`);
