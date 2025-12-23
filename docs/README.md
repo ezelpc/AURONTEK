@@ -1,199 +1,105 @@
-# 📚 Documentation Index
+# 📖 AURONTEK - Documentación de Producción
 
-Welcome to the AURONTEK CI/CD documentation. This folder contains comprehensive guides for deploying and managing your application.
+## 📋 Índice
 
----
-
-## 📖 Documentation Files
-
-### 🚀 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-**Complete step-by-step deployment guide** - Start here!
-
-Covers:
-- External services setup (MongoDB Atlas, CloudAMQP, Vercel, Docker Hub)
-- AWS EC2 instance configuration
-- GitHub Secrets configuration
-- Complete workflow from dev → test → main
-- Troubleshooting common issues
-
-**👉 This is your main resource - follow it sequentially**
+1. [Arquitectura](#arquitectura)
+2. [Guía de Deployment](#deployment)
+3. [GitHub Secrets](#github-secrets)
+4. [Configuración de Seguridad](#seguridad)
+5. [Mantenimiento](#mantenimiento)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
-### 🏗️ [ARCHITECTURE.md](./ARCHITECTURE.md)
-**Visual architecture overview**
+## 🏗️ Arquitectura
 
-Includes:
-- CI/CD pipeline flow diagrams
-- Production architecture diagrams
-- Resource allocation charts
-- Security considerations
-- Cost breakdown
+AURONTEK utiliza una **arquitectura dual-EC2** optimizada para AWS Free Tier:
 
-**👉 Read this to understand how everything fits together**
+### EDGE (EC2 Pública)
+- **Rol:** Punto de entrada público
+- **Servicios:** 
+  - Gateway (API Gateway)
+  - Redis (Cache + Rate Limiting)
+  - Nginx (Reverse Proxy + SSL)
+- **IP:** Pública + Privada
+- **Memoria:** ~270MB (Gateway 220MB + Redis 50MB)
 
----
+### CORE (EC2 Privada)
+- **Rol:** Capa de negocio
+- **Servicios:**
+  - usuarios-svc
+  - tickets-svc
+  - chat-svc
+  - notificaciones-svc
+  - ia-svc
+- **IP:** Solo privada (sin acceso público)
+- **Memoria:** ~900MB (5 servicios)
 
-### ⚡ [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
-**Quick command reference**
-
-Contains:
-- Common Git workflow commands
-- EC2 management commands
-- Troubleshooting commands
-- Rollback procedures
-- Monitoring URLs
-
-**👉 Bookmark this for daily development**
-
----
-
-## 🎯 Getting Started
-
-### First Time Setup
-
-1. **Read the Architecture** → [ARCHITECTURE.md](./ARCHITECTURE.md)
-   - Understand the overall system
-   - Review the CI/CD flow
-   - Check resource requirements
-
-2. **Follow the Deployment Guide** → [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-   - Set up external services (Part 1)
-   - Configure AWS EC2 (Part 2)
-   - Set GitHub Secrets (Part 3)
-   - Test the pipeline (Part 4)
-
-3. **Keep Quick Reference Handy** → [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
-   - Use for daily operations
-   - Reference for common commands
-
----
-
-## 🔄 Development Workflow
-
-```bash
-# 1. Develop on dev branch
-git checkout dev
-# ... make changes ...
-git push origin dev
-# ✅ GitHub Actions builds (CI only)
-# ✅ Vercel creates preview deployment
-
-# 2. Test on test branch
-git checkout test
-git merge dev
-git push origin test
-# ✅ GitHub Actions builds (CI only)
-# ✅ Vercel creates preview deployment
-
-# 3. Deploy to production
-git checkout main
-git merge test
-git push origin main
-# 🚀 GitHub Actions builds + deploys to EC2
-# 🚀 Vercel deploys to production
+### Flujo de Datos
+```
+Internet → Nginx (EDGE:443) → Gateway (EDGE:3000) → Microservicios (CORE:3001-3005)
 ```
 
 ---
 
-## 📂 Project Structure
+## 🚀 Deployment
 
-```
-AURONTEK/
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml          # GitHub Actions workflow
-├── backend/
-│   ├── gateway-svc/
-│   ├── usuarios-svc/
-│   ├── tickets-svc/
-│   ├── chat-svc/
-│   ├── notificaciones-svc/
-│   └── ia-svc/
-├── frontend/                   # React application
-├── docs/                       # 📍 You are here
-│   ├── README.md              # This file
-│   ├── DEPLOYMENT_GUIDE.md    # Full deployment guide
-│   ├── ARCHITECTURE.md        # Architecture diagrams
-│   └── QUICK_REFERENCE.md     # Command reference
-├── scripts/
-│   └── setup_ec2.sh           # EC2 setup script
-├── docker-compose.yml          # Development
-├── docker-compose.prod.yml     # Production (EC2)
-└── .env.production.example     # Environment template
-```
+Ver documentación detallada en:
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Guía completa de deployment
+- [SETUP_EDGE.md](./SETUP_EDGE.md) - Setup de instancia EDGE
+- [SETUP_CORE.md](./SETUP_CORE.md) - Setup de instancia CORE
+
+### Quick Start
+
+1. **Configurar GitHub Secrets** (ver [GITHUB_SECRETS.md](./GITHUB_SECRETS.md))
+2. **Ejecutar setup scripts en EC2:**
+   ```bash
+   # En EDGE
+   bash scripts/setup-edge.sh
+   
+   # En CORE  
+   bash scripts/setup-core.sh
+   ```
+3. **Push a main** → CI/CD automático
 
 ---
 
-## 🆘 Need Help?
+## 🔐 Seguridad
 
-### Common Questions
+Ver documentación completa en [SECURITY.md](./SECURITY.md)
 
-**Q: How do I deploy to production?**  
-A: Merge your changes from `test` to `main` and push. Deployment is automatic.
-
-**Q: Where are my secrets stored?**  
-A: In GitHub Settings → Secrets and variables → Actions. Never commit secrets to Git.
-
-**Q: How do I check if my deployment worked?**  
-A: 
-1. GitHub Actions tab → Check workflow status
-2. SSH to EC2 → `docker ps` to see running containers
-3. Visit your Vercel URL
-
-**Q: My EC2 instance crashed, what do I do?**  
-A: Check [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) → Part 5: Troubleshooting
-
-### Getting More Help
-
-1. Check [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) troubleshooting section
-2. Review GitHub Actions logs for errors
-3. SSH to EC2 and check `docker logs -f SERVICE_NAME`
-4. Verify all GitHub Secrets are correct
+### Características Implementadas
+- ✅ Rate Limiting (5 intentos/15min en auth)
+- ✅ Input Sanitization (NoSQL injection prevention)
+- ✅ reCAPTCHA en producción
+- ✅ Redis con password
+- ✅ Helmet (Security headers)
+- ✅ CORS estricto
 
 ---
 
-## ✅ Checklist
+## 🛠️ Mantenimiento
 
-Before going to production, ensure:
-
-- [ ] MongoDB Atlas cluster created and connection string saved
-- [ ] CloudAMQP instance created and URL saved
-- [ ] Vercel project connected to GitHub
-- [ ] Docker Hub account created and token generated
-- [ ] EC2 instance launched and setup script executed
-- [ ] All GitHub Secrets configured (15+ secrets)
-- [ ] Branches created (dev, test, main)
-- [ ] Test deployment on dev branch successful
-- [ ] Test deployment on test branch successful
-- [ ] Production deployment on main branch successful
+Ver [MAINTENANCE.md](./MAINTENANCE.md) para:
+- Monitoreo de recursos
+- Logs y debugging
+- Backup y recovery
+- Actualización de servicios
 
 ---
 
-## 📊 Architecture Overview
+## 📚 Documentos Adicionales
 
-```
-Developer → dev branch → CI (Build) → Vercel Preview
-              ↓
-         test branch → CI (Build) → Vercel Preview
-              ↓
-         main branch → CI + CD → EC2 Production + Vercel Production
-```
+- [GITHUB_SECRETS.md](./GITHUB_SECRETS.md) - Configuración de secretos
+- [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) - Variables de entorno
+- [API_REFERENCE.md](./API_REFERENCE.md) - Referencia de API
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Solución de problemas comunes
 
 ---
 
-## 🎉 Success Criteria
+## 🆘 Soporte
 
-Your pipeline is working correctly when:
-
-- ✅ Pushing to `dev` triggers build (no deploy to EC2)
-- ✅ Pushing to `test` triggers build (no deploy to EC2)
-- ✅ Pushing to `main` triggers build + deploy to EC2
-- ✅ All branches create Vercel preview deployments
-- ✅ `main` deploys to Vercel production
-- ✅ All 6 services running on EC2 without crashes
-- ✅ Frontend can communicate with backend API
-
----
-
-**Happy Deploying! 🚀**
+Para problemas o preguntas:
+1. Revisar [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+2. Verificar logs en EC2
+3. Contactar al equipo de desarrollo
