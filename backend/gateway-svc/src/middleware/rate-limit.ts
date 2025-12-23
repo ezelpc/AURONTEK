@@ -17,8 +17,9 @@ export const createRateLimiters = () => {
     });
 
     const authLimiter = rateLimit({
-        windowMs: 60 * 1000, // 1 minuto (DEBUG)
-        limit: 100, // 100 intentos (DEBUG)
+        windowMs: 15 * 60 * 1000, // 15 minutos
+        limit: 5, // 5 intentos máximo
+        skipSuccessfulRequests: true, // No contar requests exitosos
         standardHeaders: 'draft-7',
         legacyHeaders: false,
         store: new RedisStore({
@@ -26,7 +27,7 @@ export const createRateLimiters = () => {
             sendCommand: (...args: string[]) => redisClient.sendCommand(args),
             prefix: 'rl_auth:'
         }),
-        message: "Demasiados intentos de login. Bloqueado por 1 minuto."
+        message: "Demasiados intentos de login. Bloqueado por 15 minutos."
     });
 
     return { generalLimiter, authLimiter };

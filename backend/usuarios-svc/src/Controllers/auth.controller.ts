@@ -33,7 +33,10 @@ const login = async (req: Request, res: Response) => {
   }
 
   try {
-    // await verificarRecaptcha(recaptchaToken); // Descomentar en producción
+    // Verificar reCAPTCHA en producción
+    if (process.env.NODE_ENV === 'production') {
+      await verificarRecaptcha(recaptchaToken);
+    }
 
     if (mongoose.connection.readyState !== 1) {
       throw new Error('La base de datos no está disponible.');

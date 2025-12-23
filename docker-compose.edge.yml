@@ -3,13 +3,16 @@ version: "3.9"
 services:
   redis:
     image: redis:7-alpine
-    command: redis-server --maxmemory 50mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server  --maxmemory 50mb  --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     mem_limit: 50m
     restart: always
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -22,7 +25,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       USUARIOS_SERVICE_URL: http://${CORE_PRIVATE_IP}:3001
       TICKETS_SERVICE_URL: http://${CORE_PRIVATE_IP}:3002
       CHAT_SERVICE_URL: http://${CORE_PRIVATE_IP}:3003

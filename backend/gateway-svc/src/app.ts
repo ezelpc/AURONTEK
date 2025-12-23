@@ -48,6 +48,10 @@ export const createApp = () => {
     app.use(helmet());
     app.use(morgan('dev'));
 
+    // Sanitization - Prevent NoSQL injection
+    const { sanitizeMiddleware } = require('./middleware/sanitize');
+    app.use(sanitizeMiddleware);
+
     // Logging Middleware
     app.use((req, res, next) => {
         console.log(`[GATEWAY DEBUG] ${req.method} ${req.url}`);

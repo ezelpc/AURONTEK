@@ -120,6 +120,7 @@ jobs:
             SERVICE_TOKEN=${{ secrets.SERVICE_TOKEN }}
             RECAPTCHA_SECRET_KEY=${{ secrets.RECAPTCHA_SECRET_KEY }}
             RECAPTCHA_TEST_TOKEN=${{ secrets.RECAPTCHA_TEST_TOKEN }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
             EOF
 
             # Pull latest images
@@ -190,6 +191,7 @@ jobs:
             RECAPTCHA_SECRET_KEY=${{ secrets.RECAPTCHA_SECRET_KEY }}
             RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
             EOF
 
             # Pull latest images
