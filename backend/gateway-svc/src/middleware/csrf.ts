@@ -25,7 +25,8 @@ export const csrfProtection = csrf({
  * El frontend debe llamar a este endpoint antes de hacer requests que modifiquen datos
  */
 export const getCsrfToken = (req: Request, res: Response) => {
-    res.json({ csrfToken: req.csrfToken() });
+    // csrfToken() es agregado por el middleware csurf
+    res.json({ csrfToken: (req as any).csrfToken() });
 };
 
 /**
