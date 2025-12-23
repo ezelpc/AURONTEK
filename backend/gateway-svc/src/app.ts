@@ -44,10 +44,8 @@ export const createApp = () => {
         allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'X-Service-Token', 'X-Service-Name']
     }));
 
-    // Helmet - TEMPORARILY DISABLED to debug CORS issue
-    // app.use(helmet({
-    //     crossOriginResourcePolicy: false // Disable CORS in helmet, we handle it separately
-    // }));
+    // Helmet - Security headers
+    app.use(helmet());
     app.use(morgan('dev'));
 
     // Logging Middleware

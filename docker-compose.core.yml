@@ -1,0 +1,112 @@
+version: "3.9"
+
+services:
+  usuarios:
+    image: ${DOCKER_USERNAME}/aurontek-usuarios:${IMAGE_TAG:-latest}
+    container_name: usuarios-svc
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
+      NODE_OPTIONS: "--max-old-space-size=180"
+    mem_limit: 180m
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  tickets:
+    image: ${DOCKER_USERNAME}/aurontek-tickets:${IMAGE_TAG:-latest}
+    container_name: tickets-svc
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      MONGODB_URI: ${MONGODB_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      NODE_OPTIONS: "--max-old-space-size=180"
+    mem_limit: 180m
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3002/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  chat:
+    image: ${DOCKER_USERNAME}/aurontek-chat:${IMAGE_TAG:-latest}
+    container_name: chat-svc
+    ports:
+      - "3003:3003"
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      REDIS_URL: redis://${EDGE_PRIVATE_IP}:6379
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      NODE_OPTIONS: "--max-old-space-size=180"
+    mem_limit: 180m
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3003/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  notificaciones:
+    image: ${DOCKER_USERNAME}/aurontek-notificaciones:${IMAGE_TAG:-latest}
+    container_name: notificaciones-svc
+    ports:
+      - "3004:3004"
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      NODE_OPTIONS: "--max-old-space-size=160"
+    mem_limit: 160m
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3004/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ia:
+    image: ${DOCKER_USERNAME}/aurontek-ia:${IMAGE_TAG:-latest}
+    container_name: ia-svc
+    ports:
+      - "3005:3005"
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      MONGODB_URI: ${MONGODB_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+    mem_limit: 200m
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3005/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
