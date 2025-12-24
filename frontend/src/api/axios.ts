@@ -31,8 +31,21 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true; // Evitar bucle infinito
 
+            // SOLO hacer logout si es un error de autenticación explícito
+            // No hacer logout automático en requests normales que fallen con 401
+            const isAuthRoute = originalRequest.url?.includes('/auth/');
+
+            if (isAuthRoute) {
+                console.warn('❌ Error de autenticación, cerrando sesión');
+                useAuthStore.getState().logout();
+                window.location.href = '/access';
+            } else {
+                console.warn('⚠️ Request no autorizado (401):', originalRequest.url);
+                // No hacer logout automático, dejar que el componente maneje el error
+            }
+
             // AQUI IRÍA LA LÓGICA DE SILENT REFRESH
-            // Por simplicidad inicial: Logout directo.
+            // Por simplicidad inicial: Logout directo solo en rutas de auth.
             // Para implementar Silent Refresh se necesita endpoint /auth/refresh-token
 
             /* 
@@ -46,11 +59,6 @@ api.interceptors.response.use(
                 return Promise.reject(refreshError);
             }
             */
-
-            // Comportamiento actual: Logout forzado por seguridad
-            useAuthStore.getState().logout();
-            // Redirigir a login podría manejarse aquí o en el Router
-            // window.location.href = '/access'; 
         }
 
         // Caso 403: Forbidden (Falta Permiso)
