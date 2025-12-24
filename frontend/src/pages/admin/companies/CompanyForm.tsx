@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, CheckCircle, Copy } from 'lucide-react';
 
 interface Contratante {
     nombre: string;
@@ -35,7 +35,12 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
     const [correo, setCorreo] = useState('');
     const [direccion, setDireccion] = useState('');
     const [telefono, setTelefono] = useState('');
-    const [plan, setPlan] = useState('Anual');
+
+    const [plan, setPlan] = useState('Mensual');
+
+    // State for success dialog
+    const [showCredentials, setShowCredentials] = useState(false);
+    const [createdCredentials, setCreatedCredentials] = useState<{ password: string, accessCode: string, email: string } | null>(null);
 
     // Estado para contratantes
     const [contratantes, setContratantes] = useState<Contratante[]>([]);
@@ -74,10 +79,20 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                 return companiesService.createCompany(data);
             }
         },
-        onSuccess: () => {
+        onSuccess: (data: any) => {
             queryClient.invalidateQueries({ queryKey: ['companies'] });
-            toast.success(isEditing ? 'Empresa actualizada' : 'Empresa creada');
-            onSuccess();
+            toast.success(isEditing ? 'Empresa actualizada' : 'Empresa creada exitosamente');
+
+            if (!isEditing && data.codigo_acceso && createdCredentials) {
+                // Show credentials dialog for new companies
+                setCreatedCredentials({
+                    ...createdCredentials,
+                    accessCode: data.codigo_acceso
+                });
+                setShowCredentials(true);
+            } else {
+                onSuccess();
+            }
         },
         onError: (err: any) => {
             toast.error(err.response?.data?.msg || 'Error en la operación');
@@ -108,26 +123,76 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
         toast.success('Contratante eliminado');
     };
 
+    const generatePassword = () => {
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
+        let password = "";
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const payload = {
-            nombre,
-            rfc,
-            correo,
-            direccion,
-            telefono,
-            licencia: [{
-                fecha_inicio: isEditing && company?.licencia?.[0]?.fecha_inicio
-                    ? company.licencia[0].fecha_inicio
-                    : new Date().toISOString(),
-                plan: plan,
-                estado: true
-            }],
-            contratantes: contratantes
-        };
+        if (!isEditing && contratantes.length === 0) {
+            toast.error('Debes agregar al menos un contratante para que sea el administrador inicial.');
+            return;
+        }
 
-        mutation.mutate(payload);
+        let payload: any = {};
+
+        if (isEditing) {
+            payload = {
+                nombre,
+                rfc,
+                correo,
+                direccion,
+                telefono,
+                licencia: [{
+                    fecha_inicio: company?.licencia?.[0]?.fecha_inicio || new Date().toISOString(),
+                    plan: plan,
+                    estado: true
+                }],
+                contratantes: contratantes
+            };
+            mutation.mutate(payload);
+        } else {
+            // Generar contraseña automática
+            const generatedPassword = generatePassword();
+            const primerContratante = contratantes[0];
+
+            // Guardar para el dialogo
+            setCreatedCredentials({
+                password: generatedPassword,
+                accessCode: '', // Se llenará con la respuesta
+                email: primerContratante.correo
+            });
+
+            payload = {
+                // Datos Empresa
+                nombreEmpresa: nombre,
+                rfc,
+                correo,
+                direccion,
+                telefono,
+
+                // Datos Licencia
+                plan,
+                fecha_inicio: new Date().toISOString(),
+
+                // Datos Contratante
+                nombreContratante: primerContratante.nombre,
+                telefonoContratante: primerContratante.telefono || '',
+                puestoContratante: primerContratante.puesto || '',
+
+                // Datos Admin (Usamos al primer contratante como admin inicial)
+                nombreAdminInterno: primerContratante.nombre,
+                correoAdminInterno: primerContratante.correo,
+                passwordAdminInterno: generatedPassword
+            };
+            mutation.mutate(payload);
+        }
     };
 
     return (
@@ -355,6 +420,82 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                         No hay contratantes registrados. Agrega al menos uno.
                     </p>
                 )}
+                {/* Success Dialog */}
+                {showCredentials && createdCredentials && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-all duration-300">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 border border-slate-100 dark:border-slate-800">
+
+                            <div className="flex flex-col items-center text-center mb-6">
+                                <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 ring-8 ring-green-50 dark:ring-green-900/10">
+                                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">¡Empresa Creada!</h3>
+                                <p className="text-slate-500 dark:text-slate-400 mt-2">
+                                    La empresa se ha registrado correctamente en el sistema.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                        Código de Acceso
+                                    </p>
+                                    <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between group">
+                                        <p className="text-xl font-mono font-bold text-slate-800 dark:text-slate-200 select-all tracking-wider">
+                                            {createdCredentials.accessCode}
+                                        </p>
+                                        <Copy className="h-4 w-4 text-slate-400 group-hover:text-blue-500 cursor-pointer transition-colors"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(createdCredentials.accessCode);
+                                                toast.success('Código copiado');
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                        Contraseña Admin
+                                    </p>
+                                    <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between group">
+                                        <p className="text-xl font-mono font-bold text-slate-800 dark:text-slate-200 select-all tracking-wider">
+                                            {createdCredentials.password}
+                                        </p>
+                                        <Copy className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 cursor-pointer transition-colors"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(createdCredentials.password);
+                                                toast.success('Contraseña copiada');
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6">
+                                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/20 mb-6">
+                                    <span className="text-xl">📧</span>
+                                    <p className="leading-snug">
+                                        Hemos enviado estas credenciales al correo: <br />
+                                        <span className="font-semibold text-slate-900 dark:text-slate-200 block mt-0.5">{createdCredentials.email}</span>
+                                    </p>
+                                </div>
+
+                                <Button
+                                    onClick={() => {
+                                        setShowCredentials(false);
+                                        onSuccess();
+                                    }}
+                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 py-6 text-lg font-medium"
+                                >
+                                    Entendido, finalizar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             {/* Botones de acción */}
