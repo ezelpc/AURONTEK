@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   usuarios:
-    image: ${DOCKER_USERNAME}/aurontek-usuarios:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/aurontek-usuarios-svc:${IMAGE_TAG:-latest}
     container_name: usuarios-svc
     ports:
       - "3001:3001"
@@ -27,7 +27,7 @@ services:
       start_period: 40s
 
   tickets:
-    image: ${DOCKER_USERNAME}/aurontek-tickets:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/aurontek-tickets-svc:${IMAGE_TAG:-latest}
     container_name: tickets-svc
     ports:
       - "3002:3002"
@@ -51,7 +51,7 @@ services:
       start_period: 40s
 
   chat:
-    image: ${DOCKER_USERNAME}/aurontek-chat:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/aurontek-chat-svc:${IMAGE_TAG:-latest}
     container_name: chat-svc
     ports:
       - "3003:3003"
@@ -71,7 +71,7 @@ services:
       start_period: 40s
 
   notificaciones:
-    image: ${DOCKER_USERNAME}/aurontek-notificaciones:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/aurontek-notificaciones-svc:${IMAGE_TAG:-latest}
     container_name: notificaciones-svc
     ports:
       - "3004:3004"
@@ -92,7 +92,7 @@ services:
       start_period: 40s
 
   ia:
-    image: ${DOCKER_USERNAME}/aurontek-ia:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/aurontek-ia-svc:${IMAGE_TAG:-latest}
     container_name: ia-svc
     ports:
       - "3005:3005"

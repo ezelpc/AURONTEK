@@ -18,7 +18,7 @@ services:
       retries: 3
 
   gateway:
-    image: ${DOCKER_USERNAME}/aurontek-gateway:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/aurontek-gateway-svc:${IMAGE_TAG:-latest}
     container_name: gateway-svc
     ports:
       - "3000:3000"
