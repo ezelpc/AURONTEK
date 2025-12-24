@@ -49,8 +49,10 @@ export const createApp = () => {
     app.use(morgan('dev'));
 
     // Sanitization - Prevent NoSQL injection
-    const { sanitizeMiddleware } = require('./middleware/sanitize');
-    app.use(sanitizeMiddleware);
+    // TEMPORARILY DISABLED: express-mongo-sanitize has a bug with Node.js 18+
+    // TypeError: Cannot set property query of #<IncomingMessage> which has only a getter
+    // const { sanitizeMiddleware } = require('./middleware/sanitize');
+    // app.use(sanitizeMiddleware);
 
     // CSRF Protection
     const { csrfCookieParser, csrfProtection, getCsrfToken, csrfErrorHandler } = require('./middleware/csrf');
