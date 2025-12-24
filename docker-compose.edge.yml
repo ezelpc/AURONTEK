@@ -3,6 +3,7 @@ version: "3.9"
 services:
   redis:
     image: redis:7-alpine
+    container_name: redis
     command: >
       redis-server  --maxmemory 50mb  --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
     ports:
