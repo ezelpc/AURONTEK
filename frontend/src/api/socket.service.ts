@@ -4,7 +4,7 @@ import { useAuthStore } from '@/auth/auth.store';
 // URL del Gateway o Notificaciones SVC
 // Asumimos que el Gateway expone el socket en el mismo puerto o uno dedicado.
 // En desarrollo con Vite proxy, podría ser relativo o directo.
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:3000');
 
 class SocketService {
     private socket: Socket | null = null;
