@@ -42,14 +42,18 @@
 # 1. Conectar a EDGE
 ssh -i tu-llave.pem ubuntu@EDGE_PUBLIC_IP
 
-# 2. Clonar repositorio
-git clone https://github.com/ezelpc/AURONTEK.git
-cd AURONTEK
+# 2. Crear directorio de trabajo
+mkdir -p ~/aurontek-deploy
+cd ~/aurontek-deploy
 
-# 3. Ejecutar setup script
-bash scripts/setup-edge.sh
+# 3. Descargar script de setup
+curl -o setup-edge.sh https://raw.githubusercontent.com/ezelpc/AURONTEK/main/scripts/setup-edge.sh
+chmod +x setup-edge.sh
 
-# 4. Logout y login (para aplicar grupo docker)
+# 4. Ejecutar setup script
+bash setup-edge.sh
+
+# 5. Logout y login (para aplicar grupo docker)
 exit
 ssh -i tu-llave.pem ubuntu@EDGE_PUBLIC_IP
 ```
@@ -64,14 +68,18 @@ ssh ubuntu@EDGE_IP "chmod 600 ~/.ssh/id_rsa"
 # 2. SSH de EDGE a CORE
 ssh ubuntu@CORE_PRIVATE_IP
 
-# 3. Clonar repositorio
-git clone https://github.com/ezelpc/AURONTEK.git
-cd AURONTEK
+# 3. Crear directorio de trabajo
+mkdir -p ~/aurontek-deploy
+cd ~/aurontek-deploy
 
-# 4. Ejecutar setup script
-bash scripts/setup-core.sh
+# 4. Descargar script de setup
+curl -o setup-core.sh https://raw.githubusercontent.com/ezelpc/AURONTEK/main/scripts/setup-core.sh
+chmod +x setup-core.sh
 
-# 5. Logout y login
+# 5. Ejecutar setup script
+bash setup-core.sh
+
+# 6. Logout y login
 exit
 ssh ubuntu@CORE_PRIVATE_IP
 ```
@@ -80,10 +88,13 @@ ssh ubuntu@CORE_PRIVATE_IP
 
 ```bash
 # En EDGE
-cd ~/AURONTEK
+cd ~/aurontek-deploy
+
+# Descargar configuración de Nginx
+curl -o aurontek.conf https://raw.githubusercontent.com/ezelpc/AURONTEK/main/nginx/aurontek.conf
 
 # Copiar configuración de Nginx
-sudo cp nginx/aurontek.conf /etc/nginx/sites-available/
+sudo cp aurontek.conf /etc/nginx/sites-available/
 sudo ln -s /etc/nginx/sites-available/aurontek.conf /etc/nginx/sites-enabled/
 
 # Probar configuración
@@ -106,8 +117,8 @@ sudo certbot --nginx -d aurontekhq-api.ddns.net
 # En EDGE
 cd /opt/aurontek
 
-# Copiar docker-compose.edge.yml
-cp ~/AURONTEK/docker-compose.edge.yml .
+# Descargar docker-compose.edge.yml
+curl -o docker-compose.edge.yml https://raw.githubusercontent.com/ezelpc/AURONTEK/main/docker-compose.edge.yml
 
 # Crear .env
 cat > .env <<EOF
@@ -140,8 +151,8 @@ docker logs gateway-svc
 # En CORE (vía SSH desde EDGE)
 cd /opt/aurontek
 
-# Copiar docker-compose.core.yml
-cp ~/AURONTEK/docker-compose.core.yml .
+# Descargar docker-compose.core.yml
+curl -o docker-compose.core.yml https://raw.githubusercontent.com/ezelpc/AURONTEK/main/docker-compose.core.yml
 
 # Crear .env
 cat > .env <<EOF
