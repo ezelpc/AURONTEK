@@ -169,6 +169,11 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Setup SSH key for EDGE -> CORE connection
+            mkdir -p ~/.ssh
+            echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            
             # Copy docker-compose to CORE
             scp -o StrictHostKeyChecking=no /tmp/docker-compose.core.yml ubuntu@${{ secrets.CORE_PRIVATE_IP }}:/opt/aurontek/
 
