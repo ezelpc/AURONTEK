@@ -74,6 +74,56 @@ export const crearUsuario = async (datosUsuario: any) => {
     await nuevoUsuario.save();
 
     console.log('Usuario creado exitosamente con ID:', nuevoUsuario._id);
+
+    // Obtener datos de la empresa (Nombre y Código de Acceso)
+    const empresaService = await import('./empresa.service');
+    let nombreEmpresa = 'Aurontek';
+    let codigoAcceso = 'N/A';
+
+    try {
+      if (datosUsuario.empresa) {
+        const empresaInfo = await empresaService.default.encontrarEmpresaPorId(datosUsuario.empresa);
+        if (empresaInfo) {
+          // encontrarEmpresaPorId returns limited fields, let's fetch full to be sure or check what it returns
+          // It returns { activo, codigo_acceso }. For name we might need obtenerEmpresaPorId
+          const empresaFull = await empresaService.default.obtenerEmpresaPorId(datosUsuario.empresa);
+          if (empresaFull) {
+            nombreEmpresa = empresaFull.nombre;
+            codigoAcceso = empresaFull.codigo_acceso;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo obtener info de empresa para el correo:', e);
+    }
+
+    // Enviar correo de bienvenida
+    try {
+      const axios = (await import('axios')).default;
+      const NOTIF_URL = process.env.NOTIFICACIONES_SERVICE_URL || 'http://notificaciones-svc:3004';
+      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://aurontek.vercel.app';
+
+      await axios.post(`${NOTIF_URL}/api/notificaciones/system-email`, {
+        to: datosFormateados.correo,
+        subject: `Bienvenido a ${nombreEmpresa} - Credenciales de Acceso`,
+        text: `Hola ${datosFormateados.nombre},\n\n` +
+          `Tu cuenta de usuario ha sido creada exitosamente.\n\n` +
+          `Detalles de Acceso:\n` +
+          `-------------------\n` +
+          `URL: ${FRONTEND_URL}\n` +
+          `Empresa: ${nombreEmpresa}\n` +
+          `Código de Acceso: ${codigoAcceso}\n` +
+          `Correo: ${datosFormateados.correo}\n` +
+          `Contraseña: ${datosFormateados.contraseña}\n\n` +
+          `Por favor, guarda estas credenciales en un lugar seguro.\n` +
+          `Saludos,\nEl equipo de Aurontek.`
+      });
+      console.log(`Correo de bienvenida enviado a ${datosFormateados.correo}`);
+    } catch (emailError) {
+      console.error('Error al enviar correo de bienvenida:', emailError);
+      // No fallamos la creación del usuario si falla el correo, pero logueamos el error
+    }
+
     return nuevoUsuario;
   } catch (error: any) {
     console.error('Error al crear usuario:', error);

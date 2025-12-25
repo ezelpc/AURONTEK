@@ -126,8 +126,19 @@ export const eliminarEmpresa = async (id: string) => {
   const empresa = await Empresa.findById(id);
   if (!empresa) throw new Error('Empresa no encontrada.');
 
+  // Dynamically get model to avoid any import cycle/undefined issues
+  const UsuarioModel = mongoose.model('Usuario');
+
+  // Verify ID format just in case
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error('ID de empresa inválido');
+  }
+
+  // Explicit casting for deleteMany query
+  const empresaId = new mongoose.Types.ObjectId(id);
+
   // Delete associated users first
-  await Usuario.deleteMany({ empresa: id });
+  await UsuarioModel.deleteMany({ empresa: empresaId });
 
   // Delete the company
   await Empresa.findByIdAndDelete(id);
