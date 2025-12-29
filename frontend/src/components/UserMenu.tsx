@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '@/auth/auth.service';
 import { useTranslation } from 'react-i18next';
 
-export function UserMenu() {
+export function UserMenu({ compact = false }: { compact?: boolean }) {
     const { user, logout } = useAuthStore();
     const { status, setStatus, theme, setTheme, language, setLanguage } = useUIStore();
     const navigate = useNavigate();
@@ -85,10 +85,12 @@ export function UserMenu() {
                         {/* Status Indicator Dot */}
                         <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-slate-950 ${getStatusColor(status)}`} />
                     </div>
-                    <div className="hidden sm:block text-left">
-                        <div className="text-sm font-medium text-slate-900 dark:text-white leading-none mb-1">{user.nombre}</div>
-                        <div className="text-xs text-slate-500 uppercase">{user.rol}</div>
-                    </div>
+                    {!compact && (
+                        <div className="hidden sm:block text-left">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white leading-none mb-1">{user.nombre}</div>
+                            <div className="text-xs text-slate-500 uppercase">{user.rol}</div>
+                        </div>
+                    )}
                 </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>

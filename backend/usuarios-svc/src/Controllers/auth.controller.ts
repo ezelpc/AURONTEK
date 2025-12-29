@@ -118,6 +118,30 @@ const login = async (req: Request, res: Response) => {
       permisos = usuarioEncontrado.permisos || [];
 
       console.log(`✅ Autenticado como Empleado: ${usuarioEncontrado.correo}`);
+
+      // MERGE DE PERMISOS (Rol + Usuario)
+      // Si el usuario tiene un rol asignado, buscar permisos de ese rol
+      let permisosDelRol: string[] = [];
+      const RolModel = (await import('../Models/Role.model')).default;
+
+      // Buscar el rol por nombre Y empresa (los roles son por empresa)
+      const rolEncontrado = await RolModel.findOne({
+        nombre: rolFinal,
+        empresa: empresaIdFinal
+      });
+
+      if (rolEncontrado) {
+        permisosDelRol = rolEncontrado.permisos || [];
+      } else if (rolFinal === 'admin-interno') {
+        // Fallback para admin-interno si no existe rol explícito en DB (aunque debería)
+        // O si es un rol sistema 'admin-interno', quizás tiene permisos fijos?
+        // Asumiremos que si no hay rol en DB, no agrega permisos extra, A MENOS que definamos defaults.
+        // Pero el usuario dijo "admin interno le asigne el rol", así que debe existir en DB.
+      }
+
+      // Fusionar y eliminar duplicados
+      permisos = Array.from(new Set([...permisos, ...permisosDelRol]));
+      console.log(`🔐 Permisos totales: ${permisos.length} (Directos: ${(usuarioEncontrado.permisos || []).length}, Rol: ${permisosDelRol.length})`);
     }
 
     // --- FIN DE LA LÓGICA MODIFICADA ---
@@ -316,6 +340,22 @@ const check = async (req: Request, res: Response) => {
       }
     } else {
       permisos = usuario.permisos || [];
+
+      // MERGE DE PERMISOS (Rol + Usuario) en CHECK
+      if (usuario.empresa) {
+        try {
+          const RolModel = (await import('../Models/Role.model')).default;
+          const rolEncontrado = await RolModel.findOne({
+            nombre: usuario.rol,
+            empresa: usuario.empresa
+          });
+          if (rolEncontrado && rolEncontrado.permisos) {
+            permisos = Array.from(new Set([...permisos, ...rolEncontrado.permisos]));
+          }
+        } catch (e) {
+          console.error('Error merging role permissions in check:', e);
+        }
+      }
     }
 
     res.json({

@@ -4,27 +4,29 @@ import { userService } from '@/api/user.service';
 import { companiesService } from '@/api/companies.service';
 import { rolesService } from '@/api/roles.service';
 import { careGroupsService } from '@/api/care-groups.service';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Upload, X, CheckCircle, Copy } from 'lucide-react';
+import { Upload, X, CheckCircle, Copy, Mail, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface UserFormProps {
     userToEdit?: any;
     onSuccess?: () => void;
+    tipo?: 'local' | 'global' | null;
 }
 
-const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
+const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
     const queryClient = useQueryClient();
     const isEditMode = !!userToEdit;
 
     // Estados del formulario
     const [nombre, setNombre] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [telefono, setTelefono] = useState('');
     const [puesto, setPuesto] = useState('');
     const [empresaId, setEmpresaId] = useState('');
@@ -32,7 +34,6 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
     const [selectedCareGroups, setSelectedCareGroups] = useState<string[]>([]);
     const [activo, setActivo] = useState(true);
     const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
-    const [fotoPreview, setFotoPreview] = useState<string>('');
     const [fotoPreview, setFotoPreview] = useState<string>('');
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -49,42 +50,73 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
             setPuesto(userToEdit.puesto || '');
             setEmpresaId(userToEdit.empresaId || userToEdit.empresa || '');
             setSelectedRole(userToEdit.rol || '');
-            setSelectedCareGroups(userToEdit.habilidades || []);
+            setSelectedCareGroups(userToEdit.habilidades || userToEdit.gruposDeAtencion || []);
             setActivo(userToEdit.activo !== false);
             setFotoPreview(userToEdit.fotoPerfil || '');
-            setPassword('');
         }
     }, [userToEdit]);
 
     // Fetch Companies
-    const { data: companies = [] } = useQuery({
+    const { data: allCompanies = [] } = useQuery({
         queryKey: ['companies'],
         queryFn: companiesService.getCompanies,
     });
 
-    // Fetch Roles (filtered by company if selected)
+    // Find AurontekHQ
+    const aurontekHQ = allCompanies?.find((c: any) => c.rfc === 'AURONTEK001');
+    const aurontekHQId = aurontekHQ?._id || aurontekHQ?.id;
+
+    // Filter companies based on tipo
+    const companies = tipo === 'global'
+        ? allCompanies.filter((c: any) => (c._id || c.id) !== aurontekHQId)
+        : allCompanies;
+
+    // Auto-assign AurontekHQ for local users
+    useEffect(() => {
+        if (tipo === 'local' && aurontekHQId && !isEditMode) {
+            setEmpresaId(aurontekHQId);
+        }
+    }, [tipo, aurontekHQId, isEditMode]);
+
+    // Fetch Roles (filtered by company)
     const { data: roles = [] } = useQuery({
         queryKey: ['roles', empresaId],
         queryFn: () => rolesService.getRoles(empresaId || undefined),
         enabled: !!empresaId
     });
 
-    // Fetch Care Groups
-    const { data: careGroups = [] } = useQuery({
+    // Fetch Care Groups (filtered by company)
+    const { data: allCareGroups = [] } = useQuery({
         queryKey: ['care-groups'],
         queryFn: careGroupsService.getAll
     });
 
-    // Upload photo to Cloudinary
+    // Filter care groups by selected company
+    const careGroups = empresaId
+        ? allCareGroups.filter((group: any) => {
+            const groupEmpresaId = group.empresa?._id || group.empresa?.id || group.empresa || group.empresaId;
+            return String(groupEmpresaId) === String(empresaId);
+        })
+        : [];
+
+    // Upload photo to Cloudinary (optional - skip if not configured)
     const uploadPhotoToCloudinary = async (file: File): Promise<string> => {
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+
+        // Skip upload if Cloudinary is not configured
+        if (!cloudName || cloudName === 'your-cloud-name') {
+            console.log('⚠️ Cloudinary not configured, skipping photo upload');
+            throw new Error('Cloudinary not configured');
+        }
+
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('upload_preset', 'aurontek_users'); // Configure this in Cloudinary
+        formData.append('upload_preset', 'aurontek_users');
         formData.append('folder', 'usuarios');
 
         try {
             const response = await fetch(
-                `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'your-cloud-name'}/image/upload`,
+                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
                 {
                     method: 'POST',
                     body: formData
@@ -96,6 +128,7 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
             const data = await response.json();
             return data.secure_url;
         } catch (error) {
+            console.error('Cloudinary upload error:', error);
             throw new Error('Error al subir la imagen');
         }
     };
@@ -105,16 +138,11 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
         mutationFn: userService.createUser,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
-            queryClient.invalidateQueries({ queryKey: ['users'] });
-
-            // If we have created credentials locally (auto-generated or manual), show modal
-            if (createdCredentials) {
-                setShowCredentials(true);
-            } else {
-                toast.success('Usuario creado correctamente');
-                if (onSuccess) onSuccess();
-                resetForm();
-            }
+            toast.success('Usuario creado correctamente', {
+                description: 'Se ha enviado un correo con la contraseña temporal'
+            });
+            if (onSuccess) onSuccess();
+            resetForm();
         },
         onError: (err: any) => {
             toast.error(err.response?.data?.msg || 'Error al crear usuario');
@@ -146,7 +174,6 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
     const resetForm = () => {
         setNombre('');
         setEmail('');
-        setPassword('');
         setTelefono('');
         setPuesto('');
         setEmpresaId('');
@@ -169,94 +196,77 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
         }
     };
 
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        let photoUrl = fotoPreview;
+        if (!empresaId) {
+            return toast.error('Selecciona una empresa');
+        }
 
-        // Upload photo if new file selected
+        if (!selectedRole) {
+            return toast.error('Selecciona un rol');
+        }
+
+        let photoUrl = fotoPreview || '';
+
+        // Upload photo if new file selected (optional)
         if (fotoPerfil) {
             setUploadingPhoto(true);
             try {
                 photoUrl = await uploadPhotoToCloudinary(fotoPerfil);
             } catch (error) {
-                toast.error('Error al subir la foto');
-                setUploadingPhoto(false);
-                return;
+                // Photo upload is optional, so we continue without it
+                toast.warning('No se pudo subir la foto, pero el usuario se creará sin ella');
+                photoUrl = '';
             }
             setUploadingPhoto(false);
         }
 
+        const userData: any = {
+            nombre,
+            correo: email,
+            telefono,
+            puesto,
+            empresa: empresaId,
+            rol: selectedRole,
+            habilidades: selectedCareGroups,
+            gruposDeAtencion: selectedCareGroups,
+            activo,
+            fotoPerfil: photoUrl
+        };
+
         if (isEditMode) {
-            // Update mode
-            const updateData: any = {
-                nombre,
-                correo: email,
-                telefono,
-                puesto,
-                empresa: empresaId,
-                rol: selectedRole,
-                habilidades: selectedCareGroups,
-                activo,
-                fotoPerfil: photoUrl
-            };
-
-            // Only include password if provided
-            if (password) {
-                updateData.contraseña = password;
-            }
-
             updateUserMutation.mutate({
                 id: userToEdit._id || userToEdit.id,
-                data: updateData
+                data: userData
             });
         } else {
-        } else {
-            // Create mode
-            if (!selectedRole) {
-                return toast.error('Selecciona un rol');
-            }
-
-            let finalPassword = password;
-            if (!finalPassword) {
-                finalPassword = generatePassword();
-            }
-
-            // Save for modal
-            setCreatedCredentials({
-                password: finalPassword,
-                email: email
-            });
-
-            const createData: any = {
-                nombre,
-                correo: email,
-                contraseña: finalPassword,
-                telefono,
-                puesto,
-                empresa: empresaId,
-                rol: selectedRole,
-                habilidades: selectedCareGroups,
-                activo,
-                fotoPerfil: photoUrl
-            };
-
-            createUserMutation.mutate(createData);
+            // En modo creación, el backend generará la contraseña automáticamente
+            createUserMutation.mutate(userData);
         }
     };
 
-    return (
+    return (<>
         <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Alert informativo */}
+            {!isEditMode && (
+                <Alert>
+                    <Mail className="h-4 w-4" />
+                    <AlertDescription>
+                        Se generará una contraseña automáticamente y se enviará al correo del usuario.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Photo Upload */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
                 <div className="relative">
                     {fotoPreview ? (
                         <div className="relative">
                             <img
                                 src={fotoPreview}
                                 alt="Preview"
-                                className="w-24 h-24 rounded-full object-cover border-2 border-slate-200"
+                                className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"
                             />
                             <button
                                 type="button"
@@ -264,20 +274,20 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
                                     setFotoPerfil(null);
                                     setFotoPreview('');
                                 }}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                             >
                                 <X className="h-3 w-3" />
                             </button>
                         </div>
                     ) : (
-                        <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center border-2 border-dashed border-slate-300">
+                        <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-600">
                             <Upload className="h-8 w-8 text-slate-400" />
                         </div>
                     )}
                 </div>
-                <div>
+                <div className="flex-1">
                     <Label htmlFor="foto" className="cursor-pointer">
-                        <div className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-md text-sm font-medium transition-colors">
+                        <div className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-md text-sm font-medium transition-colors inline-block">
                             {fotoPreview ? 'Cambiar Foto' : 'Subir Foto'}
                         </div>
                     </Label>
@@ -288,38 +298,47 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
                         onChange={handlePhotoChange}
                         className="hidden"
                     />
-                    <p className="text-xs text-slate-500 mt-1">JPG, PNG o GIF (máx. 2MB)</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                        JPG, PNG o GIF (máx. 2MB)
+                    </p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nombre */}
                 <div className="space-y-2">
-                    <Label>Nombre Completo *</Label>
+                    <Label htmlFor="nombre">
+                        Nombre Completo <span className="text-red-500">*</span>
+                    </Label>
                     <Input
+                        id="nombre"
                         value={nombre}
                         onChange={(e) => setNombre(e.target.value)}
-                        placeholder="Juan Pérez"
+                        placeholder="Juan Pérez García"
                         required
                     />
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2">
-                    <Label>Correo Electrónico *</Label>
+                    <Label htmlFor="email">
+                        Correo Electrónico <span className="text-red-500">*</span>
+                    </Label>
                     <Input
+                        id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="juan@empresa.com"
+                        placeholder="juan.perez@empresa.com"
                         required
                     />
                 </div>
 
                 {/* Teléfono */}
                 <div className="space-y-2">
-                    <Label>Teléfono</Label>
+                    <Label htmlFor="telefono">Teléfono</Label>
                     <Input
+                        id="telefono"
                         type="tel"
                         value={telefono}
                         onChange={(e) => setTelefono(e.target.value)}
@@ -329,46 +348,41 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
 
                 {/* Puesto */}
                 <div className="space-y-2">
-                    <Label>Puesto</Label>
+                    <Label htmlFor="puesto">Puesto</Label>
                     <Input
+                        id="puesto"
                         value={puesto}
                         onChange={(e) => setPuesto(e.target.value)}
                         placeholder="Desarrollador Senior"
                     />
                 </div>
 
-                {/* Password */}
-                <div className="space-y-2">
-                    <Label>Contraseña {isEditMode && '(dejar vacío para mantener)'}</Label>
-                    <Input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder={isEditMode ? 'Nueva contraseña' : 'Contraseña'}
-                        required={!isEditMode}
-                    />
-                </div>
-
-                {/* Empresa */}
-                <div className="space-y-2">
-                    <Label>Empresa *</Label>
-                    <Select value={empresaId} onValueChange={setEmpresaId} required>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar empresa" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {companies.map((company: any) => (
-                                <SelectItem key={company._id || company.id} value={company._id || company.id}>
-                                    {company.nombre}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                {/* Empresa - Hide for local users */}
+                {tipo !== 'local' && (
+                    <div className="space-y-2">
+                        <Label>
+                            Empresa <span className="text-red-500">*</span>
+                        </Label>
+                        <Select value={empresaId} onValueChange={setEmpresaId} required>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar empresa" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {companies.map((company: any) => (
+                                    <SelectItem key={company._id || company.id} value={company._id || company.id}>
+                                        {company.nombre}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
 
                 {/* Rol */}
-                <div className="space-y-2 col-span-2">
-                    <Label>Rol *</Label>
+                <div className="space-y-2">
+                    <Label>
+                        Rol <span className="text-red-500">*</span>
+                    </Label>
                     <Select value={selectedRole} onValueChange={setSelectedRole} required disabled={!empresaId}>
                         <SelectTrigger>
                             <SelectValue placeholder={empresaId ? "Seleccionar rol" : "Primero selecciona una empresa"} />
@@ -376,7 +390,12 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
                         <SelectContent>
                             {roles.map((role: any) => (
                                 <SelectItem key={role._id || role.id} value={role.nombre}>
-                                    {role.nombre}
+                                    <div className="flex items-center gap-2">
+                                        <span>{role.nombre}</span>
+                                        {role.descripcion && (
+                                            <span className="text-xs text-slate-500">({role.descripcion})</span>
+                                        )}
+                                    </div>
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -385,8 +404,11 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
             </div>
 
             {/* Grupos de Atención */}
-            <div className="space-y-2 col-span-2">
-                <Label className="text-slate-900 dark:text-slate-100">Grupos de Atención</Label>
+            <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                    Grupos de Atención
+                    <Info className="h-3 w-3 text-slate-400" />
+                </Label>
                 <Select
                     value={selectedCareGroups[0] || ''}
                     onValueChange={(value) => {
@@ -394,16 +416,17 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
                             setSelectedCareGroups([...selectedCareGroups, value]);
                         }
                     }}
+                    disabled={!empresaId}
                 >
-                    <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100">
-                        <SelectValue placeholder="Seleccionar grupos de atención" />
+                    <SelectTrigger>
+                        <SelectValue placeholder={empresaId ? "Seleccionar grupos" : "Primero selecciona una empresa"} />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                    <SelectContent>
                         {careGroups.map((group: any) => (
                             <SelectItem
                                 key={group._id}
                                 value={group.nombre}
-                                className="text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                disabled={selectedCareGroups.includes(group.nombre)}
                             >
                                 {group.nombre}
                             </SelectItem>
@@ -415,19 +438,20 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
                 {selectedCareGroups.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {selectedCareGroups.map((groupName, index) => (
-                            <div
+                            <Badge
                                 key={index}
-                                className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 px-3 py-1 rounded-full text-sm"
+                                variant="secondary"
+                                className="flex items-center gap-1 px-3 py-1"
                             >
                                 <span>{groupName}</span>
                                 <button
                                     type="button"
                                     onClick={() => setSelectedCareGroups(selectedCareGroups.filter(g => g !== groupName))}
-                                    className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5"
+                                    className="hover:bg-slate-300 dark:hover:bg-slate-600 rounded-full p-0.5 transition-colors"
                                 >
                                     <X className="h-3 w-3" />
                                 </button>
-                            </div>
+                            </Badge>
                         ))}
                     </div>
                 )}
@@ -449,77 +473,78 @@ const UserForm = ({ userToEdit, onSuccess }: UserFormProps) => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button
                     type="submit"
                     disabled={createUserMutation.isPending || updateUserMutation.isPending || uploadingPhoto}
+                    className="min-w-[150px]"
                 >
                     {uploadingPhoto ? 'Subiendo foto...' : isEditMode ? 'Actualizar Usuario' : 'Crear Usuario'}
                 </Button>
             </div>
         </form>
-            {/* Success Dialog */ }
-    {
-        showCredentials && createdCredentials && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-all duration-300">
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 border border-slate-100 dark:border-slate-800">
+        {/* Success Dialog */}
+        {
+            showCredentials && createdCredentials && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-all duration-300">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 border border-slate-100 dark:border-slate-800">
 
-                    <div className="flex flex-col items-center text-center mb-6">
-                        <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 ring-8 ring-green-50 dark:ring-green-900/10">
-                            <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">¡Usuario Creado!</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2">
-                            El usuario ha sido registrado exitosamente.
-                        </p>
-                    </div>
-
-                    <div className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                Contraseña Generada
+                        <div className="flex flex-col items-center text-center mb-6">
+                            <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 ring-8 ring-green-50 dark:ring-green-900/10">
+                                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">¡Usuario Creado!</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2">
+                                El usuario ha sido registrado exitosamente.
                             </p>
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between group">
-                                <p className="text-xl font-mono font-bold text-slate-800 dark:text-slate-200 select-all tracking-wider">
-                                    {createdCredentials.password}
+                        </div>
+
+                        <div className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <div>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    Contraseña Generada
                                 </p>
-                                <Copy className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 cursor-pointer transition-colors"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(createdCredentials.password);
-                                        toast.success('Contraseña copiada');
-                                    }}
-                                />
+                                <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between group">
+                                    <p className="text-xl font-mono font-bold text-slate-800 dark:text-slate-200 select-all tracking-wider">
+                                        {createdCredentials.password}
+                                    </p>
+                                    <Copy className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 cursor-pointer transition-colors"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(createdCredentials.password);
+                                            toast.success('Contraseña copiada');
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="mt-6">
-                        <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/20 mb-6">
-                            <span className="text-xl">📧</span>
-                            <p className="leading-snug">
-                                Hemos enviado las credenciales al correo: <br />
-                                <span className="font-semibold text-slate-900 dark:text-slate-200 block mt-0.5">{createdCredentials.email}</span>
-                            </p>
+                        <div className="mt-6">
+                            <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/20 mb-6">
+                                <span className="text-xl">📧</span>
+                                <p className="leading-snug">
+                                    Hemos enviado las credenciales al correo: <br />
+                                    <span className="font-semibold text-slate-900 dark:text-slate-200 block mt-0.5">{createdCredentials.email}</span>
+                                </p>
+                            </div>
+
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    setShowCredentials(false);
+                                    if (onSuccess) onSuccess();
+                                    resetForm();
+                                }}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 py-6 text-lg font-medium"
+                            >
+                                Finalizar
+                            </Button>
                         </div>
-
-                        <Button
-                            type="button"
-                            onClick={() => {
-                                setShowCredentials(false);
-                                if (onSuccess) onSuccess();
-                                resetForm();
-                            }}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 py-6 text-lg font-medium"
-                        >
-                            Finalizar
-                        </Button>
                     </div>
                 </div>
-            </div>
-        )
-    }
-    );
+            )
+        }
+    </>);
 };
 
 export default UserForm;

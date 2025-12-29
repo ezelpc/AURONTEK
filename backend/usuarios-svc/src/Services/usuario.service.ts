@@ -51,16 +51,34 @@ export const crearUsuario = async (datosUsuario: any) => {
       }
     }
 
+    // Generar contraseña automáticamente si no se proporciona
+    let passwordToUse = datosUsuario.password || datosUsuario.contraseña;
+    let passwordGenerada = false;
+
+    if (!passwordToUse) {
+      // Generar contraseña segura de 12 caracteres
+      const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+      passwordToUse = '';
+      for (let i = 0; i < 12; i++) {
+        passwordToUse += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+      }
+      passwordGenerada = true;
+      console.log('Contraseña generada automáticamente para:', datosUsuario.correo);
+    }
+
     const datosFormateados = {
       nombre: datosUsuario.nombre,
       correo: datosUsuario.correo.toLowerCase(),
-      contraseña: datosUsuario.password,
+      contraseña: passwordToUse,
       telefono: datosUsuario.telefono,
       puesto: datosUsuario.puesto,
       rol: datosUsuario.rol,
-      habilidades: datosUsuario.habilidades || [],
+      habilidades: datosUsuario.habilidades || datosUsuario.gruposDeAtencion || [],
+      gruposDeAtencion: datosUsuario.gruposDeAtencion || datosUsuario.habilidades || [],
       empresa: datosUsuario.empresa,
-      activo: datosUsuario.activo !== false // default true
+      fotoPerfil: datosUsuario.fotoPerfil,
+      activo: datosUsuario.activo !== false, // default true
+      permisos: datosUsuario.permisos || []
     };
 
     console.log('Creando usuario con datos:', {
@@ -158,7 +176,7 @@ export const obtenerUsuariosPorEmpresa = async (empresaId: string) => {
  * Obtiene un usuario específico por ID
  */
 export const obtenerUsuarioPorId = async (usuarioId: string) => {
-  const usuario = await Usuario.findById(usuarioId).select('-contraseña');
+  const usuario = await Usuario.findById(usuarioId).select('-contraseña').populate('empresa', 'nombre rfc');
   if (!usuario) throw new Error('Usuario no encontrado.');
   return usuario;
 };
@@ -208,7 +226,7 @@ export const eliminarUsuario = async (usuarioId: string, solicitanteRol?: string
  * ✅ NUEVO: Buscar usuario por ID (para otros servicios)
  */
 export const encontrarUsuarioPorId = async (usuarioId: string) => {
-  const usuario = await Usuario.findById(usuarioId).select('-contraseña');
+  const usuario = await Usuario.findById(usuarioId).select('-contraseña').populate('empresa', 'nombre rfc');
   return usuario;
 };
 

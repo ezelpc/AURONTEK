@@ -4,8 +4,10 @@ import { useAuthStore } from '@/auth/auth.store';
 import { careGroupsService, CareGroup } from '@/api/care-groups.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
     Table,
     TableBody,
@@ -40,8 +42,6 @@ import { useForm } from 'react-hook-form';
 
 const CareGroupsPage = () => {
     const queryClient = useQueryClient();
-    const { hasPermission } = useAuthStore();
-    const canManage = hasPermission('habilities.manage');
 
     const [isOpen, setIsOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<CareGroup | null>(null);
@@ -142,11 +142,11 @@ const CareGroupsPage = () => {
                         reset();
                     }
                 }}>
-                    {canManage && (
-                        <DialogTrigger asChild>
-                            <Button><Plus className="mr-2 h-4 w-4" /> Nuevo Grupo</Button>
-                        </DialogTrigger>
-                    )}
+                    <DialogTrigger asChild>
+                        <ProtectedButton permission={PERMISSIONS.CARE_GROUPS_CREATE}>
+                            <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
+                        </ProtectedButton>
+                    </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>{editingGroup ? 'Editar Grupo' : 'Nuevo Grupo'}</DialogTitle>
@@ -197,24 +197,22 @@ const CareGroupsPage = () => {
                                     </TableCell>
                                     <TableCell>{group.descripcion || '-'}</TableCell>
                                     <TableCell className="text-right space-x-2">
-                                        {canManage && (
-                                            <>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleEdit(group)}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => setDeletingId(group._id || '')}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-red-600" />
-                                                </Button>
-                                            </>
-                                        )}
+                                        <ProtectedButton
+                                            permission={PERMISSIONS.CARE_GROUPS_UPDATE}
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEdit(group)}
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </ProtectedButton>
+                                        <ProtectedButton
+                                            permission={PERMISSIONS.CARE_GROUPS_DELETE}
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setDeletingId(group._id || '')}
+                                        >
+                                            <Trash2 className="h-4 w-4 text-red-600" />
+                                        </ProtectedButton>
                                     </TableCell>
                                 </TableRow>
                             ))}

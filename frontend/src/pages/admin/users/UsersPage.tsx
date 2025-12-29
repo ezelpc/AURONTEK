@@ -2,13 +2,20 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/api/user.service';
 import { companiesService } from '@/api/companies.service';
+import { rolesService } from '@/api/roles.service';
 import UserForm from './UserForm';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Pencil, Trash2, Building2, Ban, CheckCircle } from 'lucide-react';
+import { Plus, X, Pencil, Trash2, Building2, Ban, CheckCircle, Key, Search } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { useAuthStore } from '@/auth/auth.store';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,8 +29,13 @@ import {
 
 const UsersPage = () => {
     const queryClient = useQueryClient();
+    const [searchParams] = useSearchParams();
+    const { user: currentUser } = useAuthStore();
+    const tipo = searchParams.get('tipo'); // 'local' o 'global'
+
     const [showForm, setShowForm] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<string>(''); // '' = Todas
+    const [searchTerm, setSearchTerm] = useState('');
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
@@ -33,11 +45,63 @@ const UsersPage = () => {
         queryFn: companiesService.getCompanies,
     });
 
-    // 2. Fetch Users (Filtered)
-    const { data: users = [], isLoading } = useQuery({
+    // 2. Fetch Users (Filtered by tipo)
+    const { data: allUsers = [], isLoading } = useQuery({
         queryKey: ['users', selectedCompany],
         queryFn: () => userService.getUsers(selectedCompany || undefined),
     });
+
+    // Find AurontekHQ company ID
+    const aurontekHQ = companies?.find((c: any) => c.rfc === 'AURONTEK001');
+    const aurontekHQId = aurontekHQ?._id || aurontekHQ?.id;
+
+    // Filter users based on tipo parameter
+    const users = allUsers.filter((user: any) => {
+        // Filter by tipo
+        if (tipo === 'local') {
+            // Local: All users from AurontekHQ (internal staff)
+            const userEmpresaId = user.empresaId || user.empresa?._id || user.empresa?.id || user.empresa;
+            return String(userEmpresaId) === String(aurontekHQId);
+        } else if (tipo === 'global') {
+            // Global: users from client companies (not AurontekHQ)
+            const userEmpresaId = user.empresaId || user.empresa?._id || user.empresa?.id || user.empresa;
+            return String(userEmpresaId) !== String(aurontekHQId);
+        }
+        // If no tipo specified, show all
+        return true;
+    }).filter((user: any) => {
+        // Filter by search term
+        if (!searchTerm) return true;
+        const search = searchTerm.toLowerCase();
+        return (
+            user.nombre?.toLowerCase().includes(search) ||
+            user.email?.toLowerCase().includes(search) ||
+            user.correo?.toLowerCase().includes(search) ||
+            user.rol?.toLowerCase().includes(search)
+        );
+    });
+
+    // 3. Fetch Roles to map permissions (Global lookup)
+    const { data: roles = [] } = useQuery({
+        queryKey: ['roles-all', selectedCompany],
+        queryFn: () => rolesService.getRoles(selectedCompany || undefined),
+    });
+
+    // Helper to get permissions for a user
+    const getUserPermissions = (user: any) => {
+        // If user has direct permissions, use them
+        if (user.permisos && user.permisos.length > 0) return user.permisos;
+
+        // heuristic: if 'admin-general', return special
+        if (user.rol === 'admin-general') return ['*'];
+
+        // Otherwise find permissions from role
+        const userRole = Array.isArray(roles) ? roles.find((r: any) => r.nombre === user.rol && (r.empresa === user.empresa || r.empresa === user.empresaId)) : null;
+        // Fallback: search by name only if company match fails (global roles?)
+        const fallbackRole = !userRole && Array.isArray(roles) ? roles.find((r: any) => r.nombre === user.rol) : null;
+
+        return userRole?.permisos || fallbackRole?.permisos || [];
+    };
 
     // Delete Mutation
     const deleteMutation = useMutation({
@@ -66,8 +130,16 @@ const UsersPage = () => {
         }
     });
 
-    const getCompanyName = (id?: string) => {
-        if (!id) return 'N/A';
+    const getCompanyName = (empresaData?: string | { _id?: string, id?: string, nombre?: string }) => {
+        if (!empresaData) return 'N/A';
+
+        // If it's already a populated object with nombre, return it
+        if (typeof empresaData === 'object' && empresaData.nombre) {
+            return empresaData.nombre;
+        }
+
+        // If it's an ID (string), look it up in companies
+        const id = typeof empresaData === 'string' ? empresaData : (empresaData._id || empresaData.id);
         return companies?.find(c => c._id === id || c.id === id)?.nombre || 'Desconocida';
     };
 
@@ -108,30 +180,58 @@ const UsersPage = () => {
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h2>
-                    <p className="text-slate-500">Administración de identidades y accesos.</p>
+                    <h2 className="text-3xl font-bold tracking-tight">
+                        {tipo === 'local' ? 'Usuarios Locales' : tipo === 'global' ? 'Usuarios Globales' : 'Gestión de Usuarios'}
+                    </h2>
+                    <p className="text-slate-500">
+                        {tipo === 'local'
+                            ? 'Personal interno de Aurontek (Administradores y staff)'
+                            : tipo === 'global'
+                                ? 'Usuarios de empresas clientes registradas'
+                                : 'Administración de identidades y accesos.'}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Company Filter */}
+                    {/* Search Bar */}
                     <div className="relative">
-                        <select
-                            className="h-10 w-[200px] rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950"
-                            value={selectedCompany}
-                            onChange={(e) => setSelectedCompany(e.target.value)}
-                        >
-                            <option value="">Todas las Empresas</option>
-                            {Array.isArray(companies) && companies.map(c => (
-                                <option key={c._id || c.id} value={c._id || c.id}>
-                                    {c.nombre}
-                                </option>
-                            ))}
-                        </select>
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            type="text"
+                            placeholder="Buscar usuarios..."
+                            className="pl-9 w-[200px]"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
 
-                    <Button onClick={() => { setEditingUser(null); setShowForm(!showForm); }} variant={showForm ? "secondary" : "default"}>
+                    {/* Company Filter - Only show for global view */}
+                    {tipo === 'global' && (
+                        <div className="relative">
+                            <select
+                                className="h-10 w-[200px] rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-slate-300"
+                                value={selectedCompany}
+                                onChange={(e) => setSelectedCompany(e.target.value)}
+                            >
+                                <option value="" className="dark:bg-slate-800 dark:text-slate-100">Todas las Empresas</option>
+                                {Array.isArray(companies) && companies
+                                    .filter(c => c.rfc !== 'AURONTEK001') // Excluir AurontekHQ
+                                    .map(c => (
+                                        <option key={c._id || c.id} value={c._id || c.id} className="dark:bg-slate-800 dark:text-slate-100">
+                                            {c.nombre}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <ProtectedButton
+                        permission={tipo === 'local' ? [PERMISSIONS.USERS_CREATE, PERMISSIONS.ADMINS_MANAGE] : PERMISSIONS.USERS_CREATE}
+                        onClick={() => { setEditingUser(null); setShowForm(!showForm); }}
+                        variant={showForm ? "secondary" : "default"}
+                    >
                         {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                         {showForm ? 'Cancelar' : 'Nuevo Usuario'}
-                    </Button>
+                    </ProtectedButton>
                 </div>
             </div>
 
@@ -147,6 +247,7 @@ const UsersPage = () => {
                         <UserForm
                             userToEdit={editingUser}
                             onSuccess={handleCloseForm}
+                            tipo={tipo as 'local' | 'global' | null}
                         />
                     </CardContent>
                 </Card>
@@ -156,8 +257,10 @@ const UsersPage = () => {
                 <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-700">
                     <CardTitle className="flex items-center gap-2 dark:text-slate-100">
                         <Building2 className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-                        Directorio Global
+                        {tipo === 'local' ? 'Usuarios Locales' : tipo === 'global' ? 'Directorio Global' : 'Directorio de Usuarios'}
                         {selectedCompany && <Badge variant="secondary" className="ml-2 dark:bg-slate-700 dark:text-slate-300">Filtrado</Badge>}
+                        {searchTerm && <Badge variant="secondary" className="ml-2 dark:bg-slate-700 dark:text-slate-300">Búsqueda activa</Badge>}
+                        <Badge variant="outline" className="ml-auto">{users.length} usuarios</Badge>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -170,6 +273,7 @@ const UsersPage = () => {
                                     <TableHead className="dark:text-slate-300">Nombre / Email</TableHead>
                                     <TableHead className="dark:text-slate-300">Empresa</TableHead>
                                     <TableHead className="dark:text-slate-300">Rol / Puesto</TableHead>
+                                    <TableHead className="dark:text-slate-300">Permisos</TableHead>
                                     <TableHead className="dark:text-slate-300">Estado</TableHead>
                                     <TableHead className="text-right dark:text-slate-300">Acciones</TableHead>
                                 </TableRow>
@@ -196,12 +300,36 @@ const UsersPage = () => {
                                             )}
                                         </TableCell>
                                         <TableCell>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="flex items-center gap-1 cursor-help">
+                                                            <Key className="h-3 w-3 text-slate-400" />
+                                                            <span className="text-sm dark:text-slate-300">
+                                                                {user.rol === 'admin-general' ? 'Total' : getUserPermissions(user).length}
+                                                            </span>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-[300px] flex flex-wrap gap-1 bg-slate-800 border-slate-700 text-slate-200">
+                                                        {getUserPermissions(user).length > 0 ? getUserPermissions(user).map((p: string) => (
+                                                            <Badge key={p} variant="outline" className="text-[10px] h-5 px-1 border-slate-600">
+                                                                {p}
+                                                            </Badge>
+                                                        )) : (
+                                                            <span className="text-xs text-slate-400">Sin permisos asignados</span>
+                                                        )}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </TableCell>
+                                        <TableCell>
                                             <Badge variant={user.activo ? "default" : "secondary"} className={user.activo ? "dark:bg-green-900 dark:text-green-100" : "dark:bg-slate-700 dark:text-slate-300"}>
                                                 {user.activo ? 'Activo' : 'Inactivo'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.USERS_UPDATE}
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleEdit(user)}
@@ -209,8 +337,9 @@ const UsersPage = () => {
                                                 className="dark:hover:bg-slate-800"
                                             >
                                                 <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                                            </Button>
-                                            <Button
+                                            </ProtectedButton>
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.USERS_SUSPEND}
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => toggleActiveMutation.mutate({
@@ -225,8 +354,9 @@ const UsersPage = () => {
                                                 ) : (
                                                     <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
                                                 )}
-                                            </Button>
-                                            <Button
+                                            </ProtectedButton>
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.USERS_DELETE}
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => setDeletingUserId(user.id || user._id)}
@@ -234,7 +364,7 @@ const UsersPage = () => {
                                                 className="dark:hover:bg-slate-800"
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
-                                            </Button>
+                                            </ProtectedButton>
                                         </TableCell>
                                     </TableRow>
                                 ))}

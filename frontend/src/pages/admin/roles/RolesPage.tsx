@@ -4,12 +4,14 @@ import { rolesService, Role } from '@/api/roles.service';
 import { useAuthStore } from '@/auth/auth.store';
 
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, ShieldCheck, Pencil, Trash2, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
     Dialog,
     DialogContent,
@@ -164,9 +166,12 @@ const RolesPage = () => {
                     <h2 className="text-3xl font-bold tracking-tight">Gestión de Roles</h2>
                     <p className="text-slate-500">Administra los perfiles de acceso y permisos del sistema.</p>
                 </div>
-                <Button onClick={() => handleOpenDialog()}>
+                <ProtectedButton
+                    permission={PERMISSIONS.ROLES_CREATE}
+                    onClick={() => handleOpenDialog()}
+                >
                     <Plus className="mr-2 h-4 w-4" /> Nuevo Rol
-                </Button>
+                </ProtectedButton>
             </div>
 
             <Card className="dark:bg-slate-900 dark:border-slate-700">
@@ -204,23 +209,25 @@ const RolesPage = () => {
                                         <TableCell className="dark:text-slate-300">{role.nivel}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button
+                                                <ProtectedButton
+                                                    permission={PERMISSIONS.ROLES_UPDATE}
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => handleOpenDialog(role)}
                                                     className="dark:hover:bg-slate-800"
                                                 >
                                                     <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                                                </Button>
+                                                </ProtectedButton>
                                                 {!isSystemRole(role) && (
-                                                    <Button
+                                                    <ProtectedButton
+                                                        permission={PERMISSIONS.ROLES_DELETE}
                                                         variant="ghost"
                                                         size="icon"
                                                         className="hover:text-red-500 dark:hover:bg-slate-800"
                                                         onClick={() => setDeletingRoleId(role._id)}
                                                     >
                                                         <Trash2 className="h-4 w-4 dark:text-slate-400" />
-                                                    </Button>
+                                                    </ProtectedButton>
                                                 )}
                                             </div>
                                         </TableCell>
