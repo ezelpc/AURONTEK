@@ -93,7 +93,6 @@ export const crearUsuario = async (datosUsuario: any) => {
 
     console.log('Usuario creado exitosamente con ID:', nuevoUsuario._id);
 
-<<<<<<< Updated upstream
     // Obtener datos de la empresa (Nombre y Código de Acceso)
     const empresaService = await import('./empresa.service');
     let nombreEmpresa = 'Aurontek';
@@ -141,13 +140,6 @@ export const crearUsuario = async (datosUsuario: any) => {
     } catch (emailError) {
       console.error('Error al enviar correo de bienvenida:', emailError);
       // No fallamos la creación del usuario si falla el correo, pero logueamos el error
-=======
-    // TODO: Enviar correo con contraseña si fue generada automáticamente
-    if (passwordGenerada) {
-      console.log(`📧 TODO: Enviar correo a ${datosUsuario.correo} con contraseña: ${passwordToUse}`);
-      // Aquí se implementará el envío de correo en el futuro
-      // await enviarCorreoBienvenida(datosUsuario.correo, datosUsuario.nombre, passwordToUse);
->>>>>>> Stashed changes
     }
 
     return nuevoUsuario;
