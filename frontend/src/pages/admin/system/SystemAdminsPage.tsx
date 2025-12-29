@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminsService, SystemAdmin } from '@/api/admins.service';
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, ShieldCheck, ShieldAlert, Pencil } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ShieldAlert, Pencil, Key } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from 'react-hook-form';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
     Dialog,
     DialogContent,
@@ -154,9 +157,12 @@ const SystemAdminsPage = () => {
 
                 <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
                     <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
+                        <ProtectedButton
+                            permission={PERMISSIONS.ADMINS_MANAGE}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
                             <Plus className="mr-2 h-4 w-4" /> Nuevo Admin
-                        </Button>
+                        </ProtectedButton>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
@@ -242,6 +248,7 @@ const SystemAdminsPage = () => {
                                 <TableHead>Nombre</TableHead>
                                 <TableHead>Correo</TableHead>
                                 <TableHead>Rol</TableHead>
+                                <TableHead>Permisos</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
@@ -264,10 +271,39 @@ const SystemAdminsPage = () => {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div className="flex items-center gap-1 cursor-help">
+                                                        <Key className="h-3 w-3 text-slate-400" />
+                                                        <span className="text-sm text-slate-600">
+                                                            {admin.rol === 'admin-general' ? 'Total' : `${admin.permisos?.length || 0}`}
+                                                        </span>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-[300px] flex flex-wrap gap-1 bg-slate-800 border-slate-700 text-slate-200">
+                                                    {admin.rol === 'admin-general' ? (
+                                                        <span className="text-xs">Acceso Total al Sistema</span>
+                                                    ) : (
+                                                        admin.permisos?.map(p => (
+                                                            <Badge key={p} variant="outline" className="text-[10px] h-5 px-1 border-slate-600">
+                                                                {p}
+                                                            </Badge>
+                                                        ))
+                                                    )}
+                                                    {(!admin.permisos || admin.permisos.length === 0) && admin.rol !== 'admin-general' && (
+                                                        <span className="text-xs text-slate-400">Sin permisos asignados</span>
+                                                    )}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </TableCell>
+                                    <TableCell>
                                         <Badge variant="outline" className="border-green-500 text-green-500">Activo</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button
+                                        <ProtectedButton
+                                            permission={PERMISSIONS.ADMINS_MANAGE}
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEdit(admin)}
@@ -275,8 +311,9 @@ const SystemAdminsPage = () => {
                                             title={admin.rol === 'admin-general' ? 'No se puede editar Super Admin' : 'Editar'}
                                         >
                                             <Pencil className="h-4 w-4 text-slate-500" />
-                                        </Button>
-                                        <Button
+                                        </ProtectedButton>
+                                        <ProtectedButton
+                                            permission={PERMISSIONS.ADMINS_MANAGE}
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleDelete(admin._id!)}
@@ -284,7 +321,7 @@ const SystemAdminsPage = () => {
                                             title={admin.rol === 'admin-general' ? 'No se puede eliminar Super Admin' : 'Eliminar'}
                                         >
                                             <Trash2 className="h-4 w-4 text-red-500" />
-                                        </Button>
+                                        </ProtectedButton>
                                     </TableCell>
                                 </TableRow>
                             ))}

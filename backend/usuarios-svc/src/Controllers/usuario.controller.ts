@@ -159,6 +159,35 @@ const crearUsuario = async (req: Request, res: Response) => {
       }
     }
 
+    // Verify Role validity for this company context and get permissions
+    if (datosUsuario.rol && datosUsuario.rol !== 'admin-general' && datosUsuario.rol !== 'admin-subroot') {
+      const RolModel = (await import('../Models/Role.model')).default;
+      const targetEmpresa = datosUsuario.empresa || req.usuario.empresaId;
+
+      const roleExists = await RolModel.findOne({
+        nombre: datosUsuario.rol,
+        $or: [
+          { empresa: targetEmpresa },
+          { empresa: null }
+        ]
+      });
+
+      if (!roleExists) {
+        if (datosUsuario.rol !== 'admin-interno') {
+          throw new Error(`El rol '${datosUsuario.rol}' no es válido para la empresa seleccionada.`);
+        }
+      } else {
+        // Asignar permisos del rol automáticamente si no se proporcionaron
+        if (!datosUsuario.permisos || datosUsuario.permisos.length === 0) {
+          datosUsuario.permisos = roleExists.permisos || [];
+          console.log(`Permisos asignados automáticamente desde rol '${datosUsuario.rol}':`, datosUsuario.permisos);
+        }
+      }
+    } else if (datosUsuario.rol === 'admin-general') {
+      // Admin general tiene todos los permisos
+      datosUsuario.permisos = ['*'];
+    }
+
     const nuevoUsuario = await usuarioService.crearUsuario(datosUsuario);
     res.status(201).json(nuevoUsuario);
   } catch (error: any) {
@@ -247,6 +276,27 @@ const modificarUsuario = async (req: Request, res: Response) => {
     if (!['admin-general', 'admin-subroot'].includes(rolUsuario)) {
       if (!usuario.empresa || usuario.empresa.toString() !== empresaId) {
         return res.status(403).json({ msg: 'Acceso denegado a este usuario.' });
+      }
+    }
+
+    // Validar Rol si cambia
+    if (req.body.rol) {
+      if (req.body.rol !== 'admin-general' && req.body.rol !== 'admin-subroot') {
+        const RolModel = (await import('../Models/Role.model')).default;
+        // Use existing user company if not changing, or new company if changing
+        const targetEmpresa = req.body.empresa || usuario.empresa || empresaId;
+
+        const roleExists = await RolModel.findOne({
+          nombre: req.body.rol,
+          $or: [
+            { empresa: targetEmpresa },
+            { empresa: null }
+          ]
+        });
+
+        if (!roleExists && req.body.rol !== 'admin-interno') {
+          return res.status(400).json({ msg: `El rol '${req.body.rol}' no es válido para esta empresa.` });
+        }
       }
     }
 

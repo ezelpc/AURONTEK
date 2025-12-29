@@ -3,12 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companiesService } from '@/api/companies.service';
 import { Empresa } from '@/types/api.types';
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Ban, CheckCircle, Key, Trash2 } from 'lucide-react';
 import CompanyForm from './CompanyForm';
 import { useAuthStore } from '@/auth/auth.store';
+import { PERMISSIONS } from '@/constants/permissions';
 import { toast } from 'sonner';
 import {
     AlertDialog,
@@ -33,9 +35,6 @@ import { Label } from '@/components/ui/label';
 
 const CompaniesPage = () => {
     const queryClient = useQueryClient();
-    const { hasPermission, user } = useAuthStore();
-
-    const canManageCompanies = hasPermission('companies.manage') || user?.rol === 'admin-general';
 
     const [isCreating, setIsCreating] = useState(false);
     const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
@@ -273,10 +272,13 @@ const CompaniesPage = () => {
                     <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
                     <p className="text-slate-500">Administra a tus clientes y sus licencias.</p>
                 </div>
-                {!isCreating && !editingCompany && canManageCompanies && (
-                    <Button onClick={() => setIsCreating(true)}>
+                {!isCreating && !editingCompany && (
+                    <ProtectedButton
+                        permission={PERMISSIONS.COMPANIES_MANAGE}
+                        onClick={() => setIsCreating(true)}
+                    >
                         <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
-                    </Button>
+                    </ProtectedButton>
                 )}
             </div>
 
@@ -320,7 +322,7 @@ const CompaniesPage = () => {
                                     <TableHead>Contacto</TableHead>
                                     <TableHead>Plan</TableHead>
                                     <TableHead>Estado</TableHead>
-                                    {canManageCompanies && <TableHead className="text-right">Acciones</TableHead>}
+                                    <TableHead className="text-right">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -337,49 +339,51 @@ const CompaniesPage = () => {
                                                 {empresa.activo ? 'Activo' : 'Suspendido'}
                                             </Badge>
                                         </TableCell>
-                                        {canManageCompanies && (
-                                            <TableCell className="text-right flex justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    title="Editar"
-                                                    onClick={() => handleProtectedAction('edit', empresa)}
-                                                >
-                                                    <Pencil className="h-4 w-4 text-slate-500" />
-                                                </Button>
+                                        <TableCell className="text-right flex justify-end gap-2">
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Editar"
+                                                onClick={() => handleProtectedAction('edit', empresa)}
+                                            >
+                                                <Pencil className="h-4 w-4 text-slate-500" />
+                                            </ProtectedButton>
 
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    title={empresa.activo ? "Suspender Licencia" : "Reactivar Licencia"}
-                                                    onClick={() => handleProtectedAction('toggle', empresa)}
-                                                >
-                                                    {empresa.activo ? (
-                                                        <Ban className="h-4 w-4 text-orange-500" />
-                                                    ) : (
-                                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                                    )}
-                                                </Button>
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                variant="ghost"
+                                                size="icon"
+                                                title={empresa.activo ? "Suspender Licencia" : "Reactivar Licencia"}
+                                                onClick={() => handleProtectedAction('toggle', empresa)}
+                                            >
+                                                {empresa.activo ? (
+                                                    <Ban className="h-4 w-4 text-orange-500" />
+                                                ) : (
+                                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                                )}
+                                            </ProtectedButton>
 
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    title="Regenerar Código Acceso"
-                                                    onClick={() => handleProtectedAction('regenerate', empresa)}
-                                                >
-                                                    <Key className="h-4 w-4 text-blue-500" />
-                                                </Button>
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Regenerar Código Acceso"
+                                                onClick={() => handleProtectedAction('regenerate', empresa)}
+                                            >
+                                                <Key className="h-4 w-4 text-blue-500" />
+                                            </ProtectedButton>
 
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    title="Eliminar Empresa"
-                                                    onClick={() => handleProtectedAction('delete', empresa)}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                </Button>
-                                            </TableCell>
-                                        )}
+                                            <ProtectedButton
+                                                permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Eliminar Empresa"
+                                                onClick={() => handleProtectedAction('delete', empresa)}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </ProtectedButton>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                                 {companies?.length === 0 && (
@@ -394,7 +398,7 @@ const CompaniesPage = () => {
                     )}
                 </CardContent>
             </Card>
-        </div>
+        </div >
     );
 };
 

@@ -18,13 +18,15 @@ export const listarRoles = async (req: Request, res: Response) => {
             // If empresaId query param is provided, filter by it.
             // Also show Global Roles (empresa: null)
             if (empresaId) {
+                console.log('🔍 Filtering roles by empresaId:', empresaId);
                 query = {
                     $or: [
                         { empresa: empresaId },
-                        { empresa: null } // Always show global templates if needed? Or just specific.
+                        { empresa: null }
                     ],
                     activo: true
                 };
+                console.log('🔍 Query:', JSON.stringify(query));
             }
             // If no empresaId, show ALL roles (Global + All Companies)
         }
@@ -54,6 +56,10 @@ export const listarRoles = async (req: Request, res: Response) => {
         const roles = await Role.find(query)
             .populate('empresa', 'nombre rfc')
             .sort({ creado: -1 });
+
+        console.log('✅ Roles found:', roles.length);
+        console.log('✅ Roles:', roles.map(r => ({ nombre: r.nombre, empresa: r.empresa })));
+
         res.json(roles);
     } catch (error: any) {
         console.error('Error listing roles:', error);
