@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ticketsService } from '@/api/tickets.service';
-import { servicesService } from '@/api/services.service';
+import { servicesService, Service } from '@/api/services.service';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,9 +21,9 @@ const CreateTicket = () => {
     const [serviceId, setServiceId] = useState('');
 
     // Fetch Services
-    const { data: services } = useQuery({
+    const { data: services = [] } = useQuery<Service[]>({
         queryKey: ['services'],
-        queryFn: servicesService.getServices
+        queryFn: async () => await servicesService.getServices()
     });
 
     const createTicketMutation = useMutation({
@@ -54,7 +54,7 @@ const CreateTicket = () => {
             // Datos del catálogo
             servicioId: selectedService?._id, // Enviar ID para referencia
             servicio: selectedService?.nombre || 'General',
-            tipo: selectedService?.tipo as any || 'Requerimiento',
+            tipo: (selectedService?.tipo as any) || 'Requerimiento',
             categoria: selectedService?.categoria || 'General',
             prioridad: (selectedService?.prioridad?.toUpperCase() as any) || 'MEDIA',
             // SLA calculo en backend o frontend? Backend tickets now supports 'fechaLimiteResolucion' explicit?

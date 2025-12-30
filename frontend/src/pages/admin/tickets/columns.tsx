@@ -66,28 +66,22 @@ export const columns: ColumnDef<Ticket>[] = [
             const statusRaw = row.getValue("estado") as string;
             const status = statusRaw?.toLowerCase() || '';
             let variant: "default" | "secondary" | "destructive" | "outline" = "default";
-            let className = "";
 
             switch (status) {
                 case 'abierto':
                     variant = "destructive";
-                    className = "text-white";
                     break;
                 case 'en_proceso':
                     variant = "default";
-                    className = "text-white";
                     break;
                 case 'en_espera':
                     variant = "secondary";
-                    className = "text-white";
                     break;
                 case 'resuelto':
                     variant = "secondary";
-                    className = "text-white";
                     break;
                 case 'cerrado':
                     variant = "outline";
-                    className = "text-slate-700";
                     break;
             }
 

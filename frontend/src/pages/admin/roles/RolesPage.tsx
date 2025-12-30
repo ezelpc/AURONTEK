@@ -285,7 +285,7 @@ const RolesPage = () => {
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        size="xs"
+                                        size="sm"
                                         onClick={() => {
                                             const allPermissions = Object.values(GROUPED_PERMISSIONS).flatMap(group => group.map(p => p.key));
                                             setFormData(prev => ({ ...prev, permisos: allPermissions }));
@@ -297,7 +297,7 @@ const RolesPage = () => {
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        size="xs"
+                                        size="sm"
                                         onClick={() => setFormData(prev => ({ ...prev, permisos: [] }))}
                                         className="h-7 text-xs"
                                     >

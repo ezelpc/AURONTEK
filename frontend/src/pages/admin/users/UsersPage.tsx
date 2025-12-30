@@ -86,7 +86,7 @@ const UsersPage = () => {
     // 3. Fetch Roles to map permissions (Global lookup)
     const { data: roles = [] } = useQuery({
         queryKey: ['roles-all', selectedCompany],
-        queryFn: () => rolesService.getRoles(selectedCompany || undefined),
+        queryFn: () => rolesService.getRoles({ empresaId: selectedCompany || undefined }),
     });
 
     // Helper to get permissions for a user
