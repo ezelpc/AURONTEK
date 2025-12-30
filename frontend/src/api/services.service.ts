@@ -17,9 +17,10 @@ export interface Service {
 }
 
 export const servicesService = {
-    // List all services (backend filters by permission/scope)
-    getServices: async (): Promise<Service[]> => {
-        const response = await api.get<Service[]>('/services');
+    // List services, optionally filtering by scope
+    getServices: async (alcance?: 'global' | 'local'): Promise<Service[]> => {
+        const params = alcance ? { alcance } : {};
+        const response = await api.get<Service[]>('/services', { params });
         return response.data;
     },
 
@@ -38,20 +39,48 @@ export const servicesService = {
     },
 
     bulkUpload: async (file: File): Promise<any> => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await api.post('/services/bulk-upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const text = e.target?.result as string;
+                    if (!text) throw new Error("Archivo vacío");
+
+                    // Simple CSV Parse
+                    const lines = text.split('\n').filter(l => l.trim());
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+                    const services = lines.slice(1).map(line => {
+                        // Handle comma separation respecting quotes (simple regex fallback or split)
+                        // Using simple split for now assuming template format
+                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                        const obj: any = {};
+                        headers.forEach((h, i) => {
+                            if (h && values[i] !== undefined) obj[h] = values[i];
+                        });
+                        return obj;
+                    });
+
+                    const response = await api.post('/services/bulk-upload', services);
+                    resolve(response.data);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = (error) => reject(error);
+            reader.readAsText(file);
         });
-        return response.data;
     },
 
-    downloadTemplate: async (): Promise<void> => {
-        const response = await api.get('/services/template', { responseType: 'blob' });
+    downloadTemplate: async (scope: 'global' | 'local'): Promise<void> => {
+        const response = await api.get('/services/template', {
+            params: { alcance: scope },
+            responseType: 'blob'
+        });
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'template_servicios.csv');
+        link.setAttribute('download', 'plantilla_servicios.csv');
         document.body.appendChild(link);
         link.click();
         link.remove();

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Upload, X, CheckCircle, Copy, Mail, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTranslation } from 'react-i18next';
 
 interface UserFormProps {
     userToEdit?: any;
@@ -21,6 +22,7 @@ interface UserFormProps {
 }
 
 const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const isEditMode = !!userToEdit;
 
@@ -36,10 +38,6 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
     const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
     const [fotoPreview, setFotoPreview] = useState<string>('');
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
-
-    // Success Modal State
-    const [showCredentials, setShowCredentials] = useState(false);
-    const [createdCredentials, setCreatedCredentials] = useState<{ password: string, email: string } | null>(null);
 
     // Populate form when editing
     useEffect(() => {
@@ -81,7 +79,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
     // Fetch Roles (filtered by company)
     const { data: roles = [] } = useQuery({
         queryKey: ['roles', empresaId],
-        queryFn: () => rolesService.getRoles(empresaId || undefined),
+        queryFn: () => rolesService.getRoles({ empresaId }),
         enabled: !!empresaId
     });
 
@@ -138,14 +136,14 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
         mutationFn: userService.createUser,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
-            toast.success('Usuario creado correctamente', {
-                description: 'Se ha enviado un correo con la contraseña temporal'
+            toast.success(t('users.form.create_btn') + ' ' + t('common.success'), {
+                description: t('users.form.auto_password')
             });
             if (onSuccess) onSuccess();
             resetForm();
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al crear usuario');
+            toast.error(err.response?.data?.msg || t('common.error'));
         }
     });
 
@@ -154,22 +152,13 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
         mutationFn: ({ id, data }: { id: string, data: any }) => userService.updateUser(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
-            toast.success('Usuario actualizado correctamente');
+            toast.success(t('users.form.update_btn') + ' ' + t('common.success'));
             if (onSuccess) onSuccess();
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al actualizar usuario');
+            toast.error(err.response?.data?.msg || t('common.error'));
         }
     });
-
-    const generatePassword = () => {
-        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
-        let pass = "";
-        for (let i = 0; i < 12; i++) {
-            pass += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return pass;
-    };
 
     const resetForm = () => {
         setNombre('');
@@ -200,11 +189,11 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
         e.preventDefault();
 
         if (!empresaId) {
-            return toast.error('Selecciona una empresa');
+            return toast.error(t('users.form.select_company_first'));
         }
 
         if (!selectedRole) {
-            return toast.error('Selecciona un rol');
+            return toast.error(t('users.form.select_role'));
         }
 
         let photoUrl = fotoPreview || '';
@@ -246,14 +235,14 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
         }
     };
 
-    return (<>
+    return (
         <form onSubmit={handleSubmit} className="space-y-6">
             {/* Alert informativo */}
             {!isEditMode && (
                 <Alert>
                     <Mail className="h-4 w-4" />
                     <AlertDescription>
-                        Se generará una contraseña automáticamente y se enviará al correo del usuario.
+                        {t('users.form.auto_password')}
                     </AlertDescription>
                 </Alert>
             )}
@@ -288,7 +277,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                 <div className="flex-1">
                     <Label htmlFor="foto" className="cursor-pointer">
                         <div className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-md text-sm font-medium transition-colors inline-block">
-                            {fotoPreview ? 'Cambiar Foto' : 'Subir Foto'}
+                            {fotoPreview ? t('users.form.change_photo') : t('users.form.upload_photo')}
                         </div>
                     </Label>
                     <Input
@@ -299,7 +288,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                         className="hidden"
                     />
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                        JPG, PNG o GIF (máx. 2MB)
+                        {t('users.form.photo_help')}
                     </p>
                 </div>
             </div>
@@ -308,7 +297,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                 {/* Nombre */}
                 <div className="space-y-2">
                     <Label htmlFor="nombre">
-                        Nombre Completo <span className="text-red-500">*</span>
+                        {t('users.form.fullname')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                         id="nombre"
@@ -322,7 +311,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                 {/* Email */}
                 <div className="space-y-2">
                     <Label htmlFor="email">
-                        Correo Electrónico <span className="text-red-500">*</span>
+                        {t('users.form.email')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                         id="email"
@@ -336,7 +325,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
 
                 {/* Teléfono */}
                 <div className="space-y-2">
-                    <Label htmlFor="telefono">Teléfono</Label>
+                    <Label htmlFor="telefono">{t('users.form.phone')}</Label>
                     <Input
                         id="telefono"
                         type="tel"
@@ -348,7 +337,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
 
                 {/* Puesto */}
                 <div className="space-y-2">
-                    <Label htmlFor="puesto">Puesto</Label>
+                    <Label htmlFor="puesto">{t('users.form.position')}</Label>
                     <Input
                         id="puesto"
                         value={puesto}
@@ -361,11 +350,15 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                 {tipo !== 'local' && (
                     <div className="space-y-2">
                         <Label>
-                            Empresa <span className="text-red-500">*</span>
+                            {t('users.form.company')} <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={empresaId} onValueChange={setEmpresaId} required>
+                        <Select value={empresaId} onValueChange={(val) => {
+                            setEmpresaId(val);
+                            setSelectedRole('');
+                            setSelectedCareGroups([]);
+                        }} required>
                             <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar empresa" />
+                                <SelectValue placeholder={t('users.form.select_company')} />
                             </SelectTrigger>
                             <SelectContent>
                                 {companies.map((company: any) => (
@@ -381,11 +374,11 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                 {/* Rol */}
                 <div className="space-y-2">
                     <Label>
-                        Rol <span className="text-red-500">*</span>
+                        {t('users.form.role')} <span className="text-red-500">*</span>
                     </Label>
                     <Select value={selectedRole} onValueChange={setSelectedRole} required disabled={!empresaId}>
                         <SelectTrigger>
-                            <SelectValue placeholder={empresaId ? "Seleccionar rol" : "Primero selecciona una empresa"} />
+                            <SelectValue placeholder={empresaId ? t('users.form.select_role') : t('users.form.select_company_first')} />
                         </SelectTrigger>
                         <SelectContent>
                             {roles.map((role: any) => (
@@ -406,7 +399,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
             {/* Grupos de Atención */}
             <div className="space-y-2">
                 <Label className="flex items-center gap-2">
-                    Grupos de Atención
+                    {t('users.form.care_groups')}
                     <Info className="h-3 w-3 text-slate-400" />
                 </Label>
                 <Select
@@ -419,7 +412,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                     disabled={!empresaId}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder={empresaId ? "Seleccionar grupos" : "Primero selecciona una empresa"} />
+                        <SelectValue placeholder={empresaId ? t('users.form.select_groups') : t('users.form.select_company_first')} />
                     </SelectTrigger>
                     <SelectContent>
                         {careGroups.map((group: any) => (
@@ -468,7 +461,7 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                     htmlFor="activo"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                    Usuario activo
+                    {t('users.form.active')}
                 </label>
             </div>
 
@@ -479,72 +472,11 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
                     disabled={createUserMutation.isPending || updateUserMutation.isPending || uploadingPhoto}
                     className="min-w-[150px]"
                 >
-                    {uploadingPhoto ? 'Subiendo foto...' : isEditMode ? 'Actualizar Usuario' : 'Crear Usuario'}
+                    {uploadingPhoto ? t('users.form.uploading') : isEditMode ? t('users.form.update_btn') : t('users.form.create_btn')}
                 </Button>
             </div>
         </form>
-        {/* Success Dialog */}
-        {
-            showCredentials && createdCredentials && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-all duration-300">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 border border-slate-100 dark:border-slate-800">
-
-                        <div className="flex flex-col items-center text-center mb-6">
-                            <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 ring-8 ring-green-50 dark:ring-green-900/10">
-                                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">¡Usuario Creado!</h3>
-                            <p className="text-slate-500 dark:text-slate-400 mt-2">
-                                El usuario ha sido registrado exitosamente.
-                            </p>
-                        </div>
-
-                        <div className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <div>
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                    Contraseña Generada
-                                </p>
-                                <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between group">
-                                    <p className="text-xl font-mono font-bold text-slate-800 dark:text-slate-200 select-all tracking-wider">
-                                        {createdCredentials.password}
-                                    </p>
-                                    <Copy className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 cursor-pointer transition-colors"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(createdCredentials.password);
-                                            toast.success('Contraseña copiada');
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-6">
-                            <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/20 mb-6">
-                                <span className="text-xl">📧</span>
-                                <p className="leading-snug">
-                                    Hemos enviado las credenciales al correo: <br />
-                                    <span className="font-semibold text-slate-900 dark:text-slate-200 block mt-0.5">{createdCredentials.email}</span>
-                                </p>
-                            </div>
-
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    setShowCredentials(false);
-                                    if (onSuccess) onSuccess();
-                                    resetForm();
-                                }}
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 py-6 text-lg font-medium"
-                            >
-                                Finalizar
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )
-        }
-    </>);
+    );
 };
 
 export default UserForm;

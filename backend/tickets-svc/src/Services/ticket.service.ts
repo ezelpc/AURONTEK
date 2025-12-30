@@ -1,5 +1,6 @@
 // Services/ticket.service.ts
 import Ticket from '../Models/Ticket.model';
+import auditService from './audit.service';
 import amqp from 'amqplib';
 import axios from 'axios';
 import mongoose from 'mongoose';
@@ -18,7 +19,7 @@ class TicketService {
     if (this._connecting) return;
     this._connecting = true;
 
-    const url = process.env.RABBITMQ_URL || 'amqp://localhost';
+    const url = process.env.RABBITMQ_URL || process.env.RABBIT_MQ_URL || 'amqp://localhost';
 
     // Debug: Mostrar valor de RABBITMQ_URL
     console.log('🔍 DEBUG - RABBITMQ_URL:', process.env.RABBITMQ_URL ? 'Definida' : 'NO DEFINIDA');
@@ -124,6 +125,12 @@ class TicketService {
   async crearTicket(datosTicket: any) {
     try {
       // Calcular fecha de vencimiento basada en SLA del servicio (metadata)
+      // Asignar email del creador si viene en datosTicket (desde el controller)
+      if (!datosTicket.usuarioCreadorEmail && datosTicket.usuario?.email) {
+        datosTicket.usuarioCreadorEmail = datosTicket.usuario.email;
+      }
+
+      // ... SLA logic starts here
       if (datosTicket.metadata?.sla) {
         const slaString = datosTicket.metadata.sla.toLowerCase();
         let horas = 0;
@@ -164,7 +171,8 @@ class TicketService {
           tipo: nuevoTicket.tipo || null,
           prioridad: nuevoTicket.prioridad || null,
           categoria: nuevoTicket.categoria || null,
-          etiquetas: nuevoTicket.etiquetas || []
+          etiquetas: nuevoTicket.etiquetas || [],
+          usuarioCreadorEmail: nuevoTicket.usuarioCreadorEmail
         }
       };
 
@@ -172,6 +180,26 @@ class TicketService {
         await this.publicarEvento('ticket.creado', eventPayload);
       } catch (pubErr: any) {
         console.error('No se pudo publicar evento ticket.creado:', pubErr.message || pubErr);
+      }
+
+      // Registrar creación en el historial de auditoría
+      try {
+        await auditService.registrarCreacion(
+          nuevoTicket._id.toString(),
+          {
+            id: nuevoTicket.usuarioCreador?.toString() || 'sistema',
+            nombre: 'Usuario', // Se actualizará cuando se enriquezca con datos de usuarios-svc
+            correo: 'usuario@aurontek.com'
+          },
+          {
+            titulo: nuevoTicket.titulo,
+            estado: nuevoTicket.estado,
+            prioridad: nuevoTicket.prioridad
+          }
+        );
+      } catch (auditErr: any) {
+        console.error('Error al registrar auditoría de creación:', auditErr.message || auditErr);
+        // No lanzar error, solo registrar
       }
 
       return nuevoTicket;
@@ -222,9 +250,14 @@ class TicketService {
     return enrichedTicket;
   }
 
-  async actualizarEstado(id: string, estado: string, usuarioId?: string, motivo?: string) {
+  async actualizarEstado(id: string, estado: string, usuarioId?: string, motivo?: string, usuarioNombre?: string) {
     const ticket: any = await (Ticket as any).findById(id);
     if (!ticket) throw new Error('Ticket no encontrado');
+
+    // ✅ Validación: Motivo requerido para "en_espera"
+    if (estado === 'en_espera' && !motivo) {
+      throw new Error('Se requiere un motivo para poner el ticket en espera');
+    }
 
     const estadoAnterior = ticket.estado;
 
@@ -275,17 +308,35 @@ class TicketService {
           estado,
           estadoAnterior,
           actualizadoPor: usuarioId,
-          tiempoEnEspera: ticket.tiempoEnEspera
+          tiempoEnEspera: ticket.tiempoEnEspera,
+          usuarioCreador: ticket.usuarioCreador?.toString(), // For web notifications
+          usuarioCreadorEmail: ticket.usuarioCreadorEmail // Send email for notification
         }
       });
     } catch (e: any) {
       console.error('No se pudo publicar estado actualizado:', e.message || e);
     }
 
+    // Registrar cambio de estado en el historial de auditoría
+    try {
+      await auditService.registrarCambioEstado(
+        ticket._id.toString(),
+        {
+          id: usuarioId || 'sistema',
+          nombre: usuarioNombre || (usuarioId ? 'Usuario' : 'Sistema'),
+          correo: 'usuario@aurontek.com' // Podríamos pasarlo también si está disponible
+        },
+        estadoAnterior,
+        estado
+      );
+    } catch (auditErr: any) {
+      console.error('Error al registrar auditoría de estado:', auditErr.message || auditErr);
+    }
+
     return ticket;
   }
 
-  async asignarTicket(id: string, agenteId: string, empresaId: string) {
+  async asignarTicket(id: string, agenteId: string, empresaId: string, usuarioId?: string, usuarioNombre?: string) {
     const ticket: any = await (Ticket as any).findById(id);
     if (!ticket) throw new Error('Ticket no encontrado');
 
@@ -313,6 +364,22 @@ class TicketService {
       });
     } catch (e: any) {
       console.error('No se pudo publicar ticket.asignado:', e.message || e);
+    }
+
+    // Registrar asignación en el historial de auditoría
+    try {
+      await auditService.registrarAsignacion(
+        ticket._id.toString(),
+        {
+          id: usuarioId || 'sistema',
+          nombre: usuarioNombre || (usuarioId ? 'Usuario' : 'Sistema'),
+          correo: 'usuario@aurontek.com'
+        },
+        ticket.agenteAsignado ? 'Agente anterior' : null,
+        agente.nombre
+      );
+    } catch (auditErr: any) {
+      console.error('Error al registrar auditoría de asignación:', auditErr.message || auditErr);
     }
 
     return ticket;
@@ -426,7 +493,28 @@ class TicketService {
         }
       });
     } catch (e: any) {
-      console.error('No se pudo publicar ticket.clasificado:', e.message);
+      console.error('No se pudo publicar evento ticket.clasificado:', e.message);
+    }
+
+    // Registrar cambios de clasificación en auditoría
+    try {
+      await auditService.registrarCambio(
+        {
+          ticketId: ticket._id.toString(),
+          tipo: 'update',
+          usuarioId: 'ia-service',
+          usuarioNombre: 'IA Service',
+          usuarioCorreo: 'ia@aurontek.com',
+          cambios: [
+            { campo: 'Clasificación IA', valorAnterior: null, valorNuevo: 'Actualizada' },
+            ...(clasificacion.prioridad ? [{ campo: 'Prioridad', valorAnterior: null, valorNuevo: clasificacion.prioridad }] : []),
+            ...(clasificacion.tipo ? [{ campo: 'Tipo', valorAnterior: null, valorNuevo: clasificacion.tipo }] : [])
+          ],
+          comentario: 'Clasificación actualizada automáticamente por IA'
+        }
+      );
+    } catch (auditErr: any) {
+      console.error('Error al registrar auditoría de clasificación:', auditErr.message || auditErr);
     }
 
     return ticket;
@@ -460,6 +548,26 @@ class TicketService {
       console.error('No se pudo publicar ticket.asignado_automaticamente:', e.message);
     }
 
+    // Registrar asignación automática en auditoría
+    try {
+      // Necesitamos el nombre del agente para el log
+      // Como no tenemos el objeto agente completo aquí, lo intentamos obtener o usamos el ID
+      // O idealmente deberíamos obtener el usuario agente antes
+
+      await auditService.registrarAsignacion(
+        ticket._id.toString(),
+        {
+          id: 'ia-service',
+          nombre: 'IA Service',
+          correo: 'ia@aurontek.com'
+        },
+        ticket.agenteAsignado ? 'Agente anterior' : null,
+        `Agente ${agenteId}` // Simplificación por ahora
+      );
+    } catch (auditErr: any) {
+      console.error('Error al registrar auditoría de asignación IA:', auditErr.message || auditErr);
+    }
+
     return ticket;
   }
 
@@ -469,17 +577,27 @@ class TicketService {
 
   async obtenerAurontekHQId(): Promise<string | null> {
     try {
+      const apiUrl = `${process.env.USUARIOS_SVC_URL}/empresas`;
+      console.log('[AURONTEK_HQ] Fetching from:', apiUrl);
+
       const response = await axios.get(
-        `${process.env.USUARIOS_SVC_URL}/empresas`,
-        { headers: { 'Authorization': `Bearer ${process.env.SERVICE_TOKEN}`, 'X-Service-Name': 'tickets-svc' } }
+        apiUrl,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.SERVICE_TOKEN}`,
+            'X-Service-Name': 'tickets-svc'
+          }
+        }
       );
       const empresas = response.data;
       const aurontekHQ = empresas.find((emp: any) =>
         emp.nombre?.toLowerCase().includes('aurontek') && emp.nombre?.toLowerCase().includes('hq')
       );
+      console.log('[AURONTEK_HQ] Found:', aurontekHQ?._id);
       return aurontekHQ?._id || null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error obteniendo Aurontek HQ ID:', error);
+      console.error('Error details:', error.response?.data || error.message);
       return null;
     }
   }
@@ -502,7 +620,7 @@ class TicketService {
       if (userIds.size === 0) return tickets;
 
       // Fetch user data from usuarios-svc
-      const USUARIOS_SVC_URL = process.env.USUARIOS_SVC_URL || 'http://localhost:3001';
+      const USUARIOS_SVC_URL = process.env.USUARIOS_SVC_URL || 'http://localhost:3000';
       const SERVICE_TOKEN = process.env.SERVICE_TOKEN;
 
       console.log('[ENRICH] Using USUARIOS_SVC_URL:', USUARIOS_SVC_URL);
@@ -514,11 +632,17 @@ class TicketService {
       await Promise.all(
         Array.from(userIds).map(async (userId) => {
           try {
-            const response = await axios.get(`${USUARIOS_SVC_URL}/usuarios/${userId}`, {
+            // Use gateway URL for inter-service communication
+            const apiUrl = `${USUARIOS_SVC_URL}/usuarios/${userId}`;
+            console.log('[ENRICH] Fetching user from:', apiUrl);
+
+            const response = await axios.get(apiUrl, {
               headers: {
-                'Authorization': `Bearer ${SERVICE_TOKEN}`
+                'Authorization': `Bearer ${SERVICE_TOKEN}`,
+                'X-Service-Name': 'tickets-svc'
               }
             });
+
             userMap[userId] = {
               _id: userId,
               nombre: response.data.nombre || 'N/A',
@@ -526,8 +650,34 @@ class TicketService {
             };
             console.log('[ENRICH] Fetched user', userId, ':', response.data.nombre);
           } catch (error: any) {
-            console.error(`[ENRICH] Error fetching user ${userId}:`, error.message);
-            userMap[userId] = { _id: userId, nombre: userId.slice(-6), correo: '' };
+            // If user not found in usuarios, try admins collection
+            if (error.response?.status === 404) {
+              try {
+                const adminUrl = `${USUARIOS_SVC_URL}/admins/${userId}`;
+                console.log('[ENRICH] User not found, trying admins:', adminUrl);
+
+                const adminResponse = await axios.get(adminUrl, {
+                  headers: {
+                    'Authorization': `Bearer ${SERVICE_TOKEN}`,
+                    'X-Service-Name': 'tickets-svc'
+                  }
+                });
+
+                userMap[userId] = {
+                  _id: userId,
+                  nombre: adminResponse.data.nombre || 'Admin',
+                  correo: adminResponse.data.correo || ''
+                };
+                console.log('[ENRICH] Fetched admin', userId, ':', adminResponse.data.nombre);
+              } catch (adminError: any) {
+                console.error(`[ENRICH] Error fetching admin ${userId}:`, adminError.message);
+                userMap[userId] = { _id: userId, nombre: 'Usuario Eliminado', correo: '' };
+              }
+            } else {
+              console.error(`[ENRICH] Error fetching user ${userId}:`, error.message);
+              console.error(`[ENRICH] Error details:`, error.response?.data || error);
+              userMap[userId] = { _id: userId, nombre: userId.slice(-6), correo: '' };
+            }
           }
         })
       );
@@ -580,7 +730,7 @@ class TicketService {
     return await this.enrichTicketsWithUsers(tickets);
   }
 
-  async cambiarPrioridad(ticketId: string, prioridad: string) {
+  async cambiarPrioridad(ticketId: string, prioridad: string, usuarioId?: string, usuarioNombre?: string) {
     const ticket: any = await (Ticket as any).findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
     const prioridadAnterior = ticket.prioridad;
@@ -593,6 +743,23 @@ class TicketService {
     } catch (e: any) {
       console.error('No se pudo publicar prioridad actualizada:', e.message);
     }
+
+    // Registrar cambio de prioridad en auditoría
+    try {
+      await auditService.registrarCambioPrioridad(
+        ticket._id.toString(),
+        {
+          id: usuarioId || 'sistema',
+          nombre: usuarioNombre || (usuarioId ? 'Usuario' : 'Sistema'),
+          correo: 'usuario@aurontek.com'
+        },
+        prioridadAnterior,
+        prioridad
+      );
+    } catch (auditErr: any) {
+      console.error('Error al registrar auditoría de prioridad:', auditErr.message || auditErr);
+    }
+
     return ticket;
   }
 

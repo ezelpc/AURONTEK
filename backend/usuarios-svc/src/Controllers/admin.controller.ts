@@ -77,8 +77,24 @@ const eliminarAdmin = async (req: Request, res: Response) => {
     }
 };
 
+// GET /api/admins/:id - Get admin details
+const detalleAdmin = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const admin = await Admin.findById(id, '-contraseña');
+        if (!admin) {
+            return res.status(404).json({ msg: 'Administrador no encontrado.' });
+        }
+        res.json(admin);
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error al obtener el administrador', error: error.message });
+    }
+};
+
 export default {
     listarAdmins,
     crearAdmin,
-    eliminarAdmin
+    eliminarAdmin,
+    detalleAdmin
 };

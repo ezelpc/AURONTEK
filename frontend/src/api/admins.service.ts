@@ -6,6 +6,7 @@ export interface SystemAdmin {
     correo: string;
     rol: 'admin-general' | 'admin-subroot';
     activo: boolean;
+    permisos?: string[];
     password?: string; // Optional for updates
 }
 

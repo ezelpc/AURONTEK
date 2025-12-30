@@ -15,7 +15,7 @@ const adminSchema = new Schema({
   },
   rol: {
     type: String,
-    enum: ['admin-general', 'admin-subroot'],
+    required: true,
     default: 'admin-general'
   },
   permisos: {

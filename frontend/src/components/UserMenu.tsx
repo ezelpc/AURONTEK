@@ -107,18 +107,18 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                             <UserIcon className="mr-2 h-4 w-4" />
-                            <span>{t('status')}</span>
+                            <span>{t('common.status')}</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
                                 <DropdownMenuItem onClick={() => changeStatus('available')}>
                                     <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
-                                    <span>{t('available')}</span>
+                                    <span>{t('common.available')}</span>
                                     {status === 'available' && <Check className="ml-auto h-4 w-4" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => changeStatus('busy')}>
                                     <div className="h-2 w-2 rounded-full bg-red-500 mr-2" />
-                                    <span>{t('busy')}</span>
+                                    <span>{t('common.busy')}</span>
                                     {status === 'busy' && <Check className="ml-auto h-4 w-4" />}
                                 </DropdownMenuItem>
                             </DropdownMenuSubContent>
@@ -128,23 +128,23 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                             {theme === 'light' ? <Sun className="mr-2 h-4 w-4" /> : theme === 'dark' ? <Moon className="mr-2 h-4 w-4" /> : <Laptop className="mr-2 h-4 w-4" />}
-                            <span>{t('theme')}</span>
+                            <span>{t('common.theme')}</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
                                 <DropdownMenuItem onClick={() => setTheme('light')}>
                                     <Sun className="mr-2 h-4 w-4" />
-                                    <span>{t('light')}</span>
+                                    <span>{t('common.light')}</span>
                                     {theme === 'light' && <Check className="ml-auto h-4 w-4" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setTheme('dark')}>
                                     <Moon className="mr-2 h-4 w-4" />
-                                    <span>{t('dark')}</span>
+                                    <span>{t('common.dark')}</span>
                                     {theme === 'dark' && <Check className="ml-auto h-4 w-4" />}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setTheme('system')}>
                                     <Laptop className="mr-2 h-4 w-4" />
-                                    <span>{t('system')}</span>
+                                    <span>{t('common.system')}</span>
                                     {theme === 'system' && <Check className="ml-auto h-4 w-4" />}
                                 </DropdownMenuItem>
                             </DropdownMenuSubContent>
@@ -154,7 +154,7 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                             <Globe className="mr-2 h-4 w-4" />
-                            <span>{t('language')}</span>
+                            <span>{t('common.language')}</span>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuPortal>
                             <DropdownMenuSubContent>
@@ -173,7 +173,7 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>{t('logout')}</span>
+                    <span>{t('common.logout')}</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

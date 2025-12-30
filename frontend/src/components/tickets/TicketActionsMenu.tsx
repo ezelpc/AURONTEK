@@ -9,7 +9,7 @@ import {
     DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Eye, PlayCircle, CheckCircle, XCircle, AlertTriangle, Trash2, Clock } from 'lucide-react';
+import { MoreHorizontal, Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/auth/auth.store';
@@ -25,6 +25,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface TicketActionsMenuProps {
     ticket: Ticket;
@@ -35,39 +43,9 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
     const navigate = useNavigate()
     const { openChat } = useChatStore()
     const [isOpen, setIsOpen] = useState(false);
-    const { user, hasPermission } = useAuthStore();
-
-    // Debug ticket object
-    console.log('TicketActionMenu received ticket:', ticket);
-
-    // Check if user can change priority (based on permissions)
-    const canChangePriority = hasPermission('TICKETS_UPDATE_PRIORITY') ||
-        hasPermission('*') ||
-        user?.rol === 'admin-general';
+    const { user } = useAuthStore();
 
     const canDelete = user?.rol === 'admin-general' || user?.rol === 'admin-subroot';
-
-    const handleUpdateStatus = async (newStatus: string) => {
-        try {
-            await ticketsService.updateTicketStatus(ticket._id || ticket.id!, newStatus);
-            toast.success('Estado actualizado correctamente');
-            onUpdate?.();
-            setIsOpen(false);
-        } catch (error: any) {
-            toast.error(`Error: ${error.response?.data?.msg || error.message}`);
-        }
-    };
-
-    const handleUpdatePriority = async (newPriority: string) => {
-        try {
-            await ticketsService.updateTicketPriority(ticket._id || ticket.id!, newPriority);
-            toast.success(`Prioridad actualizada a: ${newPriority}`);
-            onUpdate?.();
-            setIsOpen(false);
-        } catch (error: any) {
-            toast.error(`Error: ${error.response?.data?.msg || error.message}`);
-        }
-    };
 
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
@@ -93,108 +71,143 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
         setIsOpen(false);
     };
 
+    const [isMotiveDialogOpen, setIsMotiveDialogOpen] = useState(false);
+    const [motive, setMotive] = useState('');
+    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
+    const handleStatusChange = async (status: string) => {
+        if (status === 'en_espera') {
+            setPendingStatus(status);
+            setMotive('');
+            setIsMotiveDialogOpen(true);
+            setIsOpen(false);
+            return;
+        }
+
+        await updateStatus(status);
+    };
+
+    const confirmStatusChange = async () => {
+        if (!motive.trim()) {
+            toast.error('El motivo es obligatorio para poner el ticket en espera');
+            return;
+        }
+        if (pendingStatus) {
+            await updateStatus(pendingStatus, motive);
+            setIsMotiveDialogOpen(false);
+        }
+    };
+
+    const updateStatus = async (status: string, motivo?: string) => {
+        try {
+            // Se asume que ticketsService.updateTicketStatus soporta motivo (necesitamos actualizar service frontend)
+            // O usamos ticketsService.updateTicket si updateTicketStatus no lo soporta
+            // Revisando ticketsService.updateTicketStatus: solo recibe id y estado.
+            // Actualizaremos el servicio frontend.
+            await ticketsService.updateTicketStatus(ticket._id || ticket.id!, status, motivo);
+            toast.success(`Estado actualizado a ${status.replace('_', ' ')}`);
+            onUpdate?.();
+        } catch (error: any) {
+            toast.error(`Error: ${error.response?.data?.msg || error.message}`);
+        }
+    };
+
+    const canChangeStatus = ['admin-general', 'admin-subroot', 'admin-interno', 'soporte', 'beca-soporte'].includes(user?.rol || '');
+
     return (
-        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
+        <>
+            <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+                <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
 
-                    {/* Ver Detalles */}
-                    <DropdownMenuItem onClick={handleViewDetails}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Ver Detalles
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openChat(ticket._id || ticket.id, ticket.titulo || 'Ticket')}>
-                        Abrir Chat (Flotante)
-                    </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleViewDetails}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver Detalles
+                        </DropdownMenuItem>
 
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">Cambiar Estado</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openChat(ticket._id || ticket.id, ticket.titulo || 'Ticket')}>
+                            Abrir Chat (Flotante)
+                        </DropdownMenuItem>
 
-                    {/* Cambiar Estado */}
-                    <DropdownMenuItem onClick={() => handleUpdateStatus('en_proceso')}>
-                        <PlayCircle className="mr-2 h-4 w-4 text-blue-500" />
-                        En Proceso
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleUpdateStatus('en_espera')}>
-                        <Clock className="mr-2 h-4 w-4 text-yellow-500" />
-                        En Espera (Pausa SLA)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleUpdateStatus('resuelto')}>
-                        <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                        Resuelto
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleUpdateStatus('cerrado')}>
-                        <XCircle className="mr-2 h-4 w-4 text-gray-500" />
-                        Cerrado
-                    </DropdownMenuItem>
+                        {canChangeStatus && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel>Cambiar Estado</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleStatusChange('en_proceso')}>En Proceso</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange('en_espera')}>En Espera</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange('resuelto')}>Resuelto</DropdownMenuItem>
+                            </>
+                        )}
 
-                    {/* Cambiar Prioridad - Solo con permisos */}
-                    {canChangePriority ? (
-                        <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-xs text-muted-foreground">Cambiar Prioridad</DropdownMenuLabel>
+                        {canDelete && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        setIsDeleteAlertOpen(true);
+                                        setIsOpen(false);
+                                    }}
+                                    className="text-red-600 focus:text-red-600"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar Ticket
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
 
-                            <DropdownMenuItem onClick={() => handleUpdatePriority('baja')}>
-                                Prioridad: Baja
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdatePriority('media')}>
-                                Prioridad: Media
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdatePriority('alta')}>
-                                <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" />
-                                Prioridad: Alta
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdatePriority('crítica')}>
-                                <AlertTriangle className="mr-2 h-4 w-4 text-red-500" />
-                                Prioridad: Crítica
-                            </DropdownMenuItem>
-                        </>
-                    ) : null}
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Esto eliminará permanentemente el ticket
+                            <span className="font-bold"> {ticket.titulo} </span>
+                            y todos sus mensajes asociados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setIsDeleteAlertOpen(false)}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-                    {/* Eliminar - Solo Admins */}
-                    {canDelete && (
-                        <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onSelect={(e) => {
-                                    e.preventDefault();
-                                    setIsDeleteAlertOpen(true);
-                                    setIsOpen(false);
-                                }}
-                                className="text-red-600 focus:text-red-600"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar Ticket
-                            </DropdownMenuItem>
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Esta acción no se puede deshacer. Esto eliminará permanentemente el ticket
-                        <span className="font-bold"> {ticket.titulo} </span>
-                        y todos sus mensajes asociados.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setIsDeleteAlertOpen(false)}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                        Eliminar
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+            {/* Modal para Motivo de Espera */}
+            <Dialog open={isMotiveDialogOpen} onOpenChange={setIsMotiveDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Motivo de Pausa</DialogTitle>
+                        <DialogDescription>
+                            Por favor indica por qué se pone este ticket en espera. Esto pausará el SLA.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <textarea
+                            className="w-full p-2 border rounded-md bg-white dark:bg-slate-900 text-black dark:text-white border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600"
+                            placeholder="Ej: Esperando respuesta del cliente, Esperando repuesto..."
+                            value={motive}
+                            onChange={(e) => setMotive(e.target.value)}
+                            rows={3}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsMotiveDialogOpen(false)}>Cancelar</Button>
+                        <Button onClick={confirmStatusChange} disabled={!motive.trim()}>Confirmar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

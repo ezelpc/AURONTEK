@@ -81,7 +81,7 @@ export const asignarAgente = async (req: Request, res: Response) => {
             return res.status(400).json({ msg: 'Se requiere agenteId y empresaId' });
         }
 
-        const ticket = await ticketService.asignarTicket(req.params.id, agenteId, empresaId);
+        const ticket = await ticketService.asignarTicket(req.params.id, agenteId, empresaId, req.usuario?.id || req.usuario?._id, req.usuario?.nombre);
         res.json({ msg: 'Agente asignado correctamente', ticket });
     } catch (error: any) {
         console.error('[ADMIN] Error asignando agente:', error.message);
@@ -92,13 +92,13 @@ export const asignarAgente = async (req: Request, res: Response) => {
 // PATCH /api/tickets/admin/:id/estado
 export const cambiarEstado = async (req: Request, res: Response) => {
     try {
-        const { estado } = req.body;
+        const { estado, motivo } = req.body;
 
         if (!estado) {
             return res.status(400).json({ msg: 'Se requiere el nuevo estado' });
         }
 
-        const ticket = await ticketService.actualizarEstado(req.params.id, estado);
+        const ticket = await ticketService.actualizarEstado(req.params.id, estado, req.usuario?.id || req.usuario?._id, motivo, req.usuario?.nombre);
         res.json({ msg: 'Estado actualizado correctamente', ticket });
     } catch (error: any) {
         console.error('[ADMIN] Error cambiando estado:', error.message);
@@ -115,7 +115,7 @@ export const cambiarPrioridad = async (req: Request, res: Response) => {
             return res.status(400).json({ msg: 'Se requiere la nueva prioridad' });
         }
 
-        const ticket = await ticketService.cambiarPrioridad(req.params.id, prioridad);
+        const ticket = await ticketService.cambiarPrioridad(req.params.id, prioridad, req.usuario?.id || req.usuario?._id, req.usuario?.nombre);
         res.json({ msg: 'Prioridad actualizada correctamente', ticket });
     } catch (error: any) {
         console.error('[ADMIN] Error cambiando prioridad:', error.message);

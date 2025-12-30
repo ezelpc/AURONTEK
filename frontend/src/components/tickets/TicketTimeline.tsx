@@ -59,7 +59,6 @@ const TimelineEntry = ({ entry }: { entry: TicketHistoryEntry }) => {
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-700">{entry.usuario.nombre}</span>
-                        <span className="text-xs text-slate-500">{entry.usuario.correo}</span>
                     </div>
                     <span className="text-xs text-slate-400">
                         {format(new Date(entry.createdAt), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}

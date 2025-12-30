@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Ban, CheckCircle, Key, Trash2 } from 'lucide-react';
 import CompanyForm from './CompanyForm';
-import { useAuthStore } from '@/auth/auth.store';
+import { useTranslation } from 'react-i18next';
+
 import { PERMISSIONS } from '@/constants/permissions';
 import { toast } from 'sonner';
 import {
@@ -34,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const CompaniesPage = () => {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
 
     const [isCreating, setIsCreating] = useState(false);
@@ -41,49 +43,17 @@ const CompaniesPage = () => {
     const [toggleAction, setToggleAction] = useState<{ id: string, estado: boolean, nombre: string } | null>(null);
     const [regenerateAction, setRegenerateAction] = useState<{ id: string, nombre: string } | null>(null);
     const [deletingCompany, setDeletingCompany] = useState<{ id: string, nombre: string } | null>(null);
-    const [passwordDialog, setPasswordDialog] = useState<{ action: 'edit' | 'toggle' | 'regenerate' | 'delete', company: Empresa } | null>(null);
+    const [passwordDialog, setPasswordDialog] = useState<{ action: 'edit' | 'toggle' | 'regenerate' | 'delete' | 'reveal-code', company: Empresa } | null>(null);
+
     const [password, setPassword] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+    const [visibleCodes, setVisibleCodes] = useState<Set<string>>(new Set());
 
     const AURONTEK_PASSWORD = import.meta.env.VITE_AURONTEK_ADMIN_PASSWORD || 'aurontek2024';
 
     const isAurontek = (empresa: Empresa) => {
         return empresa.nombre.toLowerCase().includes('aurontek');
-    };
-
-    const handleProtectedAction = (action: 'edit' | 'toggle' | 'regenerate' | 'delete', empresa: Empresa) => {
-        if (isAurontek(empresa)) {
-            setPasswordDialog({ action, company: empresa });
-        } else {
-            executeAction(action, empresa);
-        }
-    };
-
-    const executeAction = (action: 'edit' | 'toggle' | 'regenerate' | 'delete', empresa: Empresa) => {
-        switch (action) {
-            case 'edit':
-                setEditingCompany(empresa);
-                setIsCreating(false);
-                break;
-            case 'toggle':
-                setToggleAction({
-                    id: empresa._id || empresa.id!,
-                    estado: !empresa.activo,
-                    nombre: empresa.nombre
-                });
-                break;
-            case 'regenerate':
-                setRegenerateAction({
-                    id: empresa._id || empresa.id!,
-                    nombre: empresa.nombre
-                });
-                break;
-            case 'delete':
-                setDeletingCompany({
-                    id: empresa._id || empresa.id!,
-                    nombre: empresa.nombre
-                });
-                break;
-        }
     };
 
     const verifyPassword = () => {
@@ -94,7 +64,7 @@ const CompaniesPage = () => {
             setPasswordDialog(null);
             setPassword('');
         } else {
-            toast.error('Contraseña incorrecta');
+            toast.error(t('companies.dialogs.error_password') || 'Contraseña incorrecta');
         }
     };
 
@@ -110,11 +80,11 @@ const CompaniesPage = () => {
             companiesService.toggleLicense(id, estado),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['companies'] });
-            toast.success('Estado de licencia actualizado');
+            toast.success(t('companies.notifications.license_updated') || 'Estado de licencia actualizado');
             setToggleAction(null);
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al actualizar licencia');
+            toast.error(err.response?.data?.msg || t('common.error'));
             setToggleAction(null);
         }
     });
@@ -124,11 +94,11 @@ const CompaniesPage = () => {
         mutationFn: companiesService.regenerateCode,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['companies'] });
-            toast.success(`Nuevo código generado: ${data.codigo_acceso}`);
+            toast.success(`${t('companies.notifications.new_code') || 'Nuevo código generado'}: ${data.codigo_acceso}`);
             setRegenerateAction(null);
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al regenerar código');
+            toast.error(err.response?.data?.msg || t('common.error'));
             setRegenerateAction(null);
         }
     });
@@ -138,31 +108,112 @@ const CompaniesPage = () => {
         mutationFn: companiesService.deleteCompany,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['companies'] });
-            toast.success('Empresa eliminada correctamente');
+            toast.success(t('companies.notifications.deleted') || 'Empresa eliminada correctamente');
             setDeletingCompany(null);
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al eliminar empresa');
+            toast.error(err.response?.data?.msg || t('common.error'));
             setDeletingCompany(null);
         }
     });
 
+    const handleProtectedAction = (action: 'edit' | 'toggle' | 'regenerate' | 'delete' | 'reveal-code', empresa: Empresa) => {
+        if (isAurontek(empresa)) {
+            setPasswordDialog({ action, company: empresa });
+        } else {
+            executeAction(action, empresa);
+        }
+    };
+
+    const executeAction = (action: 'edit' | 'toggle' | 'regenerate' | 'delete' | 'reveal-code', empresa: Empresa) => {
+        const companyId = empresa._id || empresa.id!;
+        switch (action) {
+            case 'edit':
+                setEditingCompany(empresa);
+                setIsCreating(false);
+                break;
+            case 'toggle':
+                setToggleAction({
+                    id: companyId,
+                    estado: !empresa.activo,
+                    nombre: empresa.nombre
+                });
+                break;
+            case 'regenerate':
+                setRegenerateAction({
+                    id: companyId,
+                    nombre: empresa.nombre
+                });
+                break;
+            case 'delete':
+                setDeletingCompany({
+                    id: companyId,
+                    nombre: empresa.nombre
+                });
+                break;
+            case 'reveal-code':
+                setVisibleCodes(prev => {
+                    const next = new Set(prev);
+                    if (next.has(companyId)) next.delete(companyId);
+                    else next.add(companyId);
+                    return next;
+                });
+                break;
+        }
+    };
+
+    const toggleCodeVisibility = (empresa: Empresa) => {
+        const companyId = empresa._id || empresa.id!;
+
+        // If already visible, just hide it (no protection needed to hide)
+        if (visibleCodes.has(companyId)) {
+            setVisibleCodes(prev => {
+                const next = new Set(prev);
+                next.delete(companyId);
+                return next;
+            });
+            return;
+        }
+
+        // If trying to show
+        if (isAurontek(empresa)) {
+            handleProtectedAction('reveal-code', empresa);
+        } else {
+            setVisibleCodes(prev => {
+                const next = new Set(prev);
+                next.add(companyId);
+                return next;
+            });
+        }
+    };
+
+    const filteredCompanies = companies?.filter(company => {
+        const matchesSearch =
+            company.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            company.rfc.toLowerCase().includes(searchTerm.toLowerCase());
+
+        if (statusFilter === 'all') return matchesSearch;
+        if (statusFilter === 'active') return matchesSearch && company.activo;
+        if (statusFilter === 'suspended') return matchesSearch && !company.activo;
+
+        return matchesSearch;
+    });
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Toggle License Confirmation */}
+            {/* ... Dialogs (Toggle, Regenerate, Delete, Password) ... */}
             <AlertDialog open={!!toggleAction} onOpenChange={(open) => !open && setToggleAction(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {toggleAction?.estado ? 'Activar' : 'Suspender'} Licencia
+                            {t('companies.dialogs.toggle_license_title', { status: toggleAction?.estado ? 'Activar' : 'Suspender' })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            ¿Estás seguro de que deseas {toggleAction?.estado ? 'activar' : 'suspender'} la licencia de <strong>{toggleAction?.nombre}</strong>?
-                            {!toggleAction?.estado && ' Los usuarios de esta empresa no podrán acceder al sistema.'}
+                            {t('companies.dialogs.toggle_license_desc', { status: toggleAction?.estado ? 'activar' : 'suspender', name: toggleAction?.nombre })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             className={toggleAction?.estado ? "bg-green-600 hover:bg-green-700" : "bg-orange-600 hover:bg-orange-700"}
                             onClick={() => toggleAction && toggleLicenseMutation.mutate({
@@ -170,62 +221,56 @@ const CompaniesPage = () => {
                                 estado: toggleAction.estado
                             })}
                         >
-                            {toggleAction?.estado ? 'Activar' : 'Suspender'}
+                            {toggleAction?.estado ? t('common.active') : 'Suspender'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Regenerate Code Confirmation */}
             <AlertDialog open={!!regenerateAction} onOpenChange={(open) => !open && setRegenerateAction(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Regenerar Código de Acceso</AlertDialogTitle>
+                        <AlertDialogTitle>{t('companies.dialogs.regenerate_code_title')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            ¿Estás seguro de regenerar el código de acceso para <strong>{regenerateAction?.nombre}</strong>?
-                            El código anterior dejará de funcionar inmediatamente.
+                            {t('companies.dialogs.regenerate_code_desc', { name: regenerateAction?.nombre })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-blue-600 hover:bg-blue-700"
                             onClick={() => regenerateAction && regenerateCodeMutation.mutate(regenerateAction.id)}
                         >
-                            Regenerar
+                            {t('common.yes')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Delete Company Confirmation */}
             <AlertDialog open={!!deletingCompany} onOpenChange={(open) => !open && setDeletingCompany(null)}>
                 <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-700">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="dark:text-slate-100">Eliminar Empresa</AlertDialogTitle>
+                        <AlertDialogTitle className="dark:text-slate-100">{t('companies.dialogs.delete_title')}</AlertDialogTitle>
                         <AlertDialogDescription className="dark:text-slate-300">
-                            ¿Estás seguro de eliminar <strong className="text-red-600 dark:text-red-400">{deletingCompany?.nombre}</strong>?
+                            {t('companies.dialogs.delete_desc', { name: deletingCompany?.nombre })}
                             <br /><br />
-                            <span className="text-red-600 dark:text-red-400 font-semibold">⚠️ Esta acción NO se puede deshacer.</span>
-                            <br />
-                            Se eliminarán todos los datos asociados: usuarios, tickets, configuraciones, etc.
+                            <span className="text-red-600 dark:text-red-400 font-semibold">⚠️ {t('common.irreversible_action')}</span>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-                            Cancelar
+                            {t('common.cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
                             onClick={() => deletingCompany && deleteCompanyMutation.mutate(deletingCompany.id)}
                         >
-                            Eliminar Permanentemente
+                            {t('common.delete_permanently')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Password Dialog for Aurontek */}
             <Dialog open={!!passwordDialog} onOpenChange={(open) => {
                 if (!open) {
                     setPasswordDialog(null);
@@ -234,14 +279,14 @@ const CompaniesPage = () => {
             }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Acción Protegida - Aurontek</DialogTitle>
+                        <DialogTitle>{t('companies.dialogs.protected_action_title')}</DialogTitle>
                         <DialogDescription>
-                            Esta empresa requiere autenticación adicional. Ingresa la contraseña de administrador.
+                            {t('companies.dialogs.protected_action_desc')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <Label htmlFor="aurontek-password">Contraseña</Label>
+                            <Label htmlFor="aurontek-password">{t('auth.password')}</Label>
                             <Input
                                 id="aurontek-password"
                                 type="password"
@@ -258,36 +303,66 @@ const CompaniesPage = () => {
                             setPasswordDialog(null);
                             setPassword('');
                         }}>
-                            Cancelar
+                            {t('common.cancel')}
                         </Button>
                         <Button onClick={verifyPassword}>
-                            Verificar
+                            {t('auth.verify')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
-                    <p className="text-slate-500">Administra a tus clientes y sus licencias.</p>
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-3xl font-bold tracking-tight">{t('companies.title')}</h2>
+                        <p className="text-slate-500">{t('companies.subtitle')}</p>
+                    </div>
+                    {!isCreating && !editingCompany && (
+                        <ProtectedButton
+                            permission={PERMISSIONS.COMPANIES_MANAGE}
+                            onClick={() => setIsCreating(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> {t('companies.new_company')}
+                        </ProtectedButton>
+                    )}
                 </div>
+
+                {/* Filters */}
                 {!isCreating && !editingCompany && (
-                    <ProtectedButton
-                        permission={PERMISSIONS.COMPANIES_MANAGE}
-                        onClick={() => setIsCreating(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
-                    </ProtectedButton>
+                    <div className="flex gap-4 items-center bg-slate-100 dark:bg-slate-900 p-4 rounded-lg">
+                        <div className="grid w-full max-w-sm items-center gap-1.5">
+                            <Label htmlFor="search">{t('common.search')}</Label>
+                            <Input
+                                id="search"
+                                placeholder={t('common.search') + "..."}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-white dark:bg-slate-800"
+                            />
+                        </div>
+                        <div className="grid w-full max-w-[200px] items-center gap-1.5">
+                            <Label>{t('companies.table.status')}</Label>
+                            <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-slate-900 dark:text-slate-100 dark:bg-slate-800 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value as any)}
+                            >
+                                <option value="all">{t('common.all')}</option>
+                                <option value="active">{t('common.active')}</option>
+                                <option value="suspended">{t('common.suspended')}</option>
+                            </select>
+                        </div>
+                    </div>
                 )}
             </div>
 
             {(isCreating || editingCompany) && (
                 <Card className="border-blue-200 shadow-lg">
                     <CardHeader className="bg-blue-50/50">
-                        <CardTitle>{editingCompany ? 'Editar Empresa' : 'Nueva Empresa'}</CardTitle>
+                        <CardTitle>{editingCompany ? t('companies.edit_company') : t('companies.new_company')}</CardTitle>
                         <CardDescription>
-                            {editingCompany ? 'Modifica los datos de la empresa.' : 'Registra una nueva empresa cliente.'}
+                            {editingCompany ? t('companies.subtitle') : t('companies.subtitle')}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
@@ -308,88 +383,107 @@ const CompaniesPage = () => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Directorio de Clientes</CardTitle>
+                    <CardTitle>{t('companies.title')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="p-8 text-center text-slate-500">Cargando empresas...</div>
+                        <div className="p-8 text-center text-slate-500">{t('common.loading')}</div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Nombre</TableHead>
-                                    <TableHead>RFC</TableHead>
-                                    <TableHead>Contacto</TableHead>
-                                    <TableHead>Plan</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
+                                    <TableHead>{t('companies.table.name')}</TableHead>
+                                    <TableHead>{t('companies.table.rfc')}</TableHead>
+                                    <TableHead>{t('companies.table.contact')}</TableHead>
+                                    <TableHead>{t('companies.table.access_code')}</TableHead>
+                                    <TableHead>{t('companies.table.plan')}</TableHead>
+                                    <TableHead>{t('companies.table.status')}</TableHead>
+                                    <TableHead className="text-right">{t('common.actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {companies?.map((empresa) => (
-                                    <TableRow key={empresa._id || empresa.id}>
-                                        <TableCell className="font-medium">{empresa.nombre}</TableCell>
-                                        <TableCell>{empresa.rfc}</TableCell>
-                                        <TableCell>{empresa.correo}</TableCell>
-                                        <TableCell>
-                                            {empresa.licencia?.[0]?.plan || 'N/A'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={empresa.activo ? "default" : "destructive"}>
-                                                {empresa.activo ? 'Activo' : 'Suspendido'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right flex justify-end gap-2">
-                                            <ProtectedButton
-                                                permission={PERMISSIONS.COMPANIES_MANAGE}
-                                                variant="ghost"
-                                                size="icon"
-                                                title="Editar"
-                                                onClick={() => handleProtectedAction('edit', empresa)}
-                                            >
-                                                <Pencil className="h-4 w-4 text-slate-500" />
-                                            </ProtectedButton>
+                                {filteredCompanies?.map((empresa) => {
+                                    const companyId = empresa._id || empresa.id!;
+                                    return (
+                                        <TableRow key={companyId}>
+                                            <TableCell className="font-medium">{empresa.nombre}</TableCell>
+                                            <TableCell>{empresa.rfc}</TableCell>
+                                            <TableCell>{empresa.correo}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2 font-mono text-sm bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded w-fit">
+                                                    <span>
+                                                        {visibleCodes.has(companyId)
+                                                            ? (empresa.codigo_acceso || 'N/A')
+                                                            : '••••••••'}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => toggleCodeVisibility(empresa)}
+                                                        className="text-slate-400 hover:text-blue-500 transition-colors"
+                                                    >
+                                                        {visibleCodes.has(companyId) ? <Key className="h-3 w-3" /> : <Key className="h-3 w-3" />}
+                                                    </button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {empresa.licencia?.[0]?.plan || 'N/A'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={empresa.activo ? "default" : "destructive"}>
+                                                    {empresa.activo ? t('common.active') : t('common.suspended')}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right flex justify-end gap-2">
+                                                <ProtectedButton
+                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title={t('common.edit')}
+                                                    onClick={() => handleProtectedAction('edit', empresa)}
+                                                >
+                                                    <Pencil className="h-4 w-4 text-slate-500" />
+                                                </ProtectedButton>
 
-                                            <ProtectedButton
-                                                permission={PERMISSIONS.COMPANIES_MANAGE}
-                                                variant="ghost"
-                                                size="icon"
-                                                title={empresa.activo ? "Suspender Licencia" : "Reactivar Licencia"}
-                                                onClick={() => handleProtectedAction('toggle', empresa)}
-                                            >
-                                                {empresa.activo ? (
-                                                    <Ban className="h-4 w-4 text-orange-500" />
-                                                ) : (
-                                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                                )}
-                                            </ProtectedButton>
+                                                <ProtectedButton
+                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title={empresa.activo ? "Suspender Licencia" : "Reactivar Licencia"}
+                                                    onClick={() => handleProtectedAction('toggle', empresa)}
+                                                >
+                                                    {empresa.activo ? (
+                                                        <Ban className="h-4 w-4 text-orange-500" />
+                                                    ) : (
+                                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                                    )}
+                                                </ProtectedButton>
 
-                                            <ProtectedButton
-                                                permission={PERMISSIONS.COMPANIES_MANAGE}
-                                                variant="ghost"
-                                                size="icon"
-                                                title="Regenerar Código Acceso"
-                                                onClick={() => handleProtectedAction('regenerate', empresa)}
-                                            >
-                                                <Key className="h-4 w-4 text-blue-500" />
-                                            </ProtectedButton>
+                                                <ProtectedButton
+                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Regenerar Código Acceso"
+                                                    onClick={() => handleProtectedAction('regenerate', empresa)}
+                                                >
+                                                    <Key className="h-4 w-4 text-blue-500" />
+                                                </ProtectedButton>
 
-                                            <ProtectedButton
-                                                permission={PERMISSIONS.COMPANIES_MANAGE}
-                                                variant="ghost"
-                                                size="icon"
-                                                title="Eliminar Empresa"
-                                                onClick={() => handleProtectedAction('delete', empresa)}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            </ProtectedButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {companies?.length === 0 && (
+                                                <ProtectedButton
+                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title={t('common.delete')}
+                                                    onClick={() => handleProtectedAction('delete', empresa)}
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                </ProtectedButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                                {filteredCompanies?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center h-24 text-slate-500">
-                                            No hay empresas registradas.
+                                        <TableCell colSpan={7} className="text-center h-24 text-slate-500">
+                                            {t('common.no_data')}
                                         </TableCell>
                                     </TableRow>
                                 )}

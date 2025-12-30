@@ -10,10 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const CreateTicket = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { t } = useTranslation();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [serviceId, setServiceId] = useState('');
@@ -28,11 +30,11 @@ const CreateTicket = () => {
         mutationFn: ticketsService.createTicket,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['my-tickets'] });
-            toast.success('Ticket creado exitosamente');
+            toast.success(t('company_portal.create_ticket.success'));
             navigate('/empresa/dashboard');
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al crear ticket');
+            toast.error(err.response?.data?.msg || t('company_portal.create_ticket.error'));
         }
     });
 
@@ -40,7 +42,7 @@ const CreateTicket = () => {
         e.preventDefault();
 
         if (!serviceId) {
-            toast.error('Por favor selecciona un servicio');
+            toast.error(t('company_portal.create_ticket.error_select_service'));
             return;
         }
 
@@ -68,8 +70,8 @@ const CreateTicket = () => {
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Reportar Incidente o Requerimiento</h2>
-                <p className="text-slate-500">Selecciona el servicio del catálogo para autocompletar la información.</p>
+                <h2 className="text-3xl font-bold tracking-tight">{t('company_portal.create_ticket.title')}</h2>
+                <p className="text-slate-500">{t('company_portal.create_ticket.subtitle')}</p>
             </div>
 
             <Card className="border-slate-200 shadow-sm">
@@ -78,7 +80,7 @@ const CreateTicket = () => {
 
                         {/* Service Selection */}
                         <div className="space-y-2">
-                            <Label className="text-base font-semibold">¿Qué servicio necesitas?</Label>
+                            <Label className="text-base font-semibold">{t('company_portal.create_ticket.select_service_label')}</Label>
                             <Select onValueChange={(val) => {
                                 setServiceId(val);
                                 const s = services?.find(svc => svc._id === val);
@@ -87,7 +89,7 @@ const CreateTicket = () => {
                                 }
                             }}>
                                 <SelectTrigger className="h-12">
-                                    <SelectValue placeholder="Selecciona del catálogo..." />
+                                    <SelectValue placeholder={t('company_portal.create_ticket.select_placeholder')} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
                                     {services?.filter(s => s.activo !== false).map((service) => (
@@ -104,16 +106,16 @@ const CreateTicket = () => {
 
                         {serviceId && (
                             <div className="bg-slate-50 p-4 rounded-md border border-slate-100 text-sm space-y-1">
-                                <p><span className="font-semibold">Categoría:</span> {services?.find(s => s._id === serviceId)?.categoria}</p>
-                                <p><span className="font-semibold">SLA Estimado:</span> {services?.find(s => s._id === serviceId)?.sla || 'N/A'}</p>
+                                <p><span className="font-semibold">{t('company_portal.create_ticket.category')}:</span> {services?.find(s => s._id === serviceId)?.categoria}</p>
+                                <p><span className="font-semibold">{t('company_portal.create_ticket.sla')}:</span> {services?.find(s => s._id === serviceId)?.sla || 'N/A'}</p>
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="title">Asunto</Label>
+                            <Label htmlFor="title">{t('company_portal.create_ticket.subject')}</Label>
                             <Input
                                 id="title"
-                                placeholder="Resumen breve..."
+                                placeholder={t('company_portal.create_ticket.subject_placeholder')}
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 required
@@ -121,11 +123,11 @@ const CreateTicket = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="desc">Descripción Detallada</Label>
+                            <Label htmlFor="desc">{t('company_portal.create_ticket.description')}</Label>
                             <Textarea
                                 id="desc"
                                 className="min-h-[150px]"
-                                placeholder="Describe el problema, incluye mensajes de error o pasos para reproducirlo..."
+                                placeholder={t('company_portal.create_ticket.description_placeholder')}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 required
@@ -134,13 +136,13 @@ const CreateTicket = () => {
 
                         {/* File Upload Placeholder - User mentioned 'evidencias fotograficas' logic exists in other components but CreateTicket might need it */}
                         {/* Adding description note for now */}
-                        <p className="text-xs text-slate-400">Puedes adjuntar evidencias en el detalle del ticket una vez creado.</p>
+                        <p className="text-xs text-slate-400">{t('company_portal.create_ticket.evidence_note')}</p>
 
                     </CardContent>
                     <CardFooter className="flex justify-end gap-2 bg-slate-50/50 p-6 rounded-b-lg">
-                        <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
+                        <Button type="button" variant="outline" onClick={() => navigate(-1)}>{t('common.cancel')}</Button>
                         <Button type="submit" disabled={createTicketMutation.isPending} className="bg-blue-600 hover:bg-blue-700 min-w-[150px]">
-                            {createTicketMutation.isPending ? 'Creando...' : 'Crear Ticket'}
+                            {createTicketMutation.isPending ? t('company_portal.create_ticket.creating') : t('company_portal.create_ticket.create_btn')}
                         </Button>
                     </CardFooter>
                 </form>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState, createContext, useContext, Children, isValidElement } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
 import { cn } from '@/lib/utils';
 import {
@@ -29,49 +29,102 @@ import { ProtectedElement } from '@/components/ProtectedElement';
 import { socketService } from '@/api/socket.service';
 import { toast } from 'sonner';
 import { PERMISSIONS } from '@/constants/permissions';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+    DropdownMenuLabel,
+    DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 
-const SidebarItem = ({ to, icon: Icon, label, end = false, collapsed, isSubmenuItem = false }: { to: string, icon: any, label: string, end?: boolean, collapsed?: boolean, isSubmenuItem?: boolean }) => (
-    <NavLink
-        to={to}
-        end={end}
-        className={({ isActive }) => cn(
-            "flex items-center gap-3 rounded-md transition-all duration-200 text-sm font-medium",
-            isActive
-                ? "bg-slate-800 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50",
-            collapsed && "justify-center px-3 py-2",
-            !collapsed && !isSubmenuItem && "px-3 py-2",
-            !collapsed && isSubmenuItem && "pl-9 pr-3 py-1.5"
-        )}
-        title={collapsed ? label : undefined}
-    >
-        <Icon className="h-4 w-4 flex-shrink-0" />
-        {!collapsed && <span className="truncate">{label}</span>}
-    </NavLink>
-);
+// Context to manage sidebar state
+const SidebarContext = createContext({ collapsed: false });
+
+const SidebarItem = ({ to, icon: Icon, label, end = false, isSubmenuItem = false }: { to: string, icon: any, label: string, end?: boolean, isSubmenuItem?: boolean }) => {
+    const { collapsed } = useContext(SidebarContext);
+
+    return (
+        <NavLink
+            to={to}
+            end={end}
+            className={({ isActive }) => cn(
+                "flex items-center gap-3 rounded-md transition-all duration-200 text-sm font-medium",
+                isActive
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/50",
+                collapsed && "justify-center px-3 py-2",
+                !collapsed && !isSubmenuItem && "px-3 py-2",
+                !collapsed && isSubmenuItem && "pl-9 pr-3 py-1.5"
+            )}
+            title={collapsed ? label : undefined}
+        >
+            <Icon className="h-4 w-4 flex-shrink-0" />
+            {!collapsed && <span className="truncate">{label}</span>}
+        </NavLink>
+    );
+};
+
+interface SidebarSubmenuProps {
+    icon: any;
+    label: string;
+    children: React.ReactNode;
+    isActive?: boolean;
+}
 
 const SidebarSubmenu = ({
     icon: Icon,
     label,
-    collapsed,
-    children
-}: {
-    icon: any,
-    label: string,
-    collapsed?: boolean,
-    children: React.ReactNode
-}) => {
+    children,
+    isActive
+}: SidebarSubmenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
+    const { collapsed } = useContext(SidebarContext);
+
+    // Auto-open if active and not collapsed
+    useEffect(() => {
+        if (!collapsed && isActive) {
+            setIsOpen(true);
+        }
+    }, [collapsed, isActive]);
 
     if (collapsed) {
-        return <>{children}</>;
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        className={cn(
+                            "w-full flex justify-center px-3 py-2 rounded-md transition-all duration-200 text-sm font-medium",
+                            isActive
+                                ? "bg-slate-800 text-white"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                        )}
+                        title={label}
+                    >
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start" className="w-56 ml-2 bg-slate-950 border-slate-800 text-slate-400">
+                    <DropdownMenuLabel className="text-white px-2 py-1.5">{label}</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-slate-800" />
+                    <div className="flex flex-col gap-1 p-1">
+                        <SidebarContext.Provider value={{ collapsed: false }}>
+                            {/* We need to ensure children are rendered with collapsed=false context */}
+                            {children}
+                        </SidebarContext.Provider>
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
     }
 
     return (
         <div className="space-y-1">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50"
+                className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-sm font-medium",
+                    isActive && !isOpen ? "text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                )}
             >
                 <Icon className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate flex-1 text-left">{label}</span>
@@ -94,6 +147,7 @@ const AdminLayout = () => {
     const { user } = useAuthStore();
     const { t } = useTranslation();
     const [sidebarHovered, setSidebarHovered] = useState(false);
+    const location = useLocation();
 
     // Efecto para conectar socket y escuchar notificaciones
     useEffect(() => {
@@ -121,12 +175,18 @@ const AdminLayout = () => {
 
     const isCollapsed = !sidebarHovered;
 
+    // Helper to check active state for submenus
+    const isUsersActive = location.pathname.startsWith('/admin/usuarios');
+    const isTicketsActive = location.pathname.startsWith('/admin/tickets');
+    const isServicesActive = location.pathname.startsWith('/admin/servicios');
+    const isSystemActive = location.pathname.startsWith('/admin/roles') || location.pathname.startsWith('/admin/system-admins');
+
     return (
         <div className="flex h-screen bg-slate-100 dark:bg-slate-900">
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "bg-slate-950 text-white flex flex-col border-r border-slate-800 transition-all duration-300 ease-in-out",
+                    "bg-slate-950 text-white flex flex-col border-r border-slate-800 transition-all duration-300 ease-in-out relative z-50",
                     isCollapsed ? "w-16" : "w-64"
                 )}
                 onMouseEnter={() => setSidebarHovered(true)}
@@ -145,82 +205,84 @@ const AdminLayout = () => {
                     {isCollapsed && <ShieldAlert className="h-6 w-6 text-blue-500" />}
                 </div>
 
-                <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-hide">
-                    {/* Dashboard - No permission required */}
-                    <SidebarItem to="/admin/dashboard" icon={LayoutDashboard} label={t('dashboard')} end collapsed={isCollapsed} />
+                <SidebarContext.Provider value={{ collapsed: isCollapsed }}>
+                    <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-hide">
+                        {/* Dashboard - No permission required */}
+                        <SidebarItem to="/admin/dashboard" icon={LayoutDashboard} label={t('common.nav.dashboard')} end />
 
-                    {/* Usuarios - Submenu with local/global */}
-                    <ProtectedElement permission={[PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_VIEW_GLOBAL, PERMISSIONS.ADMINS_MANAGE]}>
-                        <SidebarSubmenu icon={Users} label="Usuarios" collapsed={isCollapsed}>
-                            <ProtectedElement permission={[PERMISSIONS.USERS_VIEW, PERMISSIONS.ADMINS_MANAGE]}>
-                                <SidebarItem to="/admin/usuarios?tipo=local" icon={UserCog} label="Usuarios Locales" collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                            <ProtectedElement permission={PERMISSIONS.USERS_VIEW_GLOBAL}>
-                                <SidebarItem to="/admin/usuarios?tipo=global" icon={UsersRound} label="Usuarios Globales" collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                        </SidebarSubmenu>
-                    </ProtectedElement>
+                        {/* Usuarios - Submenu with local/global */}
+                        <ProtectedElement permission={[PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_VIEW_GLOBAL, PERMISSIONS.ADMINS_MANAGE]}>
+                            <SidebarSubmenu icon={Users} label={t('common.nav.users')} isActive={isUsersActive}>
+                                <ProtectedElement permission={[PERMISSIONS.USERS_VIEW, PERMISSIONS.ADMINS_MANAGE]}>
+                                    <SidebarItem to="/admin/usuarios?tipo=local" icon={UserCog} label={t('common.nav.users_local')} isSubmenuItem />
+                                </ProtectedElement>
+                                <ProtectedElement permission={PERMISSIONS.USERS_VIEW_GLOBAL}>
+                                    <SidebarItem to="/admin/usuarios?tipo=global" icon={UsersRound} label={t('common.nav.users_global')} isSubmenuItem />
+                                </ProtectedElement>
+                            </SidebarSubmenu>
+                        </ProtectedElement>
 
-                    {/* Tickets - Submenu with local/global */}
-                    <ProtectedElement permission={[PERMISSIONS.TICKETS_VIEW_ALL, PERMISSIONS.TICKETS_VIEW_ALL_GLOBAL]}>
-                        <SidebarSubmenu icon={Ticket} label="Tickets" collapsed={isCollapsed}>
-                            <ProtectedElement permission={PERMISSIONS.TICKETS_VIEW_ALL}>
-                                <SidebarItem to="/admin/tickets?tipo=local" icon={TicketCheck} label="Tickets Locales" collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                            <ProtectedElement permission={PERMISSIONS.TICKETS_VIEW_ALL_GLOBAL}>
-                                <SidebarItem to="/admin/tickets?tipo=global" icon={TicketX} label="Tickets Globales" collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                        </SidebarSubmenu>
-                    </ProtectedElement>
+                        {/* Tickets - Submenu with local/global */}
+                        <ProtectedElement permission={[PERMISSIONS.TICKETS_VIEW_ALL, PERMISSIONS.TICKETS_VIEW_ALL_GLOBAL]}>
+                            <SidebarSubmenu icon={Ticket} label={t('common.nav.tickets')} isActive={isTicketsActive}>
+                                <ProtectedElement permission={PERMISSIONS.TICKETS_VIEW_ALL}>
+                                    <SidebarItem to="/admin/tickets?tipo=local" icon={TicketCheck} label={t('common.nav.tickets_local')} isSubmenuItem />
+                                </ProtectedElement>
+                                <ProtectedElement permission={PERMISSIONS.TICKETS_VIEW_ALL_GLOBAL}>
+                                    <SidebarItem to="/admin/tickets?tipo=global" icon={TicketX} label={t('common.nav.tickets_global')} isSubmenuItem />
+                                </ProtectedElement>
+                            </SidebarSubmenu>
+                        </ProtectedElement>
 
-                    {/* Empresas - Only admin-general */}
-                    <ProtectedElement permission={PERMISSIONS.COMPANIES_VIEW_ALL}>
-                        <SidebarItem to="/admin/empresas" icon={Building2} label={t('companies')} collapsed={isCollapsed} />
-                    </ProtectedElement>
+                        {/* Empresas - Only admin-general */}
+                        <ProtectedElement permission={PERMISSIONS.COMPANIES_VIEW_ALL}>
+                            <SidebarItem to="/admin/empresas" icon={Building2} label={t('common.nav.companies')} />
+                        </ProtectedElement>
 
-                    {/* Servicios - Submenu with local/global */}
-                    <ProtectedElement permission={[PERMISSIONS.SERVICIOS_MANAGE_LOCAL, PERMISSIONS.SERVICIOS_MANAGE_GLOBAL]}>
-                        <SidebarSubmenu icon={Globe} label="Servicios" collapsed={isCollapsed}>
-                            <ProtectedElement permission={PERMISSIONS.SERVICIOS_MANAGE_LOCAL}>
-                                <SidebarItem to="/admin/servicios?tipo=local" icon={MapPin} label="Servicios Locales" collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                            <ProtectedElement permission={PERMISSIONS.SERVICIOS_MANAGE_GLOBAL}>
-                                <SidebarItem to="/admin/servicios?tipo=global" icon={GlobeLock} label="Servicios Globales" collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                        </SidebarSubmenu>
-                    </ProtectedElement>
+                        {/* Servicios - Submenu with local/global */}
+                        <ProtectedElement permission={[PERMISSIONS.SERVICIOS_MANAGE_LOCAL, PERMISSIONS.SERVICIOS_MANAGE_GLOBAL]}>
+                            <SidebarSubmenu icon={Globe} label={t('common.nav.services')} isActive={isServicesActive}>
+                                <ProtectedElement permission={PERMISSIONS.SERVICIOS_MANAGE_LOCAL}>
+                                    <SidebarItem to="/admin/servicios?tipo=local" icon={MapPin} label={t('common.nav.services_local')} isSubmenuItem />
+                                </ProtectedElement>
+                                <ProtectedElement permission={PERMISSIONS.SERVICIOS_MANAGE_GLOBAL}>
+                                    <SidebarItem to="/admin/servicios?tipo=global" icon={GlobeLock} label={t('common.nav.services_global')} isSubmenuItem />
+                                </ProtectedElement>
+                            </SidebarSubmenu>
+                        </ProtectedElement>
 
-                    {/* Grupos de Atención */}
-                    <ProtectedElement permission={PERMISSIONS.HABILITIES_VIEW}>
-                        <SidebarItem to="/admin/habilidades" icon={Briefcase} label="Grupos de Atención" collapsed={isCollapsed} />
-                    </ProtectedElement>
+                        {/* Grupos de Atención */}
+                        <ProtectedElement permission={PERMISSIONS.HABILITIES_VIEW}>
+                            <SidebarItem to="/admin/habilidades" icon={Briefcase} label={t('common.nav.care_groups')} />
+                        </ProtectedElement>
 
-                    {/* Sistema - Submenu with Roles and Admins */}
-                    <ProtectedElement permission={[PERMISSIONS.ROLES_VIEW, PERMISSIONS.ADMINS_MANAGE]}>
-                        <SidebarSubmenu icon={ShieldCheck} label="Sistema" collapsed={isCollapsed}>
-                            <ProtectedElement permission={PERMISSIONS.ROLES_VIEW}>
-                                <SidebarItem to="/admin/roles" icon={ShieldCheck} label={t('roles')} collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                            <ProtectedElement permission={PERMISSIONS.ADMINS_MANAGE}>
-                                <SidebarItem to="/admin/system-admins" icon={ShieldAlert} label={t('admins')} collapsed={isCollapsed} isSubmenuItem />
-                            </ProtectedElement>
-                        </SidebarSubmenu>
-                    </ProtectedElement>
-                </nav>
+                        {/* Sistema - Submenu with Roles and Admins */}
+                        <ProtectedElement permission={[PERMISSIONS.ROLES_VIEW, PERMISSIONS.ADMINS_MANAGE]}>
+                            <SidebarSubmenu icon={ShieldCheck} label={t('common.nav.system')} isActive={isSystemActive}>
+                                <ProtectedElement permission={PERMISSIONS.ROLES_VIEW}>
+                                    <SidebarItem to="/admin/roles" icon={ShieldCheck} label={t('common.nav.roles')} isSubmenuItem />
+                                </ProtectedElement>
+                                <ProtectedElement permission={PERMISSIONS.ADMINS_MANAGE}>
+                                    <SidebarItem to="/admin/system-admins" icon={ShieldAlert} label={t('common.nav.admins')} isSubmenuItem />
+                                </ProtectedElement>
+                            </SidebarSubmenu>
+                        </ProtectedElement>
+                    </nav>
 
-                <div className={cn(
-                    "border-t border-slate-800 flex",
-                    isCollapsed
-                        ? "flex-col items-center gap-4 py-4 px-2"
-                        : "items-center justify-between p-4"
-                )}>
-                    <div className={isCollapsed ? "w-full flex justify-center" : ""}>
-                        <UserMenu compact={isCollapsed} />
+                    <div className={cn(
+                        "border-t border-slate-800 flex",
+                        isCollapsed
+                            ? "flex-col items-center gap-4 py-4 px-2"
+                            : "items-center justify-between p-4"
+                    )}>
+                        <div className={isCollapsed ? "w-full flex justify-center" : ""}>
+                            <UserMenu compact={isCollapsed} />
+                        </div>
+                        <div className={isCollapsed ? "w-full flex justify-center" : ""}>
+                            <NotificationsMenu />
+                        </div>
                     </div>
-                    <div className={isCollapsed ? "w-full flex justify-center" : ""}>
-                        <NotificationsMenu />
-                    </div>
-                </div>
+                </SidebarContext.Provider>
             </aside>
 
             {/* Main Content */}

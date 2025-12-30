@@ -6,7 +6,8 @@ import { ticketsService } from '@/api/tickets.service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Clock, User, Building, Paperclip, MessageSquare } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Clock, User, Building, Paperclip, MessageSquare, X } from 'lucide-react';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { TicketTimeline } from '@/components/tickets/TicketTimeline';
 import { TicketActionsMenu } from '@/components/tickets/TicketActionsMenu';
@@ -19,6 +20,7 @@ const TicketDetail = () => {
 
     const queryClient = useQueryClient();
     const [showChat, setShowChat] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // Fetch Ticket Data
     const { data: ticket, isLoading, isError, refetch } = useQuery({
@@ -136,16 +138,17 @@ const TicketDetail = () => {
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {ticket.imagenes.map((imagen: string, index: number) => {
                                             // Transform URL to use gateway if it's a local upload
-                                            const imageUrl = imagen.startsWith('/uploads')
-                                                ? `${import.meta.env.VITE_API_URL}${imagen}`
-                                                : imagen;
+                                            let imageUrl = imagen;
+                                            if (imagen.startsWith('/uploads')) {
+                                                // Remove /api from VITE_API_URL for static file serving
+                                                const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+                                                imageUrl = `${baseUrl}${imagen}`;
+                                            }
 
                                             return (
-                                                <a
+                                                <div
                                                     key={index}
-                                                    href={imageUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                    onClick={() => setSelectedImage(imageUrl)}
                                                     className="group relative aspect-square rounded-lg overflow-hidden border-2 border-slate-200 hover:border-blue-500 transition-all cursor-pointer"
                                                 >
                                                     <img
@@ -162,7 +165,7 @@ const TicketDetail = () => {
                                                             Ver imagen
                                                         </div>
                                                     </div>
-                                                </a>
+                                                </div>
                                             );
                                         })}
                                     </div>
@@ -231,22 +234,45 @@ const TicketDetail = () => {
                                         <Paperclip className="h-4 w-4" /> Evidencias Adjuntas
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {ticket.adjuntos.map((file: any, idx: number) => (
-                                            <a
-                                                key={idx}
-                                                href={file.url}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex items-center p-3 border rounded hover:bg-slate-50 transition-colors group"
-                                            >
-                                                <div className="bg-slate-100 p-2 rounded mr-3 group-hover:bg-white text-xs font-bold text-slate-600">
-                                                    {file.tipo?.split('/')[1]?.toUpperCase() || 'FILE'}
+                                        {ticket.adjuntos.map((file: any, idx: number) => {
+                                            const isImage = file.tipo?.startsWith('image/');
+                                            let fileUrl = file.url;
+                                            if (file.url.startsWith('/uploads')) {
+                                                // Remove /api from VITE_API_URL for static file serving
+                                                const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+                                                fileUrl = `${baseUrl}${file.url}`;
+                                            }
+
+                                            return isImage ? (
+                                                <div
+                                                    key={idx}
+                                                    onClick={() => setSelectedImage(fileUrl)}
+                                                    className="flex items-center p-3 border rounded hover:bg-slate-50 transition-colors group cursor-pointer"
+                                                >
+                                                    <div className="bg-slate-100 p-2 rounded mr-3 group-hover:bg-white text-xs font-bold text-slate-600">
+                                                        {file.tipo?.split('/')[1]?.toUpperCase() || 'FILE'}
+                                                    </div>
+                                                    <div className="flex-1 overflow-hidden">
+                                                        <div className="text-sm font-medium truncate text-blue-600">{file.nombre}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <div className="text-sm font-medium truncate text-blue-600">{file.nombre}</div>
-                                                </div>
-                                            </a>
-                                        ))}
+                                            ) : (
+                                                <a
+                                                    key={idx}
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="flex items-center p-3 border rounded hover:bg-slate-50 transition-colors group"
+                                                >
+                                                    <div className="bg-slate-100 p-2 rounded mr-3 group-hover:bg-white text-xs font-bold text-slate-600">
+                                                        {file.tipo?.split('/')[1]?.toUpperCase() || 'FILE'}
+                                                    </div>
+                                                    <div className="flex-1 overflow-hidden">
+                                                        <div className="text-sm font-medium truncate text-blue-600">{file.nombre}</div>
+                                                    </div>
+                                                </a>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -307,6 +333,34 @@ const TicketDetail = () => {
                     </Card>
                 </div>
             </div>
+
+            {/* Image Preview Modal */}
+            <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+                <DialogContent className="max-w-4xl w-full p-0">
+                    <DialogHeader className="p-4 pb-0">
+                        <div className="flex items-center justify-between">
+                            <DialogTitle>Vista Previa de Imagen</DialogTitle>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setSelectedImage(null)}
+                                className="h-8 w-8"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-4">
+                        {selectedImage && (
+                            <img
+                                src={selectedImage}
+                                alt="Vista previa"
+                                className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

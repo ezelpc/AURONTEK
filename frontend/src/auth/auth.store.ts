@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types/api.types';
 import { useUIStore } from '@/components/ui.store';
 
@@ -59,6 +59,7 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'auth-storage',
+            storage: createJSONStorage(() => sessionStorage),
         }
     )
 );

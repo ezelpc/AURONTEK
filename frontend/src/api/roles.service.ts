@@ -24,8 +24,7 @@ export interface PermissionGroup {
 }
 
 export const rolesService = {
-    getRoles: async (empresaId?: string) => {
-        const params = empresaId ? { empresaId } : {};
+    getRoles: async (params?: { empresaId?: string; scope?: 'internal' | 'global' }) => {
         const { data } = await api.get<Role[]>('/roles', { params });
         return data;
     },

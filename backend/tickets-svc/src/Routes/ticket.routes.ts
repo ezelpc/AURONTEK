@@ -31,6 +31,9 @@ router.get('/', ticketController.listar);
 // Obtener detalle de un ticket
 router.get('/:id', ticketController.obtener);
 
+// Obtener historial de cambios de un ticket
+router.get('/:id/history', ticketController.obtenerHistorial);
+
 // ✅ Verificar acceso al chat
 // ✅ Verificar acceso al chat
 router.get('/:id/verificar-acceso-chat', validateServiceToken, ticketController.verificarAccesoChat);

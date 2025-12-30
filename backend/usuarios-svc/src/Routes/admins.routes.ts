@@ -1,6 +1,7 @@
 import express from 'express';
 import adminController from '../Controllers/admin.controller';
 import { verificarToken, esAdminSistema } from '../Middleware/auth.middleware';
+import { validateUserOrService } from '../Middleware/service.middleware';
 
 const router = express.Router();
 
@@ -9,6 +10,9 @@ router.use(verificarToken);
 
 // POST /api/admins - Crear admin (solo admin-general y admin-subroot)
 router.post('/', esAdminSistema, adminController.crearAdmin);
+
+// GET /api/admins/:id - Get admin details (for services or admins)
+router.get('/:id', validateUserOrService, adminController.detalleAdmin);
 
 // GET /api/admins - Listar admins
 router.get('/', esAdminSistema, adminController.listarAdmins);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { servicesService, Service } from '@/api/services.service';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, Upload, FileDown, Globe, Building } from 'lucide-react';
 import ServiceForm from './ServiceForm';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -19,18 +20,35 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from 'react-i18next';
 
 const ServicesPage = () => {
     const queryClient = useQueryClient();
+    const [searchParams] = useSearchParams();
+    const { t } = useTranslation();
+
+    // Check for 'tipo' or 'alcance' in URL
+    const urlScope = searchParams.get('tipo') || searchParams.get('alcance');
+    const initialTab = urlScope === 'local' ? 'local' : 'global';
+
+    // Sync active tab with URL if present
+    useEffect(() => {
+        if (urlScope === 'local') setActiveTab('local');
+        else if (urlScope === 'global') setActiveTab('global');
+    }, [urlScope]);
+
     const [isCreating, setIsCreating] = useState(false);
     const [editingService, setEditingService] = useState<Service | undefined>(undefined);
-    const [activeTab, setActiveTab] = useState('global');
+    const [activeTab, setActiveTab] = useState<'global' | 'local'>(initialTab as 'global' | 'local');
     const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
 
-    // Fetch Services
-    const { data: services, isLoading } = useQuery({
-        queryKey: ['services'],
-        queryFn: servicesService.getServices
+    // Update title based on active tab or URL param
+    const pageTitle = activeTab === 'local' ? t('services.title_internal') : t('services.title');
+
+    // Fetch Services based on active tab
+    const { data: services = [], isLoading } = useQuery({
+        queryKey: ['services', activeTab],
+        queryFn: () => servicesService.getServices(activeTab)
     });
 
     // Delete Mutation
@@ -38,11 +56,11 @@ const ServicesPage = () => {
         mutationFn: servicesService.deleteService,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['services'] });
-            toast.success('Servicio eliminado');
+            toast.success(t('services.messages.deleted'));
             setDeletingServiceId(null);
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al eliminar servicio');
+            toast.error(err.response?.data?.msg || t('services.messages.delete_error'));
             setDeletingServiceId(null);
         }
     });
@@ -52,9 +70,9 @@ const ServicesPage = () => {
         mutationFn: servicesService.bulkUpload,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['services'] });
-            toast.success(`Carga masiva completada: ${data.msg || 'OK'}`);
+            toast.success(t('services.messages.upload_success', { msg: data.msg || 'OK' }));
         },
-        onError: () => toast.error('Error en carga masiva')
+        onError: () => toast.error(t('services.messages.upload_error'))
     });
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,20 +85,16 @@ const ServicesPage = () => {
         setDeletingServiceId(id);
     };
 
-    // Filters
-    const globalServices = services?.filter(s => s.alcance === 'global') || [];
-    const localServices = services?.filter(s => s.alcance === 'local') || [];
-
     const ServiceTable = ({ data, readonly = false }: { data: Service[], readonly?: boolean }) => (
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Prioridad</TableHead>
-                    <TableHead>SLA</TableHead>
-                    <TableHead>Estado</TableHead>
-                    {!readonly && <TableHead className="text-right">Acciones</TableHead>}
+                    <TableHead>{t('services.table.name')}</TableHead>
+                    <TableHead>{t('services.table.type')}</TableHead>
+                    <TableHead>{t('services.table.priority')}</TableHead>
+                    <TableHead>{t('services.table.sla')}</TableHead>
+                    <TableHead>{t('services.table.status')}</TableHead>
+                    {!readonly && <TableHead className="text-right">{t('common.actions')}</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -105,7 +119,7 @@ const ServicesPage = () => {
                         <TableCell>{service.sla}</TableCell>
                         <TableCell>
                             <Badge variant={service.activo ? 'default' : 'secondary'}>
-                                {service.activo ? 'Activo' : 'Inactivo'}
+                                {service.activo ? t('common.active') : t('common.inactive')}
                             </Badge>
                         </TableCell>
                         {!readonly && (
@@ -123,7 +137,7 @@ const ServicesPage = () => {
                 {data.length === 0 && (
                     <TableRow>
                         <TableCell colSpan={6} className="text-center h-24 text-slate-500">
-                            No hay servicios registrados en esta categoría.
+                            {t('services.messages.no_data')}
                         </TableCell>
                     </TableRow>
                 )}
@@ -131,26 +145,26 @@ const ServicesPage = () => {
         </Table>
     );
 
-    if (isLoading) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Cargando catálogo...</div>;
+    if (isLoading) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">{t('common.loading')}</div>;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Delete Confirmation Dialog */}
+            {/* Alert Dialog */}
             <AlertDialog open={!!deletingServiceId} onOpenChange={(open) => !open && setDeletingServiceId(null)}>
                 <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-700">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="dark:text-slate-100">¿Eliminar servicio?</AlertDialogTitle>
+                        <AlertDialogTitle className="dark:text-slate-100">{t('common.delete_permanently')}?</AlertDialogTitle>
                         <AlertDialogDescription className="dark:text-slate-300">
-                            Esta acción eliminará permanentemente este servicio del catálogo. Esta acción no se puede deshacer.
+                            {t('common.confirm_delete')} {t('common.irreversible_action')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700"
                             onClick={() => deletingServiceId && deleteMutation.mutate(deletingServiceId)}
                         >
-                            Eliminar
+                            {t('common.delete')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -158,13 +172,13 @@ const ServicesPage = () => {
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Catálogo de Servicios</h2>
-                    <p className="text-slate-500">Gestiona la oferta de servicios para tickets.</p>
+                    <h2 className="text-3xl font-bold tracking-tight">{pageTitle}</h2>
+                    <p className="text-slate-500">{t('services.subtitle')}</p>
                 </div>
                 {!isCreating && !editingService && (
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={servicesService.downloadTemplate}>
-                            <FileDown className="mr-2 h-4 w-4" /> Plantilla
+                        <Button variant="outline" onClick={() => servicesService.downloadTemplate(activeTab)}>
+                            <FileDown className="mr-2 h-4 w-4" /> {t('services.template')}
                         </Button>
                         <div className="relative">
                             <input
@@ -174,11 +188,11 @@ const ServicesPage = () => {
                                 accept=".csv"
                             />
                             <Button variant="outline">
-                                <Upload className="mr-2 h-4 w-4" /> Importar
+                                <Upload className="mr-2 h-4 w-4" /> {t('services.import')}
                             </Button>
                         </div>
                         <Button onClick={() => setIsCreating(true)}>
-                            <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
+                            <Plus className="mr-2 h-4 w-4" /> {t('services.new_service')}
                         </Button>
                     </div>
                 )}
@@ -187,12 +201,13 @@ const ServicesPage = () => {
             {(isCreating || editingService) ? (
                 <Card className="border-blue-200 shadow-lg">
                     <CardHeader className="bg-blue-50/50">
-                        <CardTitle>{editingService ? 'Editar Servicio' : 'Nuevo Servicio'}</CardTitle>
-                        <CardDescription>Define los parámetros del servicio, SLA y responsables.</CardDescription>
+                        <CardTitle>{editingService ? t('services.edit_service') : t('services.new_service')}</CardTitle>
+                        <CardDescription>{t('services.subtitle')}</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <ServiceForm
                             service={editingService}
+                            initialScope={activeTab}
                             onSuccess={() => { setIsCreating(false); setEditingService(undefined); }}
                             onCancel={() => { setIsCreating(false); setEditingService(undefined); }}
                         />
@@ -201,22 +216,26 @@ const ServicesPage = () => {
             ) : (
                 <Card className="dark:bg-slate-900 dark:border-slate-700">
                     <CardContent className="p-0">
-                        <Tabs defaultValue="global" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <div className="border-b px-4 bg-slate-50/50">
-                                <TabsList className="bg-transparent">
-                                    <TabsTrigger value="global" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                        <Globe className="mr-2 h-4 w-4" /> Globales (Aurontek)
-                                    </TabsTrigger>
-                                    <TabsTrigger value="local" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                        <Building className="mr-2 h-4 w-4" /> Locales (Empresas)
-                                    </TabsTrigger>
-                                </TabsList>
-                            </div>
+                        <Tabs defaultValue={initialTab} value={activeTab} onValueChange={(v) => setActiveTab(v as 'global' | 'local')} className="w-full">
+                            {!urlScope && (
+                                <div className="border-b px-4 bg-slate-50/50">
+                                    <TabsList className="bg-transparent">
+                                        <TabsTrigger value="global" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                            <Globe className="mr-2 h-4 w-4" /> {t('services.tabs.global')}
+                                        </TabsTrigger>
+                                        <TabsTrigger value="local" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                            <Building className="mr-2 h-4 w-4" /> {t('services.tabs.local')}
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </div>
+                            )}
+
+                            {/* We reuse the services list for both, as it re-fetches on tab change */}
                             <TabsContent value="global" className="p-0 border-none m-0">
-                                <ServiceTable data={globalServices} />
+                                <ServiceTable data={services} />
                             </TabsContent>
                             <TabsContent value="local" className="p-0 border-none m-0">
-                                <ServiceTable data={localServices} />
+                                <ServiceTable data={services} />
                             </TabsContent>
                         </Tabs>
                     </CardContent>

@@ -14,7 +14,8 @@ export const createApp = () => {
         process.env.FRONTEND_URL, // URL de Vercel
         process.env.CUSTOM_DOMAIN, // Dominio No-IP con HTTPS
         'http://localhost:5173', // Desarrollo local
-        'http://localhost:3000'
+        'http://localhost:3000',
+        'http://localhost:5000'
     ].filter(Boolean) as string[]; // Filtrar valores undefined y asegurar tipo string[]
 
     app.use(cors({

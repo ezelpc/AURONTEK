@@ -5,7 +5,7 @@ import { companiesService } from '@/api/companies.service';
 import { rolesService } from '@/api/roles.service';
 import UserForm from './UserForm';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
 import { ProtectedButton } from '@/components/ProtectedButton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-import { useAuthStore } from '@/auth/auth.store';
+
 import { PERMISSIONS } from '@/constants/permissions';
 import {
     AlertDialog,
@@ -26,11 +26,13 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from 'react-i18next';
 
 const UsersPage = () => {
     const queryClient = useQueryClient();
     const [searchParams] = useSearchParams();
-    const { user: currentUser } = useAuthStore();
+    const { t } = useTranslation();
+
     const tipo = searchParams.get('tipo'); // 'local' o 'global'
 
     const [showForm, setShowForm] = useState(false);
@@ -108,11 +110,11 @@ const UsersPage = () => {
         mutationFn: userService.deleteUser,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
-            toast.success('Usuario eliminado correctamente');
+            toast.success(t('common.success'));
             setDeletingUserId(null);
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.msg || 'Error al eliminar usuario');
+            toast.error(error.response?.data?.msg || t('common.error'));
             setDeletingUserId(null);
         }
     });
@@ -123,10 +125,10 @@ const UsersPage = () => {
             userService.updateUser(id, { activo }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
-            toast.success('Estado del usuario actualizado');
+            toast.success(t('common.success'));
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.msg || 'Error al actualizar usuario');
+            toast.error(error.response?.data?.msg || t('common.error'));
         }
     });
 
@@ -153,7 +155,18 @@ const UsersPage = () => {
         setEditingUser(null);
     };
 
+    // Title and Subtitle logic
+    const getPageTitle = () => {
+        if (tipo === 'local') return t('users.title_local');
+        if (tipo === 'global') return t('users.title_global');
+        return t('users.title');
+    };
 
+    const getPageSubtitle = () => {
+        if (tipo === 'local') return t('users.subtitle_local');
+        if (tipo === 'global') return t('users.subtitle_global');
+        return t('users.subtitle');
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -161,18 +174,18 @@ const UsersPage = () => {
             <AlertDialog open={!!deletingUserId} onOpenChange={(open) => !open && setDeletingUserId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('common.delete_permanently')}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción eliminará permanentemente al usuario. Esta acción no se puede deshacer.
+                            {t('common.confirm_delete')} {t('common.irreversible_action')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700"
                             onClick={() => deletingUserId && deleteMutation.mutate(deletingUserId)}
                         >
-                            Eliminar
+                            {t('common.delete')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -181,14 +194,10 @@ const UsersPage = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">
-                        {tipo === 'local' ? 'Usuarios Locales' : tipo === 'global' ? 'Usuarios Globales' : 'Gestión de Usuarios'}
+                        {getPageTitle()}
                     </h2>
                     <p className="text-slate-500">
-                        {tipo === 'local'
-                            ? 'Personal interno de Aurontek (Administradores y staff)'
-                            : tipo === 'global'
-                                ? 'Usuarios de empresas clientes registradas'
-                                : 'Administración de identidades y accesos.'}
+                        {getPageSubtitle()}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -197,7 +206,7 @@ const UsersPage = () => {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
                             type="text"
-                            placeholder="Buscar usuarios..."
+                            placeholder={t('users.search_placeholder')}
                             className="pl-9 w-[200px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -212,7 +221,7 @@ const UsersPage = () => {
                                 value={selectedCompany}
                                 onChange={(e) => setSelectedCompany(e.target.value)}
                             >
-                                <option value="" className="dark:bg-slate-800 dark:text-slate-100">Todas las Empresas</option>
+                                <option value="" className="dark:bg-slate-800 dark:text-slate-100">{t('users.filter_company')}</option>
                                 {Array.isArray(companies) && companies
                                     .filter(c => c.rfc !== 'AURONTEK001') // Excluir AurontekHQ
                                     .map(c => (
@@ -230,7 +239,7 @@ const UsersPage = () => {
                         variant={showForm ? "secondary" : "default"}
                     >
                         {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                        {showForm ? 'Cancelar' : 'Nuevo Usuario'}
+                        {showForm ? t('common.cancel') : t('users.new_user')}
                     </ProtectedButton>
                 </div>
             </div>
@@ -238,9 +247,9 @@ const UsersPage = () => {
             {showForm && (
                 <Card className="border-blue-200 shadow-lg animate-in slide-in-from-top-4">
                     <CardHeader className="bg-blue-50/50">
-                        <CardTitle>{editingUser ? 'Editar Usuario' : 'Alta de Usuario'}</CardTitle>
+                        <CardTitle>{editingUser ? t('users.edit_user') : t('users.new_user')}</CardTitle>
                         <CardDescription>
-                            {editingUser ? 'Modifica los datos del usuario.' : 'Crea un nuevo usuario asignándole una empresa y rol.'}
+                            {editingUser ? t('users.form.desc_edit') : t('users.form.desc_create')}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
@@ -257,25 +266,25 @@ const UsersPage = () => {
                 <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-700">
                     <CardTitle className="flex items-center gap-2 dark:text-slate-100">
                         <Building2 className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-                        {tipo === 'local' ? 'Usuarios Locales' : tipo === 'global' ? 'Directorio Global' : 'Directorio de Usuarios'}
-                        {selectedCompany && <Badge variant="secondary" className="ml-2 dark:bg-slate-700 dark:text-slate-300">Filtrado</Badge>}
-                        {searchTerm && <Badge variant="secondary" className="ml-2 dark:bg-slate-700 dark:text-slate-300">Búsqueda activa</Badge>}
-                        <Badge variant="outline" className="ml-auto">{users.length} usuarios</Badge>
+                        {getPageTitle()}
+                        {selectedCompany && <Badge variant="secondary" className="ml-2 dark:bg-slate-700 dark:text-slate-300">{t('users.filtered')}</Badge>}
+                        {searchTerm && <Badge variant="secondary" className="ml-2 dark:bg-slate-700 dark:text-slate-300">{t('users.active_search')}</Badge>}
+                        <Badge variant="outline" className="ml-auto">{t('users.count', { count: users.length })}</Badge>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="p-8 text-center text-slate-500 dark:text-slate-400">Cargando usuarios...</div>
+                        <div className="p-8 text-center text-slate-500 dark:text-slate-400">{t('common.loading')}</div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow className="dark:border-slate-700">
-                                    <TableHead className="dark:text-slate-300">Nombre / Email</TableHead>
-                                    <TableHead className="dark:text-slate-300">Empresa</TableHead>
-                                    <TableHead className="dark:text-slate-300">Rol / Puesto</TableHead>
-                                    <TableHead className="dark:text-slate-300">Permisos</TableHead>
-                                    <TableHead className="dark:text-slate-300">Estado</TableHead>
-                                    <TableHead className="text-right dark:text-slate-300">Acciones</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('users.table.user')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('users.table.company')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('users.table.role_position')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('users.table.permissions')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('users.table.status')}</TableHead>
+                                    <TableHead className="text-right dark:text-slate-300">{t('common.actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -293,7 +302,7 @@ const UsersPage = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="mb-1 bg-blue-50 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800">
-                                                {user.rol}
+                                                {typeof user.rol === 'object' && user.rol !== null ? user.rol.nombre : user.rol}
                                             </Badge>
                                             {user.puesto && (
                                                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{user.puesto}</div>
@@ -306,7 +315,7 @@ const UsersPage = () => {
                                                         <div className="flex items-center gap-1 cursor-help">
                                                             <Key className="h-3 w-3 text-slate-400" />
                                                             <span className="text-sm dark:text-slate-300">
-                                                                {user.rol === 'admin-general' ? 'Total' : getUserPermissions(user).length}
+                                                                {(typeof user.rol === 'string' && user.rol === 'admin-general') || (typeof user.rol === 'object' && user.rol?.slug === 'admin-general') ? 'Total' : getUserPermissions(user).length}
                                                             </span>
                                                         </div>
                                                     </TooltipTrigger>
@@ -316,7 +325,7 @@ const UsersPage = () => {
                                                                 {p}
                                                             </Badge>
                                                         )) : (
-                                                            <span className="text-xs text-slate-400">Sin permisos asignados</span>
+                                                            <span className="text-xs text-slate-400">{t('admins.tooltips.no_permissions')}</span>
                                                         )}
                                                     </TooltipContent>
                                                 </Tooltip>
@@ -324,7 +333,7 @@ const UsersPage = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={user.activo ? "default" : "secondary"} className={user.activo ? "dark:bg-green-900 dark:text-green-100" : "dark:bg-slate-700 dark:text-slate-300"}>
-                                                {user.activo ? 'Activo' : 'Inactivo'}
+                                                {user.activo ? t('common.active') : t('common.inactive')}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -333,7 +342,6 @@ const UsersPage = () => {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleEdit(user)}
-                                                title="Editar usuario"
                                                 className="dark:hover:bg-slate-800"
                                             >
                                                 <Pencil className="h-4 w-4 text-slate-500 dark:text-slate-400" />
@@ -346,7 +354,6 @@ const UsersPage = () => {
                                                     id: user.id || user._id,
                                                     activo: !user.activo
                                                 })}
-                                                title={user.activo ? "Suspender usuario" : "Activar usuario"}
                                                 className="dark:hover:bg-slate-800"
                                             >
                                                 {user.activo ? (
@@ -360,7 +367,6 @@ const UsersPage = () => {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => setDeletingUserId(user.id || user._id)}
-                                                title="Eliminar usuario"
                                                 className="dark:hover:bg-slate-800"
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
@@ -370,8 +376,8 @@ const UsersPage = () => {
                                 ))}
                                 {Array.isArray(users) && users.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center h-24 text-slate-500">
-                                            No se encontraron usuarios.
+                                        <TableCell colSpan={6} className="text-center h-24 text-slate-500">
+                                            {t('users.table.no_data')}
                                         </TableCell>
                                     </TableRow>
                                 )}

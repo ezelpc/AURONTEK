@@ -7,6 +7,8 @@ declare global {
     interface Request {
       usuario?: JwtPayload & {
         id: string;
+        nombre: string;
+        email: string; // ✅ Added email
         rol: string;
         empresaId?: string;
         permisos?: string[];
@@ -33,6 +35,8 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload & {
       id: string;
+      nombre: string;
+      email: string;
       rol: string;
       empresaId?: string;
       permisos?: string[];

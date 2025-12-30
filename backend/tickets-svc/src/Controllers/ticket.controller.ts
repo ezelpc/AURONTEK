@@ -9,10 +9,15 @@ const ticketController = {
   // POST /tickets
   async crear(req: Request, res: Response): Promise<void> {
     try {
-      let empresaId: string | null | undefined = req.usuario?.empresaId;
+      if (!req.usuario) {
+        res.status(401).json({ msg: 'Usuario no autenticado' });
+        return;
+      }
+
+      let empresaId: string | null | undefined = req.usuario.empresaId;
 
       // Si el usuario es admin y no tiene empresaId (ej. admin-general), asignar AurontekHQ
-      if (!empresaId && ['admin-general', 'admin-subroot', 'admin-interno'].includes(req.usuario?.rol || '')) {
+      if (!empresaId && ['admin-general', 'admin-subroot', 'admin-interno'].includes(req.usuario.rol || '')) {
         console.log('Admin creando ticket sin empresaId, buscando AurontekHQ...');
         const aurontekHQId = await ticketService.obtenerAurontekHQId();
         if (!aurontekHQId) {
@@ -23,7 +28,9 @@ const ticketController = {
 
       const datosTicket = {
         ...req.body,
-        usuarioCreador: req.usuario?.id,
+        usuarioCreador: req.usuario.id,
+        usuarioCreadorEmail: req.usuario.email, // Pass email to service
+        etiquetas: req.body.etiquetas || [],
         empresaId: empresaId
       };
 
@@ -208,7 +215,7 @@ const ticketController = {
   async actualizarEstado(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { estado } = req.body;
+      const { estado, motivo } = req.body;
 
       if (!validarMongoId(id)) {
         res.status(400).json({ msg: 'ID de ticket inválido' });
@@ -223,12 +230,12 @@ const ticketController = {
       }
 
       // Autorización: soporte, beca-soporte, admin-interno, admin-general, admin-subroot
-      if (!['soporte', 'beca-soporte', 'admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario?.rol || '')) {
+      if (!req.usuario || !['soporte', 'beca-soporte', 'admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario.rol || '')) {
         res.status(403).json({ msg: 'No autorizado para actualizar el estado' });
         return;
       }
 
-      const ticket = await ticketService.actualizarEstado(id, estado, req.usuario?.id);
+      const ticket = await ticketService.actualizarEstado(id, estado, req.usuario.id, motivo, req.usuario.nombre);
       res.json(ticket);
     } catch (error: any) {
       console.error('Error al actualizar estado:', error);
@@ -257,7 +264,7 @@ const ticketController = {
         return;
       }
 
-      const ticket = await ticketService.asignarTicket(id, agenteId, req.usuario.empresaId!);
+      const ticket = await ticketService.asignarTicket(id, agenteId, req.usuario.empresaId!, req.usuario?.id, req.usuario?.nombre);
       res.json(ticket);
     } catch (error: any) {
       console.error('Error al asignar ticket:', error);
@@ -392,6 +399,48 @@ const ticketController = {
       await ticketService.eliminarTicket(id);
       res.json({ msg: 'Ticket eliminado correctamente' });
     } catch (error: any) {
+      res.status(500).json({ msg: error.message });
+    }
+  },
+
+  // GET /tickets/:id/history
+  async obtenerHistorial(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      if (!validarMongoId(id)) {
+        res.status(400).json({ msg: 'ID inválido' });
+        return;
+      }
+
+      const ticket = await ticketService.obtenerTicket(id);
+      if (!ticket) {
+        res.status(404).json({ msg: 'Ticket no encontrado' });
+        return;
+      }
+
+      // Importar el servicio de auditoría
+      const auditService = (await import('../Services/audit.service')).default;
+
+      // Obtener historial real desde la base de datos
+      const historial = await auditService.obtenerHistorial(id);
+
+      // Formatear la respuesta para el frontend
+      const historialFormateado = historial.map((entry: any) => ({
+        _id: entry._id,
+        ticketId: entry.ticketId,
+        tipo: entry.tipo,
+        usuario: {
+          nombre: entry.usuarioNombre,
+          correo: entry.usuarioCorreo
+        },
+        cambios: entry.cambios,
+        comentario: entry.comentario,
+        createdAt: entry.createdAt
+      }));
+
+      res.json(historialFormateado);
+    } catch (error: any) {
+      console.error('[obtenerHistorial] Error:', error);
       res.status(500).json({ msg: error.message });
     }
   }

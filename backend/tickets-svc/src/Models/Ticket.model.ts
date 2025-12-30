@@ -12,6 +12,7 @@ export interface ITicket extends Document {
   categoria?: string;
   empresaId: mongoose.Types.ObjectId;
   usuarioCreador: mongoose.Types.ObjectId;
+  usuarioCreadorEmail?: string; // Denormalized email for notifications
   agenteAsignado?: mongoose.Types.ObjectId;
   fechaAsignacion?: Date; // Timestamp de asignación al agente (para detectar estancamiento)
   tutor?: mongoose.Types.ObjectId;
@@ -65,6 +66,7 @@ const ticketSchema = new Schema<ITicket>({
 
   empresaId: { type: Schema.Types.ObjectId, ref: 'Empresa', required: true },
   usuarioCreador: { type: Schema.Types.ObjectId, ref: 'Usuario', required: true },
+  usuarioCreadorEmail: { type: String },
 
   agenteAsignado: {
     type: Schema.Types.ObjectId,

@@ -151,7 +151,8 @@ const login = async (req: Request, res: Response) => {
       id: usuarioEncontrado._id,
       rol: rolFinal,
       empresaId: empresaIdFinal,
-      esAdminGeneral: esAdminGeneral
+      esAdminGeneral: esAdminGeneral,
+      nombre: usuarioEncontrado.nombre // Added for caching in other services
     };
     const token = generarJWT(payload);
 

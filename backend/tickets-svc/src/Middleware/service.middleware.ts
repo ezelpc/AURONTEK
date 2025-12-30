@@ -9,6 +9,8 @@ declare global {
       serviceName?: string;
       usuario?: JwtPayload & {
         id: string;
+        nombre: string;
+        email: string;
         rol: string;
         empresaId?: string;
         permisos?: string[];
@@ -78,6 +80,8 @@ export const validateUserOrService = (req: Request, res: Response, next: NextFun
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload & {
       id: string;
+      nombre: string;
+      email: string;
       rol: string;
       empresaId?: string;
     };

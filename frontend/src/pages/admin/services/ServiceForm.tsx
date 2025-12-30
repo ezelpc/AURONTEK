@@ -14,11 +14,12 @@ import { X } from 'lucide-react';
 
 interface ServiceFormProps {
     service?: Service;
+    initialScope?: 'global' | 'local';
     onSuccess: () => void;
     onCancel: () => void;
 }
 
-const ServiceForm: React.FC<ServiceFormProps> = ({ service, onSuccess, onCancel }) => {
+const ServiceForm: React.FC<ServiceFormProps> = ({ service, initialScope, onSuccess, onCancel }) => {
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
     const isEdit = !!service;
@@ -28,7 +29,7 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ service, onSuccess, onCancel 
     const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Service>({
         defaultValues: {
             activo: true,
-            alcance: user?.esAdminGeneral ? 'global' : 'local',
+            alcance: service?.alcance || initialScope || (user?.esAdminGeneral ? 'global' : 'local'),
             prioridad: 'Media',
             ...service
         }
@@ -121,24 +122,28 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ service, onSuccess, onCancel 
 
                 {/* Tipo */}
                 <div>
-                    <Label htmlFor="tipo" className="dark:text-slate-200">Tipo</Label>
-                    <Input
-                        id="tipo"
-                        {...register('tipo')}
-                        placeholder="Ej: Incidente, Requerimiento"
-                        className="dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100"
-                    />
+                    <Label className="dark:text-slate-200">Tipo</Label>
+                    <Select onValueChange={(val) => setValue('tipo', val as any)} defaultValue={watch('tipo')}>
+                        <SelectTrigger className="dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100">
+                            <SelectValue placeholder="Selecciona tipo" />
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                            <SelectItem value="Incidente" className="dark:text-slate-100 dark:hover:bg-slate-700">Incidente</SelectItem>
+                            <SelectItem value="Requerimiento" className="dark:text-slate-100 dark:hover:bg-slate-700">Requerimiento</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
-                {/* Área */}
+                {/* Categoría */}
                 <div>
-                    <Label htmlFor="area" className="dark:text-slate-200">Área Responsable</Label>
+                    <Label htmlFor="categoria" className="dark:text-slate-200">Categoría</Label>
                     <Input
-                        id="area"
-                        {...register('area')}
-                        placeholder="Ej: TI, Mantenimiento"
+                        id="categoria"
+                        {...register('categoria', { required: 'Requerido' })}
+                        placeholder="Ej: Hardware, Software, Redes"
                         className="dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100"
                     />
+                    {errors.categoria && <span className="text-red-500 dark:text-red-400 text-xs">{errors.categoria.message}</span>}
                 </div>
 
                 {/* Prioridad */}

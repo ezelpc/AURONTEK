@@ -55,8 +55,8 @@ export const ticketsService = {
     },
 
     // Actualizar estado de ticket (Admin)
-    updateTicketStatus: async (id: string, estado: string): Promise<Ticket> => {
-        const response = await api.patch<{ ticket: Ticket }>(`/tickets/admin/${id}/estado`, { estado });
+    updateTicketStatus: async (id: string, estado: string, motivo?: string): Promise<Ticket> => {
+        const response = await api.patch<{ ticket: Ticket }>(`/tickets/admin/${id}/estado`, { estado, motivo });
         return response.data.ticket;
     },
 

@@ -6,7 +6,7 @@ import { PERMISSION_GROUPS } from '../Constants/permissions';
 // GET /api/roles
 export const listarRoles = async (req: Request, res: Response) => {
     try {
-        const { empresaId } = req.query;
+        const { empresaId, scope } = req.query;
         const usuarioRol = req.usuario.rol;
         const usuarioEmpresaId = req.usuario.empresaId;
 
@@ -15,9 +15,29 @@ export const listarRoles = async (req: Request, res: Response) => {
         // 1. Admin General/Subroot (Global Visibility)
         if (['admin-general', 'admin-subroot'].includes(usuarioRol)) {
             // Can see all roles.
+            // If scope is 'internal', show only Global/Internal Roles (empresa: null OR AurontekHQ)
+            if (scope === 'internal') {
+                // Find AurontekHQ ID
+                // Note: hardcoding RFC 'AURONTEK001' or name 'Aurontek HQ' based on seed knowledge
+                const hq = await Empresa.findOne({ rfc: 'AURONTEK001' });
+                const hqId = hq ? hq._id : null;
+
+                const orConditions: any[] = [
+                    { empresa: null },
+                    { empresa: { $exists: false } }
+                ];
+
+                if (hqId) {
+                    orConditions.push({ empresa: hqId });
+                }
+
+                query = {
+                    $or: orConditions,
+                    activo: true
+                };
+            }
             // If empresaId query param is provided, filter by it.
-            // Also show Global Roles (empresa: null)
-            if (empresaId) {
+            else if (empresaId) {
                 console.log('🔍 Filtering roles by empresaId:', empresaId);
                 query = {
                     $or: [
@@ -26,9 +46,8 @@ export const listarRoles = async (req: Request, res: Response) => {
                     ],
                     activo: true
                 };
-                console.log('🔍 Query:', JSON.stringify(query));
             }
-            // If no empresaId, show ALL roles (Global + All Companies)
+            // If no empresaId and no scope internal, show ALL roles (Global + All Companies)
         }
         // 2. Admin Interno (Company Scoped)
         else if (usuarioRol === 'admin-interno') {

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Ticket, Activity, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import { useAuthStore } from '@/auth/auth.store';
+import { useTranslation } from 'react-i18next';
 
 // Componente para Tarjeta de Estadísticas
 const StatCard = ({ title, value, icon: Icon, color, description }: any) => (
@@ -23,11 +24,12 @@ const StatCard = ({ title, value, icon: Icon, color, description }: any) => (
 const EmpresaDashboard = () => {
     const { user } = useAuthStore();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     // Fetch Tickets (Backend debe filtrar por empresa)
     const { data: tickets = [], isLoading } = useQuery({
         queryKey: ['my-tickets', user?.empresaId],
-        queryFn: () => ticketsService.getTickets()
+        queryFn: () => ticketsService.getTickets({ empresaId: user?.empresaId })
     });
 
     // Calcular Estadísticas
@@ -48,43 +50,47 @@ const EmpresaDashboard = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Bienvenido, {user?.nombre?.split(' ')[0]}</h2>
-                    <p className="text-slate-500">Resumen de actividad para {user?.empresa}</p>
+                    <h2 className="text-3xl font-bold tracking-tight">
+                        {t('company_portal.dashboard.welcome', { name: user?.nombre?.split(' ')[0] })}
+                    </h2>
+                    <p className="text-slate-500">
+                        {t('company_portal.dashboard.summary', { company: user?.empresa || 'Empresa' })}
+                    </p>
                 </div>
                 <Button onClick={() => navigate('/empresa/nuevo-ticket')} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" /> Nuevo Ticket
+                    <Plus className="mr-2 h-4 w-4" /> {t('company_portal.dashboard.new_ticket')}
                 </Button>
             </div>
 
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard
-                    title="Total Tickets"
+                    title={t('company_portal.dashboard.stats.total')}
                     value={isLoading ? '-' : stats.total}
                     icon={Ticket}
                     color="text-blue-600"
-                    description="Histórico total"
+                    description={t('company_portal.dashboard.stats.total_desc')}
                 />
                 <StatCard
-                    title="Abiertos"
+                    title={t('company_portal.dashboard.stats.open')}
                     value={isLoading ? '-' : stats.abiertos}
                     icon={AlertCircle}
                     color="text-red-500"
-                    description="Requieren atención"
+                    description={t('company_portal.dashboard.stats.open_desc')}
                 />
                 <StatCard
-                    title="En Proceso"
+                    title={t('company_portal.dashboard.stats.in_process')}
                     value={isLoading ? '-' : stats.enProceso}
                     icon={Activity}
                     color="text-orange-500"
-                    description="Siendo atendidos"
+                    description={t('company_portal.dashboard.stats.in_process_desc')}
                 />
                 <StatCard
-                    title="Cerrados"
+                    title={t('company_portal.dashboard.stats.closed')}
                     value={isLoading ? '-' : stats.cerrados}
                     icon={CheckCircle}
                     color="text-green-500"
-                    description="Resueltos exitosamente"
+                    description={t('company_portal.dashboard.stats.closed_desc')}
                 />
             </div>
 
@@ -93,17 +99,19 @@ const EmpresaDashboard = () => {
                 {/* Recent Activity */}
                 <Card className="col-span-4 md:col-span-5 border-slate-200 shadow-sm">
                     <CardHeader>
-                        <CardTitle>Actividad Reciente</CardTitle>
-                        <CardDescription>Últimos tickets creados o actualizados.</CardDescription>
+                        <CardTitle>{t('company_portal.dashboard.recent_activity.title')}</CardTitle>
+                        <CardDescription>{t('company_portal.dashboard.recent_activity.desc')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             {isLoading ? (
-                                <p className="text-sm text-slate-500">Cargando...</p>
+                                <p className="text-sm text-slate-500">{t('common.loading')}</p>
                             ) : recentTickets.length === 0 ? (
                                 <div className="text-center py-8 text-slate-500">
-                                    <p>No hay actividad reciente.</p>
-                                    <Button variant="link" onClick={() => navigate('/empresa/nuevo-ticket')}>Crear primer ticket</Button>
+                                    <p>{t('company_portal.dashboard.recent_activity.no_activity')}</p>
+                                    <Button variant="link" onClick={() => navigate('/empresa/nuevo-ticket')}>
+                                        {t('company_portal.dashboard.recent_activity.create_first')}
+                                    </Button>
                                 </div>
                             ) : (
                                 recentTickets.map((ticket: any) => (
@@ -138,21 +146,21 @@ const EmpresaDashboard = () => {
                 {/* Quick Actions */}
                 <Card className="col-span-3 md:col-span-2 border-slate-200 shadow-sm">
                     <CardHeader>
-                        <CardTitle>Accesos Directos</CardTitle>
+                        <CardTitle>{t('company_portal.dashboard.quick_actions.title')}</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-3">
                         <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/servicios')}>
                             <Clock className="mr-2 h-4 w-4" />
                             <div className="flex flex-col items-start">
-                                <span>Ver Catálogo</span>
-                                <span className="text-xs text-slate-500 font-normal">Explorar servicios disponibles</span>
+                                <span>{t('company_portal.dashboard.quick_actions.catalog')}</span>
+                                <span className="text-xs text-slate-500 font-normal">{t('company_portal.dashboard.quick_actions.catalog_desc')}</span>
                             </div>
                         </Button>
                         <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/equipo')}>
                             <Ticket className="mr-2 h-4 w-4" />
                             <div className="flex flex-col items-start">
-                                <span>Mi Equipo</span>
-                                <span className="text-xs text-slate-500 font-normal">Gestionar usuarios locales</span>
+                                <span>{t('company_portal.dashboard.quick_actions.team')}</span>
+                                <span className="text-xs text-slate-500 font-normal">{t('company_portal.dashboard.quick_actions.team_desc')}</span>
                             </div>
                         </Button>
                     </CardContent>

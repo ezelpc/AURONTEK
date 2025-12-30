@@ -12,6 +12,9 @@ export interface IServicio extends Document {
   sla?: string;
   cliente?: string;
   gruposDeAtencion?: string;
+  empresaId?: mongoose.Types.ObjectId;
+  alcance: 'global' | 'local';
+  activo: boolean;
 }
 
 const servicioSchema: Schema = new Schema({
@@ -26,7 +29,9 @@ const servicioSchema: Schema = new Schema({
   sla: { type: String },
   cliente: { type: String },
   gruposDeAtencion: { type: String },
-  alcance: { type: String, enum: ['INTERNO', 'PLATAFORMA', 'CLIENTE'], default: 'PLATAFORMA' }
+  empresaId: { type: Schema.Types.ObjectId, ref: 'Empresa' },
+  alcance: { type: String, enum: ['global', 'local'], default: 'local' },
+  activo: { type: Boolean, default: true }
 });
 
 // Índices para mejorar el rendimiento de las búsquedas

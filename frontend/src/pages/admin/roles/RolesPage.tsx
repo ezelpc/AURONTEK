@@ -34,10 +34,11 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { GROUPED_PERMISSIONS } from '@/constants/permissions';
-
+import { useTranslation } from 'react-i18next';
 
 const RolesPage = () => {
     const { user } = useAuthStore();
+    const { t } = useTranslation();
 
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -53,38 +54,38 @@ const RolesPage = () => {
 
     const { data: roles, isLoading } = useQuery({
         queryKey: ['roles'],
-        queryFn: () => rolesService.getRoles()
+        queryFn: () => rolesService.getRoles({ scope: 'internal' })
     });
 
     const createMutation = useMutation({
         mutationFn: rolesService.createRole,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['roles'] });
-            toast.success('Rol creado correctamente');
+            toast.success(t('common.success'));
             handleCloseDialog();
         },
-        onError: (err: any) => toast.error(err.response?.data?.msg || 'Error al crear rol')
+        onError: (err: any) => toast.error(err.response?.data?.msg || t('common.error'))
     });
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: any }) => rolesService.updateRole(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['roles'] });
-            toast.success('Rol actualizado correctamente');
+            toast.success(t('common.success'));
             handleCloseDialog();
         },
-        onError: (err: any) => toast.error(err.response?.data?.msg || 'Error al actualizar rol')
+        onError: (err: any) => toast.error(err.response?.data?.msg || t('common.error'))
     });
 
     const deleteMutation = useMutation({
         mutationFn: rolesService.deleteRole,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['roles'] });
-            toast.success('Rol eliminado');
+            toast.success(t('common.success'));
             setDeletingRoleId(null);
         },
         onError: (err: any) => {
-            toast.error(err.response?.data?.msg || 'Error al eliminar rol');
+            toast.error(err.response?.data?.msg || t('common.error'));
             setDeletingRoleId(null);
         }
     });
@@ -125,7 +126,7 @@ const RolesPage = () => {
     };
 
     const handleSave = () => {
-        if (!formData.nombre) return toast.error('El nombre es requerido');
+        if (!formData.nombre) return toast.error(t('validation.required'));
 
         if (editingRole) {
             updateMutation.mutate({ id: editingRole._id, data: formData });
@@ -133,8 +134,6 @@ const RolesPage = () => {
             createMutation.mutate({ ...formData, empresaId: user?.empresaId });
         }
     };
-
-
 
     const isSystemRole = (role: Role) => ['admin-general', 'admin-subroot'].includes(role.slug);
 
@@ -144,18 +143,18 @@ const RolesPage = () => {
             <AlertDialog open={!!deletingRoleId} onOpenChange={(open) => !open && setDeletingRoleId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar rol?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('common.delete_permanently')}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción eliminará permanentemente este rol. Los usuarios con este rol perderán sus permisos asociados. Esta acción no se puede deshacer.
+                            {t('common.confirm_delete')} {t('common.irreversible_action')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700"
                             onClick={() => deletingRoleId && deleteMutation.mutate(deletingRoleId)}
                         >
-                            Eliminar
+                            {t('common.delete')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -163,14 +162,14 @@ const RolesPage = () => {
 
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Gestión de Roles</h2>
-                    <p className="text-slate-500">Administra los perfiles de acceso y permisos del sistema.</p>
+                    <h2 className="text-3xl font-bold tracking-tight">{t('roles.title')}</h2>
+                    <p className="text-slate-500">{t('roles.subtitle')}</p>
                 </div>
                 <ProtectedButton
                     permission={PERMISSIONS.ROLES_CREATE}
                     onClick={() => handleOpenDialog()}
                 >
-                    <Plus className="mr-2 h-4 w-4" /> Nuevo Rol
+                    <Plus className="mr-2 h-4 w-4" /> {t('roles.new_role')}
                 </ProtectedButton>
             </div>
 
@@ -178,21 +177,21 @@ const RolesPage = () => {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 dark:text-slate-100">
                         <ShieldCheck className="h-5 w-5 text-blue-500" />
-                        Roles Configurados
+                        {t('roles.title')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="p-8 text-center text-slate-500 dark:text-slate-400">Cargando roles...</div>
+                        <div className="p-8 text-center text-slate-500 dark:text-slate-400">{t('common.loading')}</div>
                     ) : roles && roles.length > 0 ? (
                         <Table>
                             <TableHeader>
                                 <TableRow className="dark:border-slate-700">
-                                    <TableHead className="dark:text-slate-300">Nombre</TableHead>
-                                    <TableHead className="dark:text-slate-300">Descripción</TableHead>
-                                    <TableHead className="dark:text-slate-300">Alcance</TableHead>
-                                    <TableHead className="dark:text-slate-300">Nivel</TableHead>
-                                    <TableHead className="text-right dark:text-slate-300">Acciones</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('roles.table.name')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('roles.table.description')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('roles.table.scope')}</TableHead>
+                                    <TableHead className="dark:text-slate-300">{t('roles.table.level')}</TableHead>
+                                    <TableHead className="text-right dark:text-slate-300">{t('common.actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -200,7 +199,7 @@ const RolesPage = () => {
                                     <TableRow key={role._id} className="dark:border-slate-700">
                                         <TableCell className="font-medium dark:text-slate-100">
                                             {role.nombre}
-                                            {isSystemRole(role) && <Badge variant="secondary" className="ml-2 text-xs dark:bg-slate-700 dark:text-slate-300">Sistema</Badge>}
+                                            {isSystemRole(role) && <Badge variant="secondary" className="ml-2 text-xs dark:bg-slate-700 dark:text-slate-300">{t('common.nav.system')}</Badge>}
                                         </TableCell>
                                         <TableCell className="text-slate-500 dark:text-slate-400 text-sm max-w-sm truncate">{role.descripcion}</TableCell>
                                         <TableCell className="dark:text-slate-300">
@@ -238,8 +237,8 @@ const RolesPage = () => {
                     ) : (
                         <div className="p-8 text-center">
                             <ShieldCheck className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                            <p className="text-slate-500 dark:text-slate-400 font-medium">No hay roles configurados</p>
-                            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Crea el primer rol para comenzar</p>
+                            <p className="text-slate-500 dark:text-slate-400 font-medium">{t('common.no_data')}</p>
+                            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">{t('roles.subtitle')}</p>
                         </div>
                     )}
                 </CardContent>
@@ -249,38 +248,63 @@ const RolesPage = () => {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                     <DialogHeader>
-                        <DialogTitle>{editingRole ? 'Editar Rol' : 'Nuevo Rol'}</DialogTitle>
+                        <DialogTitle>{editingRole ? t('roles.edit_role') : t('roles.new_role')}</DialogTitle>
                         <DialogDescription>
-                            Configura los detalles y permisos del rol.
+                            {t('roles.subtitle')}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto p-1 pr-2 space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="nombre">Nombre del Rol</Label>
+                                <Label htmlFor="nombre">{t('roles.form.name')}</Label>
                                 <Input
                                     id="nombre"
                                     value={formData.nombre}
                                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                    placeholder="Ej. Editor de Contenido"
+                                    placeholder={t('roles.form.name')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="desc">Descripción</Label>
+                                <Label htmlFor="desc">{t('roles.form.description')}</Label>
                                 <Input
                                     id="desc"
                                     value={formData.descripcion}
                                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                                    placeholder="Permite editar..."
+                                    placeholder={t('roles.form.description')}
                                 />
                             </div>
                         </div>
 
                         <div className="border rounded-md p-4">
-                            <h4 className="font-semibold mb-3 flex items-center">
-                                <ShieldCheck className="mr-2 h-4 w-4" /> Permisos
-                            </h4>
+                            <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold flex items-center">
+                                    <ShieldCheck className="mr-2 h-4 w-4" /> {t('roles.form.permissions')}
+                                </h4>
+                                <div className="space-x-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        onClick={() => {
+                                            const allPermissions = Object.values(GROUPED_PERMISSIONS).flatMap(group => group.map(p => p.key));
+                                            setFormData(prev => ({ ...prev, permisos: allPermissions }));
+                                        }}
+                                        className="h-7 text-xs"
+                                    >
+                                        {t('roles.form.select_all')}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        onClick={() => setFormData(prev => ({ ...prev, permisos: [] }))}
+                                        className="h-7 text-xs"
+                                    >
+                                        {t('roles.form.select_none')}
+                                    </Button>
+                                </div>
+                            </div>
                             <div className="space-y-6">
                                 {Object.entries(GROUPED_PERMISSIONS).map(([group, permissions]) => (
                                     <div key={group}>
@@ -316,9 +340,9 @@ const RolesPage = () => {
                     </div>
 
                     <DialogFooter className="mt-4">
-                        <Button variant="outline" onClick={handleCloseDialog}>Cancelar</Button>
+                        <Button variant="outline" onClick={handleCloseDialog}>{t('common.cancel')}</Button>
                         <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
-                            <Save className="mr-2 h-4 w-4" /> Guardar Rol
+                            <Save className="mr-2 h-4 w-4" /> {t('common.save')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
