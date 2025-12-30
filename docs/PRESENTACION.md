@@ -373,13 +373,15 @@ db.mensajes.createIndex({ ticket: 1, fecha_creacion: -1 })
 ### 6.1 Gestión de Tickets
 
 - ✅ **CRUD completo** de tickets
+- ✅ **Tickets Locales vs Globales** (Alcance diferenciado)
+- ✅ **Catálogo de Servicios** dinámico por empresa
 - ✅ **Asignación automática** basada en reglas
 - ✅ **Priorización** (baja, media, alta, urgente)
-- ✅ **Estados** (abierto, en proceso, resuelto, cerrado)
+- ✅ **Estados** (abierto, en espera, en proceso, resuelto, cerrado)
 - ✅ **Categorización** multinivel
-- ✅ **Adjuntos** (imágenes, archivos)
+- ✅ **Adjuntos** (visualización previa integrada)
 - ✅ **SLA tracking** (tiempo de respuesta/resolución)
-- ✅ **Historial completo** de cambios
+- ✅ **Historial de Auditoría** (Timeline de cambios)
 
 ### 6.2 Sistema de Usuarios
 
@@ -428,7 +430,15 @@ db.mensajes.createIndex({ ticket: 1, fecha_creacion: -1 })
   - Satisfacción del cliente
   - Carga de trabajo por agente
 - ✅ **Filtros avanzados**
+- ✅ **Filtros avanzados**
 - ✅ **Exportación** (CSV, PDF)
+
+### 6.7 Experiencia de Usuario (UX)
+
+- ✅ **Internacionalización (i18n)**: Soporte completo Inglés/Español
+- ✅ **Aislamiento de Sesiones**: Pestañas independientes (Admin/Empresa)
+- ✅ **Modo Oscuro**: Soporte nativo en todos los componentes
+- ✅ **Sidebar Dinámico**: Navegación colapsable optimizada
 
 ---
 
@@ -588,7 +598,8 @@ git push origin main
 - [ ] Machine Learning avanzado
 - [ ] Chatbot con IA
 - [ ] Analytics predictivo
-- [ ] Multi-idioma completo
+- ✅ **Gestión de Sesiones avanzada** (Session Storage)
+- ✅ **Multi-idioma completo** (EN/ES)
 - [ ] Marketplace de integraciones
 
 ---
