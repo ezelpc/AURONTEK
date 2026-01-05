@@ -34,8 +34,8 @@ const AdminCreateTicket = () => {
         queryKey: ['servicios-internos'],
         queryFn: async () => {
             const all = await servicesService.getServices();
-            // Filtrar solo servicios INTERNOS
-            return Array.isArray(all) ? all.filter((s: any) => s.alcance === 'INTERNO' || s.alcance === 'PLATAFORMA') : [];
+            // Filtrar solo servicios INTERNOS (Globales)
+            return Array.isArray(all) ? all.filter((s: any) => s.alcance === 'global') : [];
         },
     });
 

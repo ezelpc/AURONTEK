@@ -5,6 +5,7 @@ import adminController from '../Controllers/ticket.admin.controller';
 import { auth, authorize } from '../Middleware/auth.middleware';
 import { validateServiceToken } from '../Middleware/service.middleware';
 
+console.log('✅ [TICKETS] Cargando rutas de tickets (Orden arreglado)');
 const router: Router = express.Router();
 
 // Todas las rutas requieren autenticación (excepto las de servicio)
@@ -25,6 +26,16 @@ router.post('/', ticketController.crear);
 import uploadController, { uploadConfig } from '../Controllers/upload.controller';
 router.post('/upload', uploadConfig.array('files', 10), uploadController.uploadFile);
 
+// ===== RUTAS DE ADMIN GENERAL (DEBEN IR ANTES DE /:id) =====
+router.get('/admin/empresas', authorize('admin-general'), adminController.listarTicketsEmpresas);
+router.get('/admin/internos', authorize('admin-general'), adminController.listarTicketsInternos);
+router.get('/admin/listado-global', authorize('admin-general'), adminController.listarTicketsGlobales);
+
+router.get('/admin/:id', authorize('admin-general'), adminController.obtenerTicketDetalle);
+router.patch('/admin/:id/asignar', authorize('admin-general'), adminController.asignarAgente);
+router.patch('/admin/:id/estado', authorize('admin-general'), adminController.cambiarEstado);
+router.patch('/admin/:id/prioridad', authorize('admin-general'), adminController.cambiarPrioridad);
+
 // Listar tickets (filtrado según rol)
 router.get('/', ticketController.listar);
 
@@ -34,7 +45,6 @@ router.get('/:id', ticketController.obtener);
 // Obtener historial de cambios de un ticket
 router.get('/:id/history', ticketController.obtenerHistorial);
 
-// ✅ Verificar acceso al chat
 // ✅ Verificar acceso al chat
 router.get('/:id/verificar-acceso-chat', validateServiceToken, ticketController.verificarAccesoChat);
 
@@ -73,13 +83,5 @@ router.delete('/:id',
   authorize('admin-general', 'admin-subroot'),
   ticketController.eliminar
 );
-
-// ===== RUTAS DE ADMIN GENERAL =====
-router.get('/admin/empresas', authorize('admin-general'), adminController.listarTicketsEmpresas);
-router.get('/admin/internos', authorize('admin-general'), adminController.listarTicketsInternos);
-router.get('/admin/:id', authorize('admin-general'), adminController.obtenerTicketDetalle);
-router.patch('/admin/:id/asignar', authorize('admin-general'), adminController.asignarAgente);
-router.patch('/admin/:id/estado', authorize('admin-general'), adminController.cambiarEstado);
-router.patch('/admin/:id/prioridad', authorize('admin-general'), adminController.cambiarPrioridad);
 
 export default router;

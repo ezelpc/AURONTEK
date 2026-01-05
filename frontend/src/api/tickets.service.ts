@@ -125,6 +125,26 @@ export const ticketsService = {
         return response.data;
     },
 
+    // Tickets de Servicios Globales (Admin)
+    getGlobalTickets: async (filters?: {
+        estado?: string;
+        prioridad?: string;
+        fechaInicio?: string;
+        fechaFin?: string;
+    }): Promise<Ticket[]> => {
+        const params = new URLSearchParams();
+        if (filters?.estado) params.append('estado', filters.estado);
+        if (filters?.prioridad) params.append('prioridad', filters.prioridad);
+        if (filters?.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
+        if (filters?.fechaFin) params.append('fechaFin', filters.fechaFin);
+
+        const queryString = params.toString();
+        const url = queryString ? `/tickets/admin/listado-global?${queryString}` : '/tickets/admin/listado-global';
+
+        const response = await api.get<Ticket[]>(url);
+        return response.data;
+    },
+
     // Subir archivos adjuntos
     uploadFiles: async (files: File[]): Promise<any[]> => {
         const formData = new FormData();

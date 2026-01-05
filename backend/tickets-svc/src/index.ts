@@ -29,7 +29,7 @@ const startServer = async () => {
   try {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Conectado a MongoDB');
-    app.listen(PORT, () => console.log(`🚀 Servidor corriendo en el puerto ${PORT}`));
+    app.listen(PORT, () => console.log(`🚀 Servidor corriendo en el puerto ${PORT} [VERSION: FIX 404 ROUTE]`));
   } catch (error) {
     console.error('❌ No se pudo conectar a la base de datos:', error);
     process.exit(1);

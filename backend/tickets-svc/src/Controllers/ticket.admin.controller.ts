@@ -59,6 +59,33 @@ export const listarTicketsInternos = async (req: Request, res: Response) => {
     }
 };
 
+// GET /api/tickets/admin/globales
+export const listarTicketsGlobales = async (req: Request, res: Response) => {
+    console.log('✅ [ADMIN-CONTROLLER] Entrando a listarTicketsGlobales');
+    try {
+        const { estado, prioridad, fechaInicio, fechaFin, usuario, folio } = req.query;
+
+        const filtros: any = {};
+
+        if (estado) filtros.estado = estado;
+        if (prioridad) filtros.prioridad = prioridad;
+        if (usuario) filtros.usuarioCreador = usuario;
+        if (folio) filtros._id = folio;
+
+        if (fechaInicio || fechaFin) {
+            filtros.createdAt = {};
+            if (fechaInicio) filtros.createdAt.$gte = new Date(fechaInicio as string);
+            if (fechaFin) filtros.createdAt.$lte = new Date(fechaFin as string);
+        }
+
+        const tickets = await ticketService.listarTicketsGlobales(filtros);
+        res.json(tickets);
+    } catch (error: any) {
+        console.error('[ADMIN] Error listando tickets globales:', error.message);
+        res.status(500).json({ msg: 'Error al listar tickets globales' });
+    }
+};
+
 // GET /api/tickets/admin/:id
 export const obtenerTicketDetalle = async (req: Request, res: Response) => {
     try {
@@ -126,6 +153,7 @@ export const cambiarPrioridad = async (req: Request, res: Response) => {
 export default {
     listarTicketsEmpresas,
     listarTicketsInternos,
+    listarTicketsGlobales,
     obtenerTicketDetalle,
     asignarAgente,
     cambiarEstado,
