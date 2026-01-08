@@ -88,15 +88,28 @@ const DATA = {
                 PERMISOS.COMPANIES_SUSPEND,
                 // Tickets Global
                 PERMISOS.TICKETS_VIEW_ALL_GLOBAL,
-                PERMISOS.TICKETS_MANAGE_GLOBAL,
+                PERMISOS.TICKETS_ASSIGN_GLOBAL,
+                PERMISOS.TICKETS_EDIT_GLOBAL,
+                PERMISOS.TICKETS_CHANGE_STATUS_GLOBAL,
+                PERMISOS.TICKETS_CHANGE_PRIORITY_GLOBAL,
+                PERMISOS.TICKETS_DELETE_GLOBAL,
                 // Servicios
-                PERMISOS.SERVICIOS_MANAGE_GLOBAL,
+                PERMISOS.SERVICIOS_CREATE_GLOBAL,
+                PERMISOS.SERVICIOS_EDIT_GLOBAL,
+                PERMISOS.SERVICIOS_DELETE_GLOBAL,
                 // Roles
-                PERMISOS.ROLES_MANAGE,
+                PERMISOS.ROLES_CREATE,
+                PERMISOS.ROLES_EDIT,
+                PERMISOS.ROLES_DELETE,
                 // Admins
-                PERMISOS.ADMINS_MANAGE,
+                PERMISOS.ADMINS_CREATE,
+                PERMISOS.ADMINS_VIEW,
+                PERMISOS.ADMINS_EDIT,
+                PERMISOS.ADMINS_DELETE,
                 // Habilidades
-                PERMISOS.HABILITIES_MANAGE
+                PERMISOS.HABILITIES_CREATE,
+                PERMISOS.HABILITIES_EDIT,
+                PERMISOS.HABILITIES_DELETE
             ],
             descripcion: 'Administrador del sistema (segundo nivel)'
         },
@@ -106,7 +119,10 @@ const DATA = {
             nivel: 50,
             permisos: [
                 PERMISOS.TICKETS_VIEW_ALL_GLOBAL,
-                PERMISOS.TICKETS_MANAGE_GLOBAL,
+                PERMISOS.TICKETS_ASSIGN_GLOBAL,
+                PERMISOS.TICKETS_EDIT_GLOBAL,
+                PERMISOS.TICKETS_CHANGE_STATUS_GLOBAL,
+                PERMISOS.TICKETS_CHANGE_PRIORITY_GLOBAL,
                 PERMISOS.USERS_VIEW_GLOBAL,
             ],
             descripcion: 'Soporte técnico global'
@@ -232,7 +248,7 @@ const seed = async () => {
 
         // === 1. LIMPIAR DATOS PREVIOS ===
         log('\n📋 Limpiando datos previos...');
-        
+
         // No eliminar todo, solo los datos de prueba
         const preexistingCompanies = await Empresa.find({});
         if (preexistingCompanies.length > 0) {
@@ -443,18 +459,18 @@ const seed = async () => {
         log('  Admin General: admin.general@aurontek.com / Admin123!');
         log('  Admin Subroot: admin.subroot@aurontek.com / Subroot123!');
         log('  Soporte Global: soporte.global@aurontek.com / Soporte123!');
-        
+
         log('\nEmpresa A:');
         log('  Admin: admin@empresatesta.com / AdminA123!');
         log('  Soporte: soporte@empresatesta.com / SoporteA123!');
         log('  Empleado: empleado@empresatesta.com / EmpleadoA123!');
-        
+
         log('\nEmpresa B:');
         log('  Admin: admin@empresatestb.com / AdminB123!');
         log('  Soporte: soporte@empresatestb.com / SoporteB123!');
 
         log('\n📁 Log guardado en: ' + logFile);
-        
+
         await mongoose.connection.close();
         process.exit(0);
 

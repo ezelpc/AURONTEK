@@ -12,6 +12,7 @@ const run = async () => {
         const uri = process.env.MONGODB_URI;
         console.log(`🔌 Connecting to: ${uri}`);
 
+        if (!uri) throw new Error('MONGODB_URI is undefined');
         await mongoose.connect(uri);
         console.log('✅ Connected.');
 
