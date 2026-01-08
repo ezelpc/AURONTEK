@@ -17,6 +17,7 @@ import EmpresaDashboard from '@/pages/empresa/EmpresaDashboard';
 import CreateTicket from '@/pages/empresa/CreateTicket';
 import CompanyUsersPage from '@/pages/empresa/users/CompanyUsersPage';
 import CompanyServicesPage from '@/pages/empresa/services/CompanyServicesPage';
+import CompanyCareGroupsPage from '@/pages/empresa/care-groups/CompanyCareGroupsPage';
 import UsersPage from '@/pages/admin/users/UsersPage';
 import CompaniesPage from '@/pages/admin/companies/CompaniesPage';
 import ServicesPage from '@/pages/admin/services/ServicesPage';
@@ -66,7 +67,12 @@ function App() {
                         {/* <Route path="tickets/:id" element={<TicketDetail />} /> */}
                         <Route path="equipo" element={<CompanyUsersPage />} />
                         <Route path="servicios" element={<CompanyServicesPage />} />
-                        <Route path="roles" element={<RolesPage />} />
+                        <Route element={<RequirePermission permission="care_groups.view" />}>
+                            <Route path="habilidades" element={<CompanyCareGroupsPage />} />
+                        </Route>
+                        <Route element={<RequirePermission permission="roles.view" />}>
+                            <Route path="roles" element={<RolesPage />} />
+                        </Route>
                     </Route>
                 </Route>
 
@@ -78,21 +84,41 @@ function App() {
                     <Route path="/admin" element={<AdminLayout />}>
                         <Route index element={<Navigate to="dashboard" />} />
                         <Route path="dashboard" element={<AdminDashboard />} />
-                        <Route path="tickets" element={<TicketsPage />} />
-                        <Route path="crear-ticket" element={<AdminCreateTicket />} />
-                        <Route path="tickets/:id" element={<TicketDetail />} />
-                        <Route path="empresas" element={<CompaniesPage />} />
 
-                        {/* Ruta protegida por permiso especifico */}
+                        {/* Ruta protegida por permiso: Tickets */}
+                        <Route element={<RequirePermission permission="tickets.view_all_global" />}>
+                            <Route path="tickets" element={<TicketsPage />} />
+                            <Route path="crear-ticket" element={<AdminCreateTicket />} />
+                            <Route path="tickets/:id" element={<TicketDetail />} />
+                        </Route>
+
+                        {/* Ruta protegida por permiso: Gestión de Empresas */}
+                        <Route element={<RequirePermission permission="companies.view_all" />}>
+                            <Route path="empresas" element={<CompaniesPage />} />
+                        </Route>
+
+                        {/* Ruta protegida por permiso especifico: Usuarios */}
                         <Route element={<RequirePermission permission="users.view_all_global" />}>
                             <Route path="usuarios" element={<UsersPage />} />
                         </Route>
 
-                        <Route path="servicios" element={<ServicesPage />} />
-                        <Route path="habilidades" element={<CareGroupsPage />} />
-                        <Route path="roles" element={<RolesPage />} />
+                        {/* Ruta protegida por permiso: Servicios */}
+                        <Route element={<RequirePermission permission="servicios.view_global" />}>
+                            <Route path="servicios" element={<ServicesPage />} />
+                        </Route>
 
-                        <Route element={<RequirePermission permission="admins.manage" />}>
+                        {/* Ruta protegida por permiso: Habilidades */}
+                        <Route element={<RequirePermission permission="care_groups.view" />}>
+                            <Route path="habilidades" element={<CareGroupsPage />} />
+                        </Route>
+
+                        {/* Ruta protegida por permiso: Roles */}
+                        <Route element={<RequirePermission permission="roles.view" />}>
+                            <Route path="roles" element={<RolesPage />} />
+                        </Route>
+
+                        {/* Ruta protegida por permiso: System Admins */}
+                        <Route element={<RequirePermission permission="admins.view" />}>
                             <Route path="system-admins" element={<SystemAdminsPage />} />
                         </Route>
                     </Route>

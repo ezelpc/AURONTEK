@@ -73,12 +73,12 @@ const resources = {
                     "status": "Status"
                 },
                 "dialogs": {
-                    "toggle_license_title": "{status} License",
-                    "toggle_license_desc": "Are you sure you want to {status} the license for {name}?",
+                    "toggle_license_title": "{{status}} License",
+                    "toggle_license_desc": "Are you sure you want to {{status}} the license for {{name}}?",
                     "regenerate_code_title": "Regenerate Access Code",
-                    "regenerate_code_desc": "Are you sure you want to regenerate the access code for {name}? The old code will stop working immediately.",
+                    "regenerate_code_desc": "Are you sure you want to regenerate the access code for {{name}}? The old code will stop working immediately.",
                     "delete_title": "Delete Company",
-                    "delete_desc": "Are you sure you want to delete {name}? This will remove all associated users, tickets, and configurations.",
+                    "delete_desc": "Are you sure you want to delete {{name}}? This will remove all associated users, tickets, and configurations.",
                     "protected_action_title": "Protected Action",
                     "protected_action_desc": "This company requires additional authentication. Enter admin password."
                 },
@@ -145,7 +145,7 @@ const resources = {
                 "required": "This field is required",
                 "invalid_email": "Invalid email address",
                 "password_mismatch": "Passwords do not match",
-                "min_length": "Must be at least {min} characters"
+                "min_length": "Must be at least {{min}} characters"
             },
             "services": {
                 "title": "Services Catalog",
@@ -169,7 +169,7 @@ const resources = {
                 "messages": {
                     "deleted": "Service deleted",
                     "delete_error": "Error deleting service",
-                    "upload_success": "Bulk upload completed: {msg}",
+                    "upload_success": "Bulk upload completed: {{msg}}",
                     "upload_error": "Bulk upload error",
                     "no_data": "No services found in this category."
                 }
@@ -187,7 +187,7 @@ const resources = {
                 "edit_user": "Edit User",
                 "filtered": "Filtered",
                 "active_search": "Active Search",
-                "count": "{count} users",
+                "count": "{{count}} users",
                 "form": {
                     "title_create": "Create User",
                     "title_edit": "Edit User",
@@ -225,8 +225,8 @@ const resources = {
             },
             "company_portal": {
                 "dashboard": {
-                    "welcome": "Welcome, {name}",
-                    "summary": "Activity summary for {company}",
+                    "welcome": "Welcome, {{name}}",
+                    "summary": "Activity summary for {{company}}",
                     "new_ticket": "New Ticket",
                     "stats": {
                         "total": "Total Tickets",
@@ -342,12 +342,12 @@ const resources = {
                     "status": "Estado"
                 },
                 "dialogs": {
-                    "toggle_license_title": "{status} Licencia",
-                    "toggle_license_desc": "¿Estás seguro de que deseas {status} la licencia de {name}?",
+                    "toggle_license_title": "{{status}} Licencia",
+                    "toggle_license_desc": "¿Estás seguro de que deseas {{status}} la licencia de {{name}}?",
                     "regenerate_code_title": "Regenerar Código de Acceso",
-                    "regenerate_code_desc": "¿Estás seguro de regenerar el código para {name}? El código anterior dejará de funcionar inmediatamente.",
+                    "regenerate_code_desc": "¿Estás seguro de regenerar el código para {{name}}? El código anterior dejará de funcionar inmediatamente.",
                     "delete_title": "Eliminar Empresa",
-                    "delete_desc": "¿Estás seguro de eliminar {name}? Se eliminarán todos los usuarios, tickets y configuraciones asociados.",
+                    "delete_desc": "¿Estás seguro de eliminar {{name}}? Se eliminarán todos los usuarios, tickets y configuraciones asociados.",
                     "protected_action_title": "Acción Protegida",
                     "protected_action_desc": "Esta empresa requiere autenticación adicional. Ingresa la contraseña de administrador."
                 },
@@ -414,7 +414,7 @@ const resources = {
                 "required": "Este campo es requerido",
                 "invalid_email": "Correo inválido",
                 "password_mismatch": "Las contraseñas no coinciden",
-                "min_length": "Debe tener al menos {min} caracteres"
+                "min_length": "Debe tener al menos {{min}} caracteres"
             },
             "services": {
                 "title": "Catálogo de Servicios",
@@ -438,7 +438,7 @@ const resources = {
                 "messages": {
                     "deleted": "Servicio eliminado",
                     "delete_error": "Error al eliminar servicio",
-                    "upload_success": "Carga masiva completada: {msg}",
+                    "upload_success": "Carga masiva completada: {{msg}}",
                     "upload_error": "Error en carga masiva",
                     "no_data": "No hay servicios registrados en esta categoría."
                 }
@@ -456,7 +456,7 @@ const resources = {
                 "edit_user": "Editar Usuario",
                 "filtered": "Filtrado",
                 "active_search": "Búsqueda activa",
-                "count": "{count} usuarios",
+                "count": "{{count}} usuarios",
                 "form": {
                     "title_create": "Alta de Usuario",
                     "title_edit": "Editar Usuario",
@@ -494,8 +494,8 @@ const resources = {
             },
             "company_portal": {
                 "dashboard": {
-                    "welcome": "Bienvenido, {name}",
-                    "summary": "Resumen de actividad para {company}",
+                    "welcome": "Bienvenido, {{name}}",
+                    "summary": "Resumen de actividad para {{company}}",
                     "new_ticket": "Nuevo Ticket",
                     "stats": {
                         "total": "Total Tickets",

@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { GROUPED_PERMISSIONS } from '@/constants/permissions';
+import { GROUPED_PERMISSIONS, COMPANY_GROUPED_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 
 const RolesPage = () => {
@@ -166,7 +166,8 @@ const RolesPage = () => {
                     <p className="text-slate-500">{t('roles.subtitle')}</p>
                 </div>
                 <ProtectedButton
-                    permission={PERMISSIONS.ROLES_CREATE}
+                    permission={[PERMISSIONS.ROLES_CREATE, PERMISSIONS.ROLES_MANAGE, 'roles.create', 'roles.edit']}
+                    showTooltip={true}
                     onClick={() => handleOpenDialog()}
                 >
                     <Plus className="mr-2 h-4 w-4" /> {t('roles.new_role')}
@@ -209,7 +210,8 @@ const RolesPage = () => {
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <ProtectedButton
-                                                    permission={PERMISSIONS.ROLES_UPDATE}
+                                                    permission={[PERMISSIONS.ROLES_UPDATE, PERMISSIONS.ROLES_EDIT, PERMISSIONS.ROLES_MANAGE, 'roles.edit']}
+                                                    showTooltip={true}
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => handleOpenDialog(role)}
@@ -219,7 +221,8 @@ const RolesPage = () => {
                                                 </ProtectedButton>
                                                 {!isSystemRole(role) && (
                                                     <ProtectedButton
-                                                        permission={PERMISSIONS.ROLES_DELETE}
+                                                        permission={[PERMISSIONS.ROLES_DELETE, PERMISSIONS.ROLES_MANAGE, 'roles.delete']}
+                                                        showTooltip={true}
                                                         variant="ghost"
                                                         size="icon"
                                                         className="hover:text-red-500 dark:hover:bg-slate-800"
@@ -287,7 +290,10 @@ const RolesPage = () => {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                            const allPermissions = Object.values(GROUPED_PERMISSIONS).flatMap(group => group.map(p => p.key));
+                                            const permissionsToUse = ['admin-general', 'admin-subroot'].includes(user?.rol || '')
+                                                ? GROUPED_PERMISSIONS
+                                                : COMPANY_GROUPED_PERMISSIONS;
+                                            const allPermissions = Object.values(permissionsToUse).flatMap(group => group.map(p => p.key));
                                             setFormData(prev => ({ ...prev, permisos: allPermissions }));
                                         }}
                                         className="h-7 text-xs"
@@ -306,35 +312,41 @@ const RolesPage = () => {
                                 </div>
                             </div>
                             <div className="space-y-6">
-                                {Object.entries(GROUPED_PERMISSIONS).map(([group, permissions]) => (
-                                    <div key={group}>
-                                        <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b pb-1">
-                                            {group}
-                                        </h5>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {permissions.map((perm) => (
-                                                <div key={perm.key} className="flex items-start space-x-2">
-                                                    <Checkbox
-                                                        id={perm.key}
-                                                        checked={formData.permisos.includes(perm.key)}
-                                                        onCheckedChange={() => handlePermissionToggle(perm.key)}
-                                                    />
-                                                    <div className="grid gap-1.5 leading-none">
-                                                        <label
-                                                            htmlFor={perm.key}
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                                        >
-                                                            {perm.label}
-                                                        </label>
-                                                        <p className="text-xs text-slate-500">
-                                                            {perm.description}
-                                                        </p>
+                                {(() => {
+                                    const permissionsToUse = ['admin-general', 'admin-subroot'].includes(user?.rol || '')
+                                        ? GROUPED_PERMISSIONS
+                                        : COMPANY_GROUPED_PERMISSIONS;
+
+                                    return Object.entries(permissionsToUse).map(([group, permissions]) => (
+                                        <div key={group}>
+                                            <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 border-b pb-1">
+                                                {group}
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                {permissions.map((perm) => (
+                                                    <div key={perm.key} className="flex items-start space-x-2">
+                                                        <Checkbox
+                                                            id={perm.key}
+                                                            checked={formData.permisos.includes(perm.key)}
+                                                            onCheckedChange={() => handlePermissionToggle(perm.key)}
+                                                        />
+                                                        <div className="grid gap-1.5 leading-none">
+                                                            <label
+                                                                htmlFor={perm.key}
+                                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                                            >
+                                                                {perm.label}
+                                                            </label>
+                                                            <p className="text-xs text-slate-500">
+                                                                {perm.description}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                })()}
                             </div>
                         </div>
                     </div>

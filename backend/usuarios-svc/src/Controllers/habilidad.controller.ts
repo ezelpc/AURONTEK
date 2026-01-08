@@ -61,9 +61,55 @@ const eliminarHabilidad = async (req: Request, res: Response) => {
     }
 };
 
+// GET /api/habilidades/template - Descargar plantilla CSV
+const downloadTemplate = async (req: Request, res: Response) => {
+    try {
+        // Datos de ejemplo para la plantilla
+        const templateData = [
+            {
+                nombre: 'Ejemplo: Soporte Técnico',
+                descripcion: 'Grupo especializado en soporte técnico de TI'
+            },
+            {
+                nombre: 'Ejemplo: Recursos Humanos',
+                descripcion: 'Grupo de atención para temas de RRHH'
+            }
+        ];
+
+        // Convertir a CSV
+        const headers = Object.keys(templateData[0]);
+        const csvRows = [
+            headers.join(','),
+            ...templateData.map(row =>
+                headers.map(header => `"${row[header as keyof typeof row] || ''}"`).join(',')
+            )
+        ];
+        const csvContent = csvRows.join('\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename=plantilla_grupos_atencion.csv');
+        res.send('\uFEFF' + csvContent); // BOM for Excel UTF-8 recognition
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error al generar la plantilla', error: error.message });
+    }
+};
+
+// POST /api/habilidades/bulk - Carga masiva desde CSV
+const bulkUpload = async (req: Request, res: Response) => {
+    try {
+        // TODO: Implementar parseo de CSV y carga masiva
+        // Por ahora retornar mensaje de no implementado
+        res.status(501).json({ msg: 'Carga masiva aún no implementada. Próximamente disponible.' });
+    } catch (error: any) {
+        res.status(500).json({ msg: 'Error en la carga masiva', error: error.message });
+    }
+};
+
 export default {
     listarHabilidades,
     crearHabilidad,
     modificarHabilidad,
-    eliminarHabilidad
+    eliminarHabilidad,
+    downloadTemplate,
+    bulkUpload
 };

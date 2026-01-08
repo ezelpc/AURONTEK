@@ -1,0 +1,21 @@
+INIT SEED
+✅ Conectado a BD: undefined
+🏢 Empresa existente: Aurontek HQ
+   🔸 Rol actualizado: Administrador Interno
+   🔸 Rol actualizado: Soporte Técnico
+   🔸 Rol actualizado: Usuario Final
+   👤 Usuario actualizado: admin.aurontek@aurontek.com
+   👤 Usuario actualizado: agente.mesa@aurontek.com
+   👤 Usuario actualizado: agente.ti@aurontek.com
+   👤 Usuario actualizado: empleado@aurontek.com
+
+🔍 Verifying persisted data...
+📊 Users found for company Aurontek HQ: 6
+   - soporte@aurontek.com (soporte-plataforma)
+   - ereyes@aurontek.com (Usuario)
+   - admin.aurontek@aurontek.com (admin-interno)
+   - agente.mesa@aurontek.com (soporte)
+   - agente.ti@aurontek.com (soporte)
+   - empleado@aurontek.com (usuario)
+
+🏁 Seed completado exitosamente.

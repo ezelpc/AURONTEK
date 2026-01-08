@@ -18,7 +18,7 @@ router.get(
 router.post(
     '/',
     verificarToken,
-    requirePermission(PERMISOS.HABILITIES_MANAGE),
+    requirePermission(PERMISOS.HABILITIES_CREATE),
     habilidadController.crearHabilidad
 );
 
@@ -26,7 +26,7 @@ router.post(
 router.put(
     '/:id',
     verificarToken,
-    requirePermission(PERMISOS.HABILITIES_MANAGE),
+    requirePermission(PERMISOS.HABILITIES_EDIT),
     habilidadController.modificarHabilidad
 );
 
@@ -34,7 +34,7 @@ router.put(
 router.delete(
     '/:id',
     verificarToken,
-    requirePermission(PERMISOS.HABILITIES_MANAGE),
+    requirePermission(PERMISOS.HABILITIES_DELETE),
     habilidadController.eliminarHabilidad
 );
 

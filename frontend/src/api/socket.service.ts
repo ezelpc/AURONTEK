@@ -10,13 +10,19 @@ class SocketService {
     private socket: Socket | null = null;
 
     connect() {
+        // TODO: Habilitar cuando se implemente el chat en tiempo real
+        // Por ahora está deshabilitado ya que es trabajo futuro
+        console.log('Socket.IO deshabilitado - Chat en tiempo real pendiente de implementación');
+        return;
+
+        /* 
         if (this.socket?.connected) return;
 
         const token = useAuthStore.getState().token;
         if (!token) return;
 
         this.socket = io(SOCKET_URL, {
-            auth: { token }, // Enviar JWT para autenticar el socket handshake
+            auth: { token },
             transports: ['websocket'],
             reconnection: true,
         });
@@ -28,6 +34,7 @@ class SocketService {
         this.socket.on('connect_error', (err) => {
             console.error('Socket error conexión:', err.message);
         });
+        */
     }
 
     disconnect() {

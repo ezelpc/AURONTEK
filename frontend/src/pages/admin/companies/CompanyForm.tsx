@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { companiesService } from '@/api/companies.service';
+import { rolesService } from '@/api/roles.service';
 import { Empresa } from '@/types/api.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,20 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
     const [showCredentials, setShowCredentials] = useState(false);
     const [createdCredentials, setCreatedCredentials] = useState<{ password: string, accessCode: string, email: string } | null>(null);
 
+    // Fetch roles - only locally created roles with "admin" in the name
+    const { data: roles = [] } = useQuery({
+        queryKey: ['roles-local-admin'],
+        queryFn: async () => {
+            const allRoles = await rolesService.getRoles();
+            // Filter: only roles with empresaId (locally created) and containing "admin" in the name
+            return allRoles.filter(role =>
+                role.empresa && // Has empresaId (locally created)
+                (role.nombre.toLowerCase().includes('admin') ||
+                    role.nombre.toLowerCase().includes('administrador'))
+            );
+        },
+    });
+
     // Estado para contratantes
     const [contratantes, setContratantes] = useState<Contratante[]>([]);
     const [showContratanteForm, setShowContratanteForm] = useState(false);
@@ -51,7 +66,7 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
         telefono: '',
         ext: '',
         puesto: '',
-        rol: 'admin-empresa' // Rol por defecto
+        rol: '' // Will be set to first available role
     });
 
     // Cargar datos si es edición
@@ -341,18 +356,24 @@ const CompanyForm = ({ company, onSuccess, onCancel }: CompanyFormProps) => {
                                         onValueChange={(value) => setNuevoContratante({ ...nuevoContratante, rol: value })}
                                     >
                                         <SelectTrigger className="h-9 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100">
-                                            <SelectValue />
+                                            <SelectValue placeholder="Selecciona un rol" />
                                         </SelectTrigger>
                                         <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
-                                            <SelectItem value="admin-empresa" className="dark:text-slate-100 dark:hover:bg-slate-700">
-                                                Administrador de Empresa
-                                            </SelectItem>
-                                            <SelectItem value="usuario" className="dark:text-slate-100 dark:hover:bg-slate-700">
-                                                Usuario
-                                            </SelectItem>
-                                            <SelectItem value="soporte" className="dark:text-slate-100 dark:hover:bg-slate-700">
-                                                Soporte
-                                            </SelectItem>
+                                            {roles.length > 0 ? (
+                                                roles.map((role) => (
+                                                    <SelectItem
+                                                        key={role._id}
+                                                        value={role.slug}
+                                                        className="dark:text-slate-100 dark:hover:bg-slate-700"
+                                                    >
+                                                        {role.nombre}
+                                                    </SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="no-roles" disabled className="dark:text-slate-400">
+                                                    No hay roles de administrador disponibles
+                                                </SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>

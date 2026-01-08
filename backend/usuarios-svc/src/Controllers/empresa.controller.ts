@@ -15,6 +15,9 @@ const crearNuevaEmpresa = async (req: Request, res: Response) => {
   }
 
   try {
+    // Log para auditoría
+    console.log(`[EMPRESA CREATE] Usuario ${req.usuario?.correo} (${req.usuario?.rol}) creando empresa: ${nombreEmpresa}`);
+
     const nuevaEmpresa = await empresaService.crearEmpresaLicenciaAdmin(
       { nombre: nombreEmpresa, rfc, direccion, telefono, correo },
       { plan, fecha_inicio: fecha_inicio ? new Date(fecha_inicio) : new Date() },
@@ -36,6 +39,7 @@ const crearNuevaEmpresa = async (req: Request, res: Response) => {
 // GET /api/empresas
 const listarEmpresas = async (req: Request, res: Response) => {
   try {
+    console.log(`[EMPRESA LIST] Usuario ${req.usuario?.correo} listando empresas`);
     const empresas = await empresaService.obtenerEmpresas();
     res.json(empresas);
   } catch (error: any) {
@@ -46,6 +50,7 @@ const listarEmpresas = async (req: Request, res: Response) => {
 // GET /api/empresas/:id
 const detalleEmpresa = async (req: Request, res: Response) => {
   try {
+    console.log(`[EMPRESA DETAIL] Usuario ${req.usuario?.correo} viendo detalle de empresa: ${req.params.id}`);
     const empresa = await empresaService.obtenerEmpresaPorId(req.params.id);
     res.json(empresa);
   } catch (error: any) {
@@ -60,6 +65,10 @@ const modificarEmpresa = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    console.log(`[EMPRESA UPDATE] Usuario ${req.usuario?.correo} (${req.usuario?.rol}) actualizando empresa: ${id}`);
+    console.log(`[EMPRESA UPDATE] Datos recibidos:`, JSON.stringify(datosActualizados, null, 2));
+    console.log(`[EMPRESA UPDATE] Contratantes en request:`, datosActualizados.contratantes);
+
     // Check if company is Aurontek HQ
     const targetEmpresa = await empresaService.obtenerEmpresaPorId(id);
     if (empresaService.isAurontekHQ(targetEmpresa)) {
@@ -70,6 +79,9 @@ const modificarEmpresa = async (req: Request, res: Response) => {
     }
 
     const empresa = await empresaService.actualizarEmpresa(id, datosActualizados);
+
+    console.log(`[EMPRESA UPDATE] Empresa actualizada. Contratantes guardados:`, empresa?.contratantes?.length);
+
     res.json({ msg: 'Empresa actualizada.', empresa });
   } catch (error: any) {
     console.error('[EMPRESA CONTROLLER] Error actualizando empresa:', error.message);
@@ -83,8 +95,8 @@ const eliminarEmpresa = async (req: Request, res: Response) => {
 
   try {
     console.log('[DELETE EMPRESA] ID:', req.params.id);
-    console.log('[DELETE EMPRESA] Body:', req.body);
-    // Check if company is Aurontek HQ
+    console.log(`[DELETE EMPRESA] Usuario ${req.usuario?.correo} (${req.usuario?.rol}) eliminando empresa`);
+
     // Check if company is Aurontek HQ
     const empresa = await empresaService.obtenerEmpresaPorId(req.params.id);
     if (empresaService.isAurontekHQ(empresa)) {
@@ -114,6 +126,8 @@ const toggleLicencia = async (req: Request, res: Response) => {
   const { activo } = req.body;
 
   try {
+    console.log(`[EMPRESA SUSPEND] Usuario ${req.usuario?.correo} ${activo ? 'reactivando' : 'suspendiendo'} licencia de empresa: ${req.params.id}`);
+
     const empresa = await empresaService.toggleLicenciaEmpresa(req.params.id, activo);
     res.json({
       msg: activo ? 'Licencia activada.' : 'Licencia suspendida.',
@@ -128,6 +142,8 @@ const toggleLicencia = async (req: Request, res: Response) => {
 // POST /api/empresas/:id/regenerar-codigo
 const regenerarCodigoAcceso = async (req: Request, res: Response) => {
   try {
+    console.log(`[EMPRESA REGENERATE CODE] Usuario ${req.usuario?.correo} regenerando código de empresa: ${req.params.id}`);
+
     const empresa = await empresaService.obtenerEmpresaPorId(req.params.id);
     const nuevoCodigoAcceso = await empresaService.regenerarCodigoAcceso(req.params.id);
 

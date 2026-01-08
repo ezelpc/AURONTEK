@@ -58,7 +58,7 @@ async function main() {
 
     // Iniciar servidor
     app.listen(PORT, () => {
-        console.log(`✅ Usuarios-SVC escuchando en el puerto ${PORT}`);
+        console.log(`✅ Usuarios-SVC escuchando en el puerto ${PORT} [TIEMPO: ${new Date().toISOString()}]`);
         console.log(`📂 Ruta del proyecto: ${__dirname}`);
     });
 }

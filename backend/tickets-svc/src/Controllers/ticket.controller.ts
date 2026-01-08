@@ -44,6 +44,7 @@ const ticketController = {
 
       // Validar tipo solo si se proporcionó
       if (datosTicket.tipo && !tipos.includes(datosTicket.tipo)) {
+        console.warn(`[CREAR TICKET] Tipo inválido: ${datosTicket.tipo}. Esperado: ${tipos.join(', ')}`);
         res.status(400).json({
           msg: `Tipo de ticket inválido. Debe ser uno de: ${tipos.join(', ')}`
         });
@@ -52,6 +53,7 @@ const ticketController = {
 
       // Validar prioridad solo si se proporcionó
       if (datosTicket.prioridad && !prioridades.includes(datosTicket.prioridad)) {
+        console.warn(`[CREAR TICKET] Prioridad inválida: ${datosTicket.prioridad}. Esperado: ${prioridades.join(', ')}`);
         res.status(400).json({
           msg: `Prioridad inválida. Debe ser una de: ${prioridades.join(', ')}`
         });

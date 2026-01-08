@@ -1,0 +1,25 @@
+✅ Connected to: LocalDB
+
+--- EMPRESAS ---
+Found 6 companies.
+- [6942f22afad205160277e1ff] Aurontek HQ
+- [6942f22afad205160277e203] Test S.A.
+- [6942f22afad205160277e207] Innovatech Solutions
+- [6942f22afad205160277e20b] Global Logistics
+- [6942f22afad205160277e20f] EcoEnergy Corp
+- [695bdc9f4c0410bf627b39bb] prueba
+
+--- USUARIOS ---
+Found 12 users.
+- soporte@aurontek.com | Rol: soporte-plataforma | Emp: Aurontek HQ | Grupos: [Mesa de Servicio, Soporte] 
+- dev@innovatech.com | Rol: dev | Emp: Innovatech Solutions | Grupos: [] 
+- admin@logistics.com | Rol: admin-interno | Emp: Global Logistics | Grupos: [Administración, Taller] 
+- admin@ecoenergy.com | Rol: admin-interno | Emp: EcoEnergy Corp | Grupos: [Administración] 
+- opg0720@hotmail.com | Rol: Administrador Interno | Emp: Test S.A. | Grupos: [DevOps] 
+- usuario3@test.com | Rol: usuarios | Emp: Test S.A. | Grupos: [] 
+- ereyes@aurontek.com | Rol: Usuario | Emp: Aurontek HQ | Grupos: [DevOps, Redes, Plataforma Aurontek] 
+- ereyes@prueba.com | Rol: admin-interno | Emp: prueba | Grupos: [] 
+- admin.aurontek@aurontek.com | Rol: admin-interno | Emp: Aurontek HQ | Grupos: [Mesa de Servicio, Soporte Ti, DevOps] 
+- agente.mesa@aurontek.com | Rol: soporte | Emp: Aurontek HQ | Grupos: [Mesa de Servicio] 
+- agente.ti@aurontek.com | Rol: soporte | Emp: Aurontek HQ | Grupos: [Soporte Ti] 
+- empleado@aurontek.com | Rol: usuario | Emp: Aurontek HQ | Grupos: [] 

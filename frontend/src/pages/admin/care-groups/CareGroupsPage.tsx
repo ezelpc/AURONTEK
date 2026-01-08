@@ -36,7 +36,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, FileDown, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 
@@ -135,42 +135,74 @@ const CareGroupsPage = () => {
                     <p className="text-slate-500">Gestiona los grupos resolutores y áreas de servicio.</p>
                 </div>
 
-                <Dialog open={isOpen} onOpenChange={(open) => {
-                    setIsOpen(open);
-                    if (!open) {
-                        setEditingGroup(null);
-                        reset();
-                    }
-                }}>
-                    <DialogTrigger asChild>
-                        <ProtectedButton permission={PERMISSIONS.CARE_GROUPS_CREATE}>
-                            <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
-                        </ProtectedButton>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{editingGroup ? 'Editar Grupo' : 'Nuevo Grupo'}</DialogTitle>
-                            <DialogDescription>
-                                {editingGroup ? 'Modifica los datos del grupo' : 'Agrega un grupo de atención al catálogo'}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
-                            <div>
-                                <Label htmlFor="nombre">Nombre del Grupo</Label>
-                                <Input id="nombre" {...register('nombre', { required: true })} placeholder="ej. Soporte TI" />
-                            </div>
-                            <div>
-                                <Label htmlFor="descripcion">Descripción</Label>
-                                <Input id="descripcion" {...register('descripcion')} placeholder="Breve descripción" />
-                            </div>
-                            <DialogFooter>
-                                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                                    {editingGroup ? 'Actualizar' : 'Crear'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => careGroupsService.downloadTemplate()}
+                        title="Descargar plantilla CSV para carga masiva"
+                    >
+                        <FileDown className="mr-2 h-4 w-4" /> Plantilla
+                    </Button>
+                    <ProtectedButton
+                        permission={PERMISSIONS.SERVICIOS_IMPORT}
+                        variant="outline"
+                        className="relative"
+                        title="Cargar grupos desde archivo CSV"
+                    >
+                        <input
+                            type="file"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                    careGroupsService.bulkUpload(e.target.files[0])
+                                        .then(() => {
+                                            queryClient.invalidateQueries({ queryKey: ['care-groups'] });
+                                            toast.success('Grupos cargados exitosamente');
+                                        })
+                                        .catch(() => toast.error('Error al cargar grupos'));
+                                }
+                            }}
+                            accept=".csv"
+                        />
+                        <Upload className="mr-2 h-4 w-4" /> Carga Masiva
+                    </ProtectedButton>
+                    <Dialog open={isOpen} onOpenChange={(open) => {
+                        setIsOpen(open);
+                        if (!open) {
+                            setEditingGroup(null);
+                            reset();
+                        }
+                    }}>
+                        <DialogTrigger asChild>
+                            <ProtectedButton permission={PERMISSIONS.CARE_GROUPS_CREATE}>
+                                <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
+                            </ProtectedButton>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{editingGroup ? 'Editar Grupo' : 'Nuevo Grupo'}</DialogTitle>
+                                <DialogDescription>
+                                    {editingGroup ? 'Modifica los datos del grupo' : 'Agrega un grupo de atención al catálogo'}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+                                <div>
+                                    <Label htmlFor="nombre">Nombre del Grupo</Label>
+                                    <Input id="nombre" {...register('nombre', { required: true })} placeholder="ej. Soporte TI" />
+                                </div>
+                                <div>
+                                    <Label htmlFor="descripcion">Descripción</Label>
+                                    <Input id="descripcion" {...register('descripcion')} placeholder="Breve descripción" />
+                                </div>
+                                <DialogFooter>
+                                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                                        {editingGroup ? 'Actualizar' : 'Crear'}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <Card>

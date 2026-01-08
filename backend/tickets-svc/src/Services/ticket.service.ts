@@ -203,6 +203,15 @@ class TicketService {
         // No lanzar error, solo registrar
       }
 
+      // ✅ AUTOMATIC ASSIGNMENT
+      try {
+        console.log(`[AUTO-ASSIGN] Intentando asignar ticket ${nuevoTicket._id} automáticamente...`);
+        await this.asignarAutomaticamente(nuevoTicket._id.toString(), nuevoTicket.empresaId.toString(), nuevoTicket.servicioId);
+      } catch (assignError: any) {
+        console.error('[AUTO-ASSIGN] Error en asignación automática:', assignError.message);
+        // No fallar la creación si falla la asignación
+      }
+
       return nuevoTicket;
     } catch (error) {
       console.error('Error al crear ticket:', error);
@@ -572,6 +581,106 @@ class TicketService {
     return ticket;
   }
 
+  // ✅ NUEVO: Asignar ticket automáticamente (Lógica interna)
+  async asignarAutomaticamente(ticketId: string, empresaId: string, servicioId: string) {
+    try {
+      // 1. Obtener el servicio para ver el grupo de atención
+      const servicio = await Servicio.findById(servicioId);
+      if (!servicio) {
+        console.log('[AUTO-ASSIGN] Servicio no encontrado, omitiendo asignación.');
+        return;
+      }
+
+      const grupoAtencion = servicio.gruposDeAtencion;
+      if (!grupoAtencion) {
+        console.log('[AUTO-ASSIGN] Servicio sin grupo de atención definido, omitiendo asignación.');
+        return;
+      }
+
+      console.log(`[AUTO-ASSIGN] Buscando agentes para grupo: "${grupoAtencion}" en empresa: ${empresaId}`);
+
+      // 2. Buscar usuarios candidatos en usuarios-svc
+      // Necesitamos usuarios de la empresa (o admins internos) que tengan el rol y el grupo adecuado
+      const USUARIOS_SVC_URL = process.env.USUARIOS_SVC_URL || 'http://localhost:3000';
+      const SERVICE_TOKEN = process.env.SERVICE_TOKEN;
+
+      // Obtener todos los usuarios de la empresa (filtramos en memoria por simplicidad y flexibilidad)
+      // En un sistema más grande, estos filtros deberían ir a la query
+      const response = await axios.get(`${USUARIOS_SVC_URL}/usuarios`, {
+        params: {
+          empresa: empresaId,
+          activo: true
+          // Podríamos agregar filtros de rol aquí si el endpoint lo soporta
+        },
+        headers: {
+          'Authorization': `Bearer ${SERVICE_TOKEN}`,
+          'X-Service-Name': 'tickets-svc'
+        }
+      });
+
+      const usuarios = response.data; // Asumiendo que devuelve array de usuarios
+
+      // Filtrar candidatos
+      const candidatos = usuarios.filter((u: any) => {
+        // Roles permitidos para asignación
+        const rolValido = ['soporte', 'beca-soporte', 'admin-interno', 'admin-empresa'].includes(u.rol);
+
+        // Debe pertenecer al grupo de atención (si el usuario tiene ese campo)
+        // El campo en usuario podría ser 'gruposDeAtencion' (string o array)
+        let perteneceAlGrupo = false;
+        if (u.gruposDeAtencion) {
+          if (Array.isArray(u.gruposDeAtencion)) {
+            perteneceAlGrupo = u.gruposDeAtencion.includes(grupoAtencion);
+          } else {
+            perteneceAlGrupo = u.gruposDeAtencion === grupoAtencion || u.gruposDeAtencion.includes(grupoAtencion);
+          }
+        }
+
+        // Si es admin-interno o soporte, a veces pueden ver todo, pero mejor respetar el grupo si existe
+        // Si el usuario no tiene grupos definidos, ¿lo asignamos? Asumamos que NO por seguridad, salvo admin
+        if (!u.gruposDeAtencion && u.rol === 'admin-interno') perteneceAlGrupo = true; // Fallback para admins
+
+        return rolValido && perteneceAlGrupo;
+      });
+
+      console.log(`[AUTO-ASSIGN] Encontrados ${candidatos.length} candidatos:`, candidatos.map((c: any) => c.nombre));
+
+      if (candidatos.length === 0) {
+        console.log('[AUTO-ASSIGN] No hay candidatos disponibles.');
+        return;
+      }
+
+      // 3. Balanceo de carga: Elegir el que tenga menos tickets activos
+      // Contar tickets 'abierto', 'en_proceso', 'en_espera' para cada candidato
+      const cargas = await Promise.all(candidatos.map(async (c: any) => {
+        const count = await (Ticket as any).countDocuments({
+          agenteAsignado: c._id,
+          estado: { $in: ['abierto', 'en_proceso', 'en_espera'] }
+        });
+        return { ...c, carga: count };
+      }));
+
+      // Ordenar por carga ascendente
+      cargas.sort((a: any, b: any) => a.carga - b.carga);
+
+      const mejorCandidato = cargas[0];
+      console.log(`[AUTO-ASSIGN] Asignando a: ${mejorCandidato.nombre} (Carga actual: ${mejorCandidato.carga})`);
+
+      // 4. Asignar
+      await this.asignarTicket(
+        ticketId,
+        mejorCandidato._id,
+        empresaId,
+        'sistema', // Usuario ID acciones sistema
+        'Sistema (Auto-asignación)' // Nombre usuario sistema
+      );
+
+    } catch (error: any) {
+      console.error('[AUTO-ASSIGN] Error general:', error.message);
+      throw error;
+    }
+  }
+
   // ==========================================
   // MÉTODOS PARA ADMIN GENERAL
   // ==========================================
@@ -742,7 +851,22 @@ class TicketService {
   async listarTicketsInternos(filtros: any = {}) {
     const aurontekHQId = await this.obtenerAurontekHQId();
     if (!aurontekHQId) return [];
-    const query: any = { ...filtros, empresaId: aurontekHQId };
+
+    // 1. Find all LOCAL services (excluding global/internal/platform)
+    const localServices = await Servicio.find({
+      alcance: 'local' // Only local scope services
+    }).select('_id').lean();
+    const localServiceIds = localServices.map(s => s._id);
+
+    console.log(`[TICKETS INTERNOS] Found ${localServiceIds.length} local services`);
+
+    // 2. Build query: AurontekHQ tickets + local services only
+    const query: any = {
+      ...filtros,
+      empresaId: aurontekHQId,
+      servicioId: { $in: localServiceIds } // ✅ Filter by local services
+    };
+
     // Only populate servicioId - empresaId is just an ObjectId reference
     const tickets = await (Ticket as any).find(query)
       .populate('servicioId')
@@ -750,13 +874,17 @@ class TicketService {
       .lean()
       .exec();
 
+    console.log(`[TICKETS INTERNOS] Returning ${tickets.length} local tickets`);
+
     // Enrich with user names
     return await this.enrichTicketsWithUsers(tickets);
   }
 
   async listarTicketsGlobales(filtros: any = {}) {
-    // 1. Find all global services
-    const globalServices = await Servicio.find({ alcance: 'global' }).select('_id').lean();
+    // 1. Find all global services (incluyendo legacy)
+    const globalServices = await Servicio.find({
+      alcance: { $in: ['global', 'INTERNO', 'PLATAFORMA', 'interno', 'plataforma'] }
+    }).select('_id').lean();
     const globalServiceIds = globalServices.map(s => s._id);
 
     // 2. Build query

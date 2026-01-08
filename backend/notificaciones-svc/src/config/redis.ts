@@ -10,10 +10,21 @@ export const redisPubClient = createClient({ url: REDIS_URL });
 
 export const connectRedis = async () => {
     try {
-        await redisPubClient.connect();
+        // Set connection timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Redis connection timeout')), 5000)
+        );
+        
+        await Promise.race([
+            redisPubClient.connect(),
+            timeoutPromise
+        ]);
+        
         console.log('✅ [Notificaciones-SVC] Conectado a Redis (Publisher)');
     } catch (error) {
-        console.error('❌ [Notificaciones-SVC] Error conectando a Redis:', error);
+        console.warn('⚠️ [Notificaciones-SVC] No se pudo conectar a Redis:', error);
+        console.warn('⚠️ Continuando sin Redis. Las notificaciones en tiempo real no estarán disponibles.');
+        // No lanzar error, permitir que el servicio continúe
     }
 };
 

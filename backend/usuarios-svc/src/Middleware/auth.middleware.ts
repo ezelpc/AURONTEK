@@ -49,8 +49,42 @@ export const verificarToken = async (req: Request, res: Response, next: NextFunc
         permisos = [permisoSingular];
       }
 
+      // --- FIX: MERGE ROLE PERMISSIONS ---
+      // If user has a role and company, fetch role permissions and merge
+      if (userObj.rol && userObj.rol !== 'admin-general' && userObj.rol !== 'admin-subroot') {
+        try {
+          const RolModel = (await import('../Models/Role.model')).default;
+          // Buscar por nombre O slug
+          const roleDoc = await RolModel.findOne({
+            $and: [
+              { $or: [{ nombre: userObj.rol }, { slug: userObj.rol }] },
+              { $or: [{ empresa: userObj.empresa }, { empresa: null }] }
+            ]
+          });
+
+          if (roleDoc && roleDoc.permisos) {
+            console.log(`[AUTH DEBUG] Role found: ${roleDoc.slug} (${roleDoc.nombre}). Merging ${roleDoc.permisos.length} permissions.`);
+            permisos = Array.from(new Set([...permisos, ...roleDoc.permisos]));
+
+            // NORMALIZE ROLE SLUG: Controllers expect 'admin-interno', not 'Administrador Interno'
+            if (roleDoc.slug) {
+              userObj.rol = roleDoc.slug;
+            }
+          } else {
+            console.warn(`[AUTH WARNING] Role '${userObj.rol}' not found for company ${userObj.empresa}. Permissions not merged.`);
+          }
+        } catch (err) {
+          console.error('[AUTH ERROR] Failed to merge role permissions:', err);
+        }
+      }
+
+      // --- FALLBACK REMOVED: Strict RBAC enforcement ---
+      // Permissions must come from the Role definition in DB or the User document.
+      // "admin-interno" is no longer hardcoded with special privileges.
+
       req.usuario = {
         ...userObj,
+        empresaId: userObj.empresa, // Map to expected field name
         permisos: permisos
       };
     } else {

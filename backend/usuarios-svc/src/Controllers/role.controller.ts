@@ -63,7 +63,7 @@ export const listarRoles = async (req: Request, res: Response) => {
             query = {
                 $or: [
                     { empresa: usuarioEmpresaId },
-                    { empresa: null } // Optional: Hide global if they shouldn't edit them.
+                    { empresa: null }
                 ],
                 activo: true
             };
@@ -203,6 +203,10 @@ export const actualizarRole = async (req: Request, res: Response) => {
             }
         }
 
+        // Guardar valores originales para la sincronización
+        const originalName = role.nombre;
+        const originalSlug = role.slug;
+
         // Update fields
         if (nombre) {
             role.nombre = nombre;
@@ -212,6 +216,76 @@ export const actualizarRole = async (req: Request, res: Response) => {
         if (permisos) role.permisos = permisos;
 
         await role.save();
+
+        // ♻️ Sincronizar cambios en usuarios
+        try {
+            const UsuarioModel = (await import('../Models/AltaUsuario.models')).default;
+
+            console.log(`♻️ Iniciando sincronización de roles. Original: '${originalName}', Nuevo: '${role.nombre}'`);
+
+            // Use regex for case-insensitive matching to be robust against "Administrador interno" vs "Administrador Interno"
+            const escapeRegex = (s: string) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+            const identifiers = [originalName, originalSlug, role.nombre, role.slug]
+                .filter(Boolean)
+                .map(id => new RegExp(`^${escapeRegex(id)}$`, 'i'));
+
+            // 1. Buscar usuarios por nombre de rol (sin filtrar empresa en query para debugging y robustez)
+            const candidates = await UsuarioModel.find({
+                rol: { $in: identifiers }
+            });
+
+            console.log(`♻️ [Sync] Candidatos encontrados por nombre de rol: ${candidates.length}`);
+
+            let updatedCount = 0;
+
+            for (const user of candidates) {
+                // 2. Verificar Empresa manualmente
+                // Convertir a string para evitar problemas de tipos (ObjectId vs String)
+                let matchesCompany = true;
+
+                if (role.empresa) {
+                    // Si el usuario no tiene empresa, no coincide
+                    if (!user.empresa) {
+                        matchesCompany = false;
+                    } else {
+                        matchesCompany = String(user.empresa) === String(role.empresa);
+                    }
+                }
+
+                if (!matchesCompany) {
+                    console.log(`   ⏭️ Saltando usuario ${user.correo} (Empresa no coincide: Usr=${user.empresa} vs Rol=${role.empresa})`);
+                    continue;
+                }
+
+                // 3. Aplicar Actualización indivudual
+                let modified = false;
+
+                // Forzar actualización de permisos
+                // Nota: Mongoose a veces no detecta cambios en arrays si no se reasigna
+                user.permisos = [...role.permisos];
+                modified = true;
+
+                // Actualizar Nombre de Rol explícitamente al nuevo
+                if (user.rol !== role.nombre) {
+                    user.rol = role.nombre;
+                    modified = true;
+                }
+
+                if (modified) {
+                    await user.save();
+                    updatedCount++;
+                    console.log(`   ✅ Usuario actualizado: ${user.correo} (${user._id})`);
+                }
+            }
+
+            console.log(`♻️ [Sync] Finalizado. Total actualizados: ${updatedCount}`);
+
+        } catch (syncError) {
+            console.error('❌ Error sincronizando permisos a usuarios:', syncError);
+            // No fallamos el request principal, pero logueamos el error
+        }
+
         res.json(role);
     } catch (error: any) {
         console.error('Error updating role:', error);

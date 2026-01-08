@@ -145,6 +145,16 @@ const login = async (req: Request, res: Response) => {
     }
 
     // --- FIN DE LA LÓGICA MODIFICADA ---
+    // OBTENER NOMBRE DE LA EMPRESA para el frontend (solo si es empleado)
+    let nombreEmpresa: string | undefined = undefined;
+    if (empresaIdFinal) {
+      try {
+        const empresaObj = await empresaService.encontrarEmpresaPorId(empresaIdFinal.toString());
+        nombreEmpresa = empresaObj?.nombre;
+      } catch (e) {
+        console.warn('No se pudo obtener el nombre de la empresa, se omitirá en la respuesta');
+      }
+    }
 
     // GENERAR TOKEN Y RESPONDER
     const payload = {
@@ -152,7 +162,8 @@ const login = async (req: Request, res: Response) => {
       rol: rolFinal,
       empresaId: empresaIdFinal,
       esAdminGeneral: esAdminGeneral,
-      nombre: usuarioEncontrado.nombre // Added for caching in other services
+      nombre: usuarioEncontrado.nombre, // Added for caching in other services
+      permisos: permisos // ✅ CRITICAL: Include permissions in JWT
     };
     const token = generarJWT(payload);
 
@@ -164,7 +175,10 @@ const login = async (req: Request, res: Response) => {
         email: usuarioEncontrado.correo,
         rol: rolFinal,
         empresaId: empresaIdFinal,
+        empresa: nombreEmpresa, // Added company name
         esAdminGeneral: esAdminGeneral,
+        activo: usuarioEncontrado.activo || true, // Added active status
+        foto: usuarioEncontrado.foto, // Added photo if available
         permisos // Enviar permisos al frontend
       }
     });
@@ -359,6 +373,17 @@ const check = async (req: Request, res: Response) => {
       }
     }
 
+    // OBTENER NOMBRE DE LA EMPRESA para el frontend (solo si es empleado)
+    let nombreEmpresa: string | undefined = undefined;
+    if (!esAdminGeneral && usuario.empresa) {
+      try {
+        const empresaObj = await empresaService.encontrarEmpresaPorId(usuario.empresa.toString());
+        nombreEmpresa = empresaObj?.nombre;
+      } catch (e) {
+        console.warn('[check] No se pudo obtener el nombre de la empresa');
+      }
+    }
+
     res.json({
       ok: true,
       usuario: {
@@ -367,6 +392,7 @@ const check = async (req: Request, res: Response) => {
         email: usuario.correo,
         rol: usuario.rol,
         empresaId: usuario.empresa || null,
+        empresa: nombreEmpresa, // Added company name
         esAdminGeneral: esAdminGeneral,
         estado_actividad: usuario.estado_actividad, // Include status
         permisos // Include permissions

@@ -1,6 +1,7 @@
 import { Empresa } from '../Models/AltaEmpresas.models';
 import Usuario from '../Models/AltaUsuario.models';
 import { generarCodigoAcceso } from '../Utils/utils';
+import { PERMISOS_LOCALES_ADMIN } from '../Constants/permissions';
 import mongoose from 'mongoose';
 
 /**
@@ -27,16 +28,21 @@ export const crearEmpresaLicenciaAdmin = async (
     await nuevaEmpresa.save();
 
     // Se crea el admin interno, asociándolo a la empresa
+    // El rol debe existir previamente en la base de datos
     const adminInterno = new Usuario({
       nombre: datosAdminInterno.nombre,
       correo: datosAdminInterno.correo,
       contraseña: datosAdminInterno.password,
-      rol: 'admin-interno',
-      empresa: nuevaEmpresa._id, // Asignación del ID de la empresa
+      rol: 'admin-interno', // Usar el slug del rol (debe existir en BD)
+      empresa: nuevaEmpresa._id,
+      permisos: PERMISOS_LOCALES_ADMIN, // Asignar permisos directamente
+      activo: true
     });
 
     // Guardar el admin interno
     await adminInterno.save();
+
+    console.log(`[EMPRESA SERVICE] Admin creado con rol: admin-interno, permisos: ${adminInterno.permisos.length}`);
 
     return nuevaEmpresa;
   } catch (error: any) {
@@ -126,19 +132,49 @@ export const eliminarEmpresa = async (id: string) => {
   const empresa = await Empresa.findById(id);
   if (!empresa) throw new Error('Empresa no encontrada.');
 
-  // Dynamically get model to avoid any import cycle/undefined issues
-  const UsuarioModel = mongoose.model('Usuario');
-
-  // Verify ID format just in case
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new Error('ID de empresa inválido');
+  // Debug: Verificar si el modelo Usuario está cargado
+  console.log('[DEBUG] Usuario model:', Usuario ? 'DEFINIDO' : 'UNDEFINED');
+  if (!Usuario) {
+    throw new Error('INTERNAL_ERROR: El modelo Usuario no se ha cargado correctamente.');
   }
 
-  // Explicit casting for deleteMany query
-  const empresaId = new mongoose.Types.ObjectId(id);
+  // Verifica ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error('ID de empresa inválido para eliminación.');
+  }
 
   // Delete associated users first
-  await UsuarioModel.deleteMany({ empresa: empresaId });
+  const empresaId = new mongoose.Types.ObjectId(id);
+  console.log(`[DELETE EMPRESA] Intentando eliminar usuarios para empresaId: ${empresaId}`);
+
+  try {
+    // 1. Intentar con Mongoose standard
+    if (Usuario) {
+      console.log('[DELETE EMPRESA] Usando Mongoose Model para eliminar usuarios...');
+      const result = await (Usuario as any).deleteMany({ empresa: empresaId });
+      console.log(`[DELETE EMPRESA] Mongoose eliminó ${result.deletedCount} usuarios.`);
+    } else {
+      throw new Error('Modelo Usuario no disponible (undefined).');
+    }
+  } catch (err: any) {
+    console.warn('[DELETE EMPRESA] Falló Mongoose deleteMany. Intentando fallback nativo...', err.message);
+
+    // 2. Fallback: Native ID deleting (bypasses middleware/hooks)
+    try {
+      const collection = mongoose.connection.db?.collection('usuarios');
+      if (collection) {
+        const result = await collection.deleteMany({ empresa: empresaId });
+        console.log(`[DELETE EMPRESA] Fallback Nativo eliminó ${result.deletedCount} usuarios.`);
+      } else {
+        console.error('[DELETE EMPRESA] No se pudo acceder a la colección nativa "usuarios".');
+        // Re-throw original if native fails too
+        throw new Error('Falló eliminación Mongoose y Nativa no disponible: ' + err.message);
+      }
+    } catch (nativeErr: any) {
+      console.error('[DELETE EMPRESA] Falló Fallback Nativo:', nativeErr);
+      throw new Error('Falló eliminación de usuarios (Mongoose + Nativo): ' + nativeErr.message);
+    }
+  }
 
   // Delete the company
   await Empresa.findByIdAndDelete(id);

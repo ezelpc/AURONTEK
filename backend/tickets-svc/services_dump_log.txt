@@ -1,0 +1,20 @@
+Found 19 services:
+- [6942f22bfad205160277e226] "Acceso a VPN" | Tip: Requerimiento | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e227] "Sin señal wifi" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e228] "Caída de enlace Local" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e229] "Computadora Lenta" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e22a] "Solicitud de Equipo Nuevo" | Tip: Requerimiento | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e22b] "Instalación de Software" | Tip: Requerimiento | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e22c] "Falla de Impresora" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e22d] "Solicitud de Toner" | Tip: Requerimiento | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e22e] "Error en Facturación (Bug)" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e22f] "Caída del Servicio Web" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e230] "Solicitud de Nueva Funcionalidad" | Tip: Requerimiento | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e231] "Duda sobre Módulo X" | Tip: Requerimiento | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e232] "Reporte de Vulnerabilidad" | Tip: Incidente | Cat: undefined | Alc: global | Act: true | Emp: undefined
+- [6942f22bfad205160277e233] "Reseteo de Contraseña Interna" | Tip: Requerimiento | Cat: undefined | Alc: local | Act: true | Emp: undefined
+- [6942f22bfad205160277e234] "Configuración de VPN" | Tip: Requerimiento | Cat: undefined | Alc: local | Act: true | Emp: undefined
+- [6942f22bfad205160277e235] "Instalación de Software" | Tip: Requerimiento | Cat: undefined | Alc: local | Act: true | Emp: undefined
+- [6942f22bfad205160277e236] "Mantenimiento de Vehículo" | Tip: Mantenimiento | Cat: undefined | Alc: local | Act: true | Emp: undefined
+- [695beaa87b329c1e8fb5ac9f] "Soporte General PC" | Tip: Requerimiento | Cat: Computo Personal | Alc: local | Act: true | Emp: 6942f22afad205160277e1ff
+- [695beaa87b329c1e8fb5aca3] "Acceso a Servidores" | Tip: Requerimiento | Cat: Infraestructura | Alc: local | Act: true | Emp: 6942f22afad205160277e1ff

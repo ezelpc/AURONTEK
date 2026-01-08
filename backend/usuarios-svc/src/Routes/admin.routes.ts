@@ -7,13 +7,13 @@ import { PERMISOS } from '../Constants/permissions';
 const router = express.Router();
 
 // All routes in this file require root-level permissions.
-// The `requirePermission` middleware will check if the user has '*' or 'admins.manage'.
+// The `requirePermission` middleware will check if the user has '*' or specific admin permissions.
 
 // GET /api/admins - Listar todos los administradores
 router.get(
     '/',
     verificarToken,
-    requirePermission(PERMISOS.ADMINS_MANAGE),
+    requirePermission(PERMISOS.ADMINS_VIEW),
     adminController.listarAdmins
 );
 
@@ -21,7 +21,7 @@ router.get(
 router.post(
     '/',
     verificarToken,
-    requirePermission(PERMISOS.ADMINS_MANAGE),
+    requirePermission(PERMISOS.ADMINS_CREATE),
     adminController.crearAdmin
 );
 
@@ -29,7 +29,7 @@ router.post(
 router.delete(
     '/:id',
     verificarToken,
-    requirePermission(PERMISOS.ADMINS_MANAGE),
+    requirePermission(PERMISOS.ADMINS_DELETE),
     adminController.eliminarAdmin
 );
 

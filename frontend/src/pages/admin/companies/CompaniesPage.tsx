@@ -320,7 +320,7 @@ const CompaniesPage = () => {
                     </div>
                     {!isCreating && !editingCompany && (
                         <ProtectedButton
-                            permission={PERMISSIONS.COMPANIES_MANAGE}
+                            permission={PERMISSIONS.COMPANIES_CREATE}
                             onClick={() => setIsCreating(true)}
                         >
                             <Plus className="mr-2 h-4 w-4" /> {t('companies.new_company')}
@@ -434,7 +434,7 @@ const CompaniesPage = () => {
                                             </TableCell>
                                             <TableCell className="text-right flex justify-end gap-2">
                                                 <ProtectedButton
-                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    permission={PERMISSIONS.COMPANIES_UPDATE}
                                                     variant="ghost"
                                                     size="icon"
                                                     title={t('common.edit')}
@@ -444,7 +444,7 @@ const CompaniesPage = () => {
                                                 </ProtectedButton>
 
                                                 <ProtectedButton
-                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    permission={PERMISSIONS.COMPANIES_SUSPEND}
                                                     variant="ghost"
                                                     size="icon"
                                                     title={empresa.activo ? "Suspender Licencia" : "Reactivar Licencia"}
@@ -458,7 +458,7 @@ const CompaniesPage = () => {
                                                 </ProtectedButton>
 
                                                 <ProtectedButton
-                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    permission={PERMISSIONS.COMPANIES_REGENERATE_CODE}
                                                     variant="ghost"
                                                     size="icon"
                                                     title="Regenerar Código Acceso"
@@ -468,7 +468,7 @@ const CompaniesPage = () => {
                                                 </ProtectedButton>
 
                                                 <ProtectedButton
-                                                    permission={PERMISSIONS.COMPANIES_MANAGE}
+                                                    permission={PERMISSIONS.COMPANIES_DELETE}
                                                     variant="ghost"
                                                     size="icon"
                                                     title={t('common.delete')}

@@ -5,14 +5,14 @@ import { Request, Response, NextFunction } from 'express';
  * Valida contra el array de permisos del usuario (inyectado en req.usuario).
  * Incluye bypass para Root ('*').
  */
-export const requirePermission = (requiredPermission: string) => {
+export const requirePermission = (requiredPermission: string | string[]) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
             // 1. Obtener usuario del request (inyectado por authMiddleware)
             const user = (req as any).usuario;
 
             console.log('[REQUIRE_PERMISSION DEBUG] Required:', requiredPermission);
-            console.log('[REQUIRE_PERMISSION DEBUG] User:', JSON.stringify(user, null, 2));
+            // console.log('[REQUIRE_PERMISSION DEBUG] User:', JSON.stringify(user, null, 2));
 
             if (!user) {
                 return res.status(401).json({ msg: 'Acceso no autorizado. Token faltante o inválido.' });
@@ -22,8 +22,7 @@ export const requirePermission = (requiredPermission: string) => {
             // En auth.controller asignamos ['*'] a Root.
             const userPermissions: string[] = user.permisos || [];
 
-            console.log('[REQUIRE_PERMISSION DEBUG] User permissions array:', userPermissions);
-            console.log('[REQUIRE_PERMISSION DEBUG] Checking for wildcard (*):', userPermissions.includes('*'));
+            // console.log('[REQUIRE_PERMISSION DEBUG] User permissions array:', userPermissions);
 
             if (userPermissions.includes('*')) {
                 console.log('[REQUIRE_PERMISSION DEBUG] GRANTED via wildcard');
@@ -31,14 +30,15 @@ export const requirePermission = (requiredPermission: string) => {
             }
 
             // 3. Validar Permiso
-            const hasPermission = userPermissions.includes(requiredPermission);
+            const requiredArray = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+            const hasPermission = requiredArray.some(p => userPermissions.includes(p));
 
-            console.log('[REQUIRE_PERMISSION DEBUG] Has specific permission:', hasPermission);
+            console.log('[REQUIRE_PERMISSION DEBUG] Has permission:', hasPermission);
 
             if (!hasPermission) {
                 console.log('[REQUIRE_PERMISSION DEBUG] DENIED - missing permission');
                 return res.status(403).json({
-                    msg: `Acceso denegado. Se requiere el permiso: ${requiredPermission}`
+                    msg: `Acceso denegado. Se requiere el permiso: ${requiredArray.join(' o ')}`
                 });
             }
 

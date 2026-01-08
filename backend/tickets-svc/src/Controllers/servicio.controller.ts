@@ -11,6 +11,10 @@ export const getAllServicios = async (req: Request, res: Response) => {
   try {
     const { alcance } = req.query;
     const empresaIdUsuario = req.usuario?.empresaId;
+    console.log('--- GET /services DEBUG ---');
+    console.log('Query:', req.query);
+    console.log('User:', req.usuario ? `${req.usuario.email} (${req.usuario.rol})` : 'No Auth');
+    console.log('EmpresaID:', empresaIdUsuario);
     const filtro: any = {};
 
     if (alcance === 'global') {

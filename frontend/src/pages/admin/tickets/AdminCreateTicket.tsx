@@ -29,13 +29,13 @@ const AdminCreateTicket = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isUploading, setIsUploading] = useState(false);
 
-    // Fetch servicios INTERNOS
+    // Fetch servicios INTERNOS (LOCALES de AurontekHQ)
     const { data: servicios = [], isLoading } = useQuery({
         queryKey: ['servicios-internos'],
         queryFn: async () => {
             const all = await servicesService.getServices();
-            // Filtrar solo servicios INTERNOS (Globales)
-            return Array.isArray(all) ? all.filter((s: any) => s.alcance === 'global') : [];
+            // Filtrar solo servicios LOCALES (no globales)
+            return Array.isArray(all) ? all.filter((s: any) => s.alcance === 'local') : [];
         },
     });
 
@@ -73,7 +73,9 @@ const AdminCreateTicket = () => {
             navigate('/admin/tickets');
         },
         onError: (error: any) => {
-            toast.error(`Error al crear ticket: ${error.message}`);
+            const serverMsg = error.response?.data?.msg || error.message;
+            console.error('Error detallado:', error.response?.data);
+            toast.error(`Error al crear ticket: ${serverMsg}`);
         }
     });
 
@@ -102,6 +104,15 @@ const AdminCreateTicket = () => {
                 setIsUploading(false);
             }
 
+            // Helper para normalizar prioridad (evitar problemas de acentos)
+            const getPrioridadNormalizada = (p: string | undefined) => {
+                if (!p) return 'media';
+                const lower = p.toLowerCase().trim();
+                // Map 'crítica' or 'critica' to 'crítica' (Required by stale backend)
+                if (lower === 'crítica' || lower === 'critica' || lower === 'critico' || lower === 'crítico') return 'crítica';
+                return lower;
+            };
+
             // 2. Crear ticket
             createMutation.mutate({
                 titulo: selectedService.nombre,
@@ -109,7 +120,7 @@ const AdminCreateTicket = () => {
                 servicioId: selectedService._id,
                 servicioNombre: selectedService.nombre,
                 tipo: selectedType.toLowerCase(),
-                prioridad: selectedService.prioridad?.toLowerCase() || 'media',
+                prioridad: getPrioridadNormalizada(selectedService.prioridad),
                 categoria: selectedSubcategory,
                 empresaId: null, // Ticket interno (Backend lo manejará)
                 usuarioCreador: user?._id,

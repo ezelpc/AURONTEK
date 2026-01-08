@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { servicesService, Service } from '@/api/services.service';
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +22,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from 'react-i18next';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const ServicesPage = () => {
     const queryClient = useQueryClient();
@@ -44,6 +46,9 @@ const ServicesPage = () => {
 
     // Update title based on active tab or URL param
     const pageTitle = activeTab === 'local' ? t('services.title_internal') : t('services.title');
+
+    // Get the permission based on active tab
+    const requiredPermission = activeTab === 'global' ? PERMISSIONS.SERVICIOS_MANAGE_GLOBAL : PERMISSIONS.SERVICIOS_MANAGE_LOCAL;
 
     // Fetch Services based on active tab
     const { data: services = [], isLoading } = useQuery({
@@ -124,12 +129,22 @@ const ServicesPage = () => {
                         </TableCell>
                         {!readonly && (
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" onClick={() => { setEditingService(service); setIsCreating(false); }}>
+                                <ProtectedButton
+                                    permission={requiredPermission}
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => { setEditingService(service); setIsCreating(false); }}
+                                >
                                     <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(service._id!)}>
+                                </ProtectedButton>
+                                <ProtectedButton
+                                    permission={requiredPermission}
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(service._id!)}
+                                >
                                     <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
+                                </ProtectedButton>
                             </TableCell>
                         )}
                     </TableRow>
@@ -180,20 +195,25 @@ const ServicesPage = () => {
                         <Button variant="outline" onClick={() => servicesService.downloadTemplate(activeTab)}>
                             <FileDown className="mr-2 h-4 w-4" /> {t('services.template')}
                         </Button>
-                        <div className="relative">
+                        <ProtectedButton
+                            permission={PERMISSIONS.SERVICIOS_IMPORT}
+                            variant="outline"
+                            className="relative"
+                        >
                             <input
                                 type="file"
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 onChange={handleFileUpload}
                                 accept=".csv"
                             />
-                            <Button variant="outline">
-                                <Upload className="mr-2 h-4 w-4" /> {t('services.import')}
-                            </Button>
-                        </div>
-                        <Button onClick={() => setIsCreating(true)}>
+                            <Upload className="mr-2 h-4 w-4" /> {t('services.import')}
+                        </ProtectedButton>
+                        <ProtectedButton
+                            permission={requiredPermission}
+                            onClick={() => setIsCreating(true)}
+                        >
                             <Plus className="mr-2 h-4 w-4" /> {t('services.new_service')}
-                        </Button>
+                        </ProtectedButton>
                     </div>
                 )}
             </div>

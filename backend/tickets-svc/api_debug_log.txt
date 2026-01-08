@@ -1,0 +1,3 @@
+✅ Status: 200
+📦 Data Length: 1
+- Ejemplo: Solicitud de equipo nuevo (Computo Personal) [Alcance: local] [EmpID: N/A]

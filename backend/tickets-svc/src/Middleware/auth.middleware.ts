@@ -74,17 +74,26 @@ export const requirePermission = (permission: string) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const userPermissions = req.usuario?.permisos || [];
 
+    console.log('[TICKETS AUTH] Checking permission:', permission);
+    console.log('[TICKETS AUTH] User:', req.usuario?.nombre || req.usuario?.email);
+    console.log('[TICKETS AUTH] User permissions:', userPermissions);
+    console.log('[TICKETS AUTH] Has wildcard?', userPermissions.includes('*'));
+
     // Root Total Access
     if (userPermissions.includes('*')) {
+      console.log('[TICKETS AUTH] ✅ GRANTED via wildcard');
       return next();
     }
 
     if (!userPermissions.includes(permission)) {
+      console.log('[TICKETS AUTH] ❌ DENIED - Permission not found');
       res.status(403).json({
         msg: `Acceso denegado. Se requiere el permiso: ${permission}`
       });
       return;
     }
+
+    console.log('[TICKETS AUTH] ✅ GRANTED via specific permission');
     next();
   };
 };

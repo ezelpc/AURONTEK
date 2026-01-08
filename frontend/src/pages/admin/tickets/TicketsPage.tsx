@@ -7,10 +7,12 @@ import { columns } from './columns';
 import { DataTable } from '@/components/ui/data-table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ProtectedButton } from '@/components/ProtectedButton';
 import { Input } from '@/components/ui/input';
 import { Plus, Filter, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuthStore } from '@/auth/auth.store';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const TicketsPage = () => {
     const navigate = useNavigate();
@@ -48,8 +50,8 @@ const TicketsPage = () => {
                 // Local view: Internal AurontekHQ tickets (no empresaId)
                 baseTickets = await ticketsService.getInternalTickets();
             } else {
-                // Global view: Company tickets (with empresaId)
-                baseTickets = await ticketsService.getCompanyTickets();
+                // Global view: Tickets created with global service templates
+                baseTickets = await ticketsService.getGlobalTickets();
             }
 
             // Apply additional filters
@@ -111,7 +113,7 @@ const TicketsPage = () => {
     const pageTitle = isLocalView ? 'Tickets Locales' : 'Tickets Globales';
     const pageDescription = isLocalView
         ? 'Tickets internos de AurontekHQ'
-        : 'Tickets de empresas reportando problemas con la plataforma';
+        : 'Tickets creados con plantillas de servicio de alcance global';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -123,10 +125,14 @@ const TicketsPage = () => {
                 <div className="flex gap-2">
                     {/* Only show "New Ticket" button for local (internal) tickets */}
                     {isLocalView && (
-                        <Button onClick={() => navigate('/admin/crear-ticket')} className="bg-blue-600 hover:bg-blue-700">
+                        <ProtectedButton
+                            permission={PERMISSIONS.TICKETS_CREATE}
+                            onClick={() => navigate('/admin/crear-ticket')}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
                             <Plus className="mr-2 h-4 w-4" />
                             Nuevo Ticket
-                        </Button>
+                        </ProtectedButton>
                     )}
                 </div>
             </div>

@@ -33,7 +33,10 @@ export const PERMISOS = {
 
     TICKETS_VIEW_ALL_GLOBAL: 'tickets.view_all_global', // Ver tickets de CUALQUIER empresa
     TICKETS_DELETE_GLOBAL: 'tickets.delete_global',
-    TICKETS_MANAGE_GLOBAL: 'tickets.manage_global', // Editar/Asignar globalmente
+    TICKETS_ASSIGN_GLOBAL: 'tickets.assign_global', // Asignar tickets globalmente
+    TICKETS_EDIT_GLOBAL: 'tickets.edit_global', // Editar tickets globalmente
+    TICKETS_CHANGE_STATUS_GLOBAL: 'tickets.change_status_global', // Cambiar estado globalmente
+    TICKETS_CHANGE_PRIORITY_GLOBAL: 'tickets.change_priority_global', // Cambiar prioridad globalmente
 
     USERS_VIEW_GLOBAL: 'users.view_global', // Ver usuarios de todas las empresas
 
@@ -47,11 +50,19 @@ export const PERMISOS = {
 
     // ROLES SYSTEM
     ROLES_VIEW: 'roles.view',
-    ROLES_MANAGE: 'roles.manage', // Create, edit, delete roles
+    ROLES_CREATE: 'roles.create',
+    ROLES_EDIT: 'roles.edit',
+    ROLES_DELETE: 'roles.delete',
 
     // GESTIÓN DE CATÁLOGOS DE SERVICIOS
-    SERVICIOS_MANAGE_LOCAL: 'servicios.manage_local', // CRUD en catálogo de la propia empresa
-    SERVICIOS_MANAGE_GLOBAL: 'servicios.manage_global', // CRUD en catálogo de Aurontek para clientes
+    SERVICIOS_CREATE_LOCAL: 'servicios.create_local',
+    SERVICIOS_EDIT_LOCAL: 'servicios.edit_local',
+    SERVICIOS_DELETE_LOCAL: 'servicios.delete_local',
+    SERVICIOS_VIEW_LOCAL: 'servicios.view_local',
+    SERVICIOS_CREATE_GLOBAL: 'servicios.create_global',
+    SERVICIOS_EDIT_GLOBAL: 'servicios.edit_global',
+    SERVICIOS_DELETE_GLOBAL: 'servicios.delete_global',
+    SERVICIOS_VIEW_GLOBAL: 'servicios.view_global',
 
     // CARGA MASIVA
     SERVICIOS_IMPORT: 'servicios.import', // Carga masiva de servicios desde CSV
@@ -62,11 +73,22 @@ export const PERMISOS = {
     USERS_RECOVER_PASSWORD_LOCAL: 'users.recover_password_local', // Permite a un admin local iniciar la recuperación para sus usuarios
 
     // GESTIÓN DE ADMINISTRADORES (ROOT ONLY)
-    ADMINS_MANAGE: 'admins.manage', // CRUD en la colección de Admins
+    ADMINS_CREATE: 'admins.create',
+    ADMINS_VIEW: 'admins.view',
+    ADMINS_EDIT: 'admins.edit',
+    ADMINS_DELETE: 'admins.delete',
 
     // HABILITIES SYSTEM
     HABILITIES_VIEW: 'habilities.view',
-    HABILITIES_MANAGE: 'habilities.manage',
+    HABILITIES_CREATE: 'habilities.create',
+    HABILITIES_EDIT: 'habilities.edit',
+    HABILITIES_DELETE: 'habilities.delete',
+
+    // CARE GROUPS (Grupos de Atención)
+    CARE_GROUPS_VIEW: 'care_groups.view',
+    CARE_GROUPS_CREATE: 'care_groups.create',
+    CARE_GROUPS_UPDATE: 'care_groups.update',
+    CARE_GROUPS_DELETE: 'care_groups.delete',
 };
 
 // ==========================================
@@ -90,13 +112,22 @@ export const PERMISOS_LOCALES_ADMIN = [
     PERMISOS.TICKETS_ASSIGN,
     PERMISOS.TICKETS_DELEGATE,
     PERMISOS.TICKETS_CHANGE_STATUS,
-    PERMISOS.SERVICIOS_MANAGE_LOCAL, // Gestiona su propio catálogo
+    PERMISOS.SERVICIOS_CREATE_LOCAL,
+    PERMISOS.SERVICIOS_EDIT_LOCAL,
+    PERMISOS.SERVICIOS_DELETE_LOCAL,
+    PERMISOS.SERVICIOS_VIEW_LOCAL,
     PERMISOS.SERVICIOS_IMPORT,
     PERMISOS.USUARIOS_IMPORT,
     PERMISOS.USUARIOS_EXPORT_LAYOUT,
-    PERMISOS.USUARIOS_EXPORT_LAYOUT,
     PERMISOS.USERS_RECOVER_PASSWORD_LOCAL, // Nuevo permiso para admin local
-    PERMISOS.HABILITIES_MANAGE // Added to allow deletion
+    PERMISOS.HABILITIES_CREATE,
+    PERMISOS.HABILITIES_EDIT,
+    PERMISOS.HABILITIES_DELETE,
+    PERMISOS.HABILITIES_VIEW,
+    PERMISOS.ROLES_CREATE,
+    PERMISOS.ROLES_EDIT,
+    PERMISOS.ROLES_DELETE,
+    PERMISOS.ROLES_VIEW
 ];
 
 // Un usuario básico de cliente (ej. empleado)
@@ -121,7 +152,10 @@ export const PERMISOS_ROOT = ['*'];
 // Soporte Global (Aurontek HQ - Helpdesk)
 export const PERMISOS_SOPORTE_GLOBAL = [
     PERMISOS.TICKETS_VIEW_ALL_GLOBAL,
-    PERMISOS.TICKETS_MANAGE_GLOBAL,
+    PERMISOS.TICKETS_ASSIGN_GLOBAL,
+    PERMISOS.TICKETS_EDIT_GLOBAL,
+    PERMISOS.TICKETS_CHANGE_STATUS_GLOBAL,
+    PERMISOS.TICKETS_CHANGE_PRIORITY_GLOBAL,
     PERMISOS.TICKETS_CHANGE_STATUS,
     PERMISOS.USERS_VIEW_GLOBAL
 ];

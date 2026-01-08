@@ -14,6 +14,12 @@ export interface Service {
     precio: number;
     activo: boolean;
     categoria?: string; // Populated or string
+    plantilla?: {
+        campo: string;
+        tipo: 'texto' | 'numero' | 'fecha' | 'lista';
+        opciones?: string[];
+        requerido: boolean;
+    }[];
 }
 
 export const servicesService = {

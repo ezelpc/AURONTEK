@@ -84,7 +84,7 @@ else:
 
 USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SERVICE_URL', 'http://localhost:3001')
 TICKETS_SERVICE_URL = os.getenv('TICKETS_SERVICE_URL', 'http://localhost:3002')
-SERVICE_TOKEN = os.getenv('SERVICE_TOKEN')
+SERVICE_TOKEN = os.getenv('SERVICE_TOKEN','23022e6bdb08ad3631c48af69253c5528f42cbed36b024b2fc041c0cfb23723b')
 
 # Inicializar servicios
 ticket_classifier = TicketClassifier()

@@ -49,7 +49,7 @@ export interface ITicket extends Document {
 
 // Enums exportables para controllers y validaciones
 export const estadosTicket = ['abierto', 'en_proceso', 'en_espera', 'resuelto', 'cerrado'] as const;
-export const prioridades = ['baja', 'media', 'alta', 'crítica'] as const;
+export const prioridades = ['baja', 'media', 'alta', 'crítica', 'critica'] as const;
 export const tipos = ['incidente', 'solicitud', 'consulta', 'problema', 'requerimiento'] as const;
 
 const ticketSchema = new Schema<ITicket>({

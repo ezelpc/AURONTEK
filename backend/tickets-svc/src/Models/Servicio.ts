@@ -14,6 +14,12 @@ export interface IServicio extends Document {
   gruposDeAtencion?: string;
   empresaId?: mongoose.Types.ObjectId;
   alcance: 'global' | 'local';
+  plantilla?: {
+    campo: string;
+    tipo: 'texto' | 'numero' | 'fecha' | 'lista';
+    opciones?: string[]; // Para tipo lista
+    requerido: boolean;
+  }[];
   activo: boolean;
 }
 
@@ -31,6 +37,12 @@ const servicioSchema: Schema = new Schema({
   gruposDeAtencion: { type: String },
   empresaId: { type: Schema.Types.ObjectId, ref: 'Empresa' },
   alcance: { type: String, enum: ['global', 'local'], default: 'local' },
+  plantilla: [{
+    campo: { type: String, required: true },
+    tipo: { type: String, enum: ['texto', 'numero', 'fecha', 'lista'], default: 'texto' },
+    opciones: [String],
+    requerido: { type: Boolean, default: false }
+  }],
   activo: { type: Boolean, default: true }
 });
 

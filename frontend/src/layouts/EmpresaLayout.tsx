@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, PlusCircle, Building2, Users, Globe, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Building2, Users, Globe, ShieldCheck, Briefcase } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { ProtectedElement } from '@/components/ProtectedElement';
 import { UserMenu } from '@/components/UserMenu';
@@ -40,19 +40,23 @@ const EmpresaLayout = () => {
                     </div>
 
                     <nav className="hidden md:flex items-center gap-2">
-                        <NavbarItem to="/empresa/dashboard" icon={LayoutDashboard} label={t('dashboard')} end />
+                        <NavbarItem to="/empresa/dashboard" icon={LayoutDashboard} label={t('common.nav.dashboard')} end />
                         <NavbarItem to="/empresa/nuevo-ticket" icon={PlusCircle} label="Reportar" />
 
                         <ProtectedElement permission="users.view">
-                            <NavbarItem to="/empresa/equipo" icon={Users} label={t('my_team')} />
+                            <NavbarItem to="/empresa/equipo" icon={Users} label={t('common.nav.users')} />
                         </ProtectedElement>
 
-                        <ProtectedElement permission="servicios.manage_local">
-                            <NavbarItem to="/empresa/servicios" icon={Globe} label={t('services')} />
+                        <ProtectedElement permission="servicios.view_local">
+                            <NavbarItem to="/empresa/servicios" icon={Globe} label={t('common.nav.services')} />
+                        </ProtectedElement>
+
+                        <ProtectedElement permission="care_groups.view">
+                            <NavbarItem to="/empresa/habilidades" icon={Briefcase} label={t('common.nav.care_groups')} />
                         </ProtectedElement>
 
                         <ProtectedElement permission="roles.view">
-                            <NavbarItem to="/empresa/roles" icon={ShieldCheck} label={t('roles')} />
+                            <NavbarItem to="/empresa/roles" icon={ShieldCheck} label={t('common.nav.roles')} />
                         </ProtectedElement>
                     </nav>
 

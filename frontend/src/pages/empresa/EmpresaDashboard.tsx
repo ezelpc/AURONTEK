@@ -22,14 +22,15 @@ const StatCard = ({ title, value, icon: Icon, color, description }: any) => (
 );
 
 const EmpresaDashboard = () => {
-    const { user } = useAuthStore();
+    const { user, hasPermission } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useTranslation();
 
     // Fetch Tickets (Backend debe filtrar por empresa)
     const { data: tickets = [], isLoading } = useQuery({
-        queryKey: ['my-tickets', user?.empresaId],
-        queryFn: () => ticketsService.getTickets({ empresaId: user?.empresaId })
+        queryKey: ['my-tickets', user?.empresaId, user?.id],
+        queryFn: () => ticketsService.getTickets({ empresaId: user?.empresaId, usuarioCreador: user?.id }),
+        enabled: !!user?.id, // Solo ejecutar si el user.id existe
     });
 
     // Calcular Estadísticas
@@ -143,28 +144,35 @@ const EmpresaDashboard = () => {
                     </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
-                <Card className="col-span-3 md:col-span-2 border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle>{t('company_portal.dashboard.quick_actions.title')}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-3">
-                        <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/servicios')}>
-                            <Clock className="mr-2 h-4 w-4" />
-                            <div className="flex flex-col items-start">
-                                <span>{t('company_portal.dashboard.quick_actions.catalog')}</span>
-                                <span className="text-xs text-slate-500 font-normal">{t('company_portal.dashboard.quick_actions.catalog_desc')}</span>
-                            </div>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/equipo')}>
-                            <Ticket className="mr-2 h-4 w-4" />
-                            <div className="flex flex-col items-start">
-                                <span>{t('company_portal.dashboard.quick_actions.team')}</span>
-                                <span className="text-xs text-slate-500 font-normal">{t('company_portal.dashboard.quick_actions.team_desc')}</span>
-                            </div>
-                        </Button>
-                    </CardContent>
-                </Card>
+                {/* Quick Actions - Only if user has permission to manage services or users */}
+                {(hasPermission('servicios.view_local') || hasPermission('users.view')) && (
+                    <Card className="col-span-3 md:col-span-2 border-slate-200 shadow-sm">
+                        <CardHeader>
+                            <CardTitle>{t('company_portal.dashboard.quick_actions.title')}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-3">
+                            {hasPermission('servicios.view_local') && (
+                                <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/servicios')}>
+                                    <Clock className="mr-2 h-4 w-4" />
+                                    <div className="flex flex-col items-start">
+                                        <span>{t('company_portal.dashboard.quick_actions.catalog')}</span>
+                                        <span className="text-xs text-slate-500 font-normal">{t('company_portal.dashboard.quick_actions.catalog_desc')}</span>
+                                    </div>
+                                </Button>
+                            )}
+
+                            {hasPermission('users.view') && (
+                                <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/equipo')}>
+                                    <Ticket className="mr-2 h-4 w-4" />
+                                    <div className="flex flex-col items-start">
+                                        <span>{t('company_portal.dashboard.quick_actions.team')}</span>
+                                        <span className="text-xs text-slate-500 font-normal">{t('company_portal.dashboard.quick_actions.team_desc')}</span>
+                                    </div>
+                                </Button>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </div>
     );

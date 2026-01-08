@@ -120,6 +120,15 @@ const crearUsuario = async (req: Request, res: Response) => {
     const rolUsuario = req.usuario.rol;
     const datosUsuario = req.body;
 
+    // Normalize email field: Frontend might send 'email' or 'correo'
+    if (!datosUsuario.correo && datosUsuario.email) {
+      datosUsuario.correo = datosUsuario.email;
+    }
+
+    if (!datosUsuario.correo) {
+      return res.status(400).json({ msg: 'El correo electrónico es requerido.' });
+    }
+
     // Validar Permisos ("Nadie da lo que no tiene")
     // Obtener permisos del creador desde el token (ya inyectados en middleware auth)
     const permisosCreador = req.usuario.permisos || [];
@@ -204,7 +213,7 @@ const detalleUsuario = async (req: Request, res: Response) => {
   try {
     const usuario = await usuarioService.obtenerUsuarioPorId(usuarioId);
 
-    if (!usuario.empresa || usuario.empresa.toString() !== empresaId) {
+    if (!usuario.empresa || String(usuario.empresa) !== String(empresaId)) {
       return res.status(403).json({ msg: 'Acceso denegado a este usuario.' });
     }
     res.json(usuario);
@@ -230,7 +239,8 @@ const detalleUsuarioFlexible = async (req: Request, res: Response) => {
     }
 
     // Si es usuario normal, verificar que pertenezca a su empresa
-    if (!req.usuario || !usuario.empresa || usuario.empresa.toString() !== req.usuario.empresaId) {
+    if (!req.usuario || !usuario.empresa || String(usuario.empresa) !== String(req.usuario.empresaId)) {
+      console.log(`[AUTH FAIL] Scope Mismatch: UserEmpresa=${usuario.empresa} vs AdminEmpresa=${req.usuario?.empresaId}`);
       return res.status(403).json({ msg: 'Acceso denegado a este usuario.' });
     }
 
@@ -274,7 +284,9 @@ const modificarUsuario = async (req: Request, res: Response) => {
 
     // Si NO es admin global, validar empresa
     if (!['admin-general', 'admin-subroot'].includes(rolUsuario)) {
-      if (!usuario.empresa || usuario.empresa.toString() !== empresaId) {
+      const userEmpresaId = usuario.empresa?._id || usuario.empresa;
+      if (!userEmpresaId || String(userEmpresaId) !== String(empresaId)) {
+        console.log(`[UPDATE FAIL] Scope Mismatch: UserEmpresaID=${userEmpresaId} vs AdminEmpresa=${empresaId}`);
         return res.status(403).json({ msg: 'Acceso denegado a este usuario.' });
       }
     }
@@ -318,7 +330,9 @@ const eliminarUsuario = async (req: Request, res: Response) => {
 
     // Admin-general y admin-subroot pueden eliminar usuarios de cualquier empresa
     if (!['admin-general', 'admin-subroot'].includes(solicitanteRol)) {
-      if (!usuario.empresa || usuario.empresa.toString() !== empresaId) {
+      const userEmpresaId = usuario.empresa?._id || usuario.empresa;
+      if (!userEmpresaId || String(userEmpresaId) !== String(empresaId)) {
+        console.log(`[DELETE FAIL] Scope Mismatch: UserEmpresaID=${userEmpresaId} vs AdminEmpresa=${empresaId}`);
         return res.status(403).json({ msg: 'Acceso denegado a este usuario.' });
       }
     }
