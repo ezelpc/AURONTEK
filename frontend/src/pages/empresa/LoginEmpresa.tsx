@@ -16,8 +16,10 @@ const LoginEmpresa = () => {
     const login = useAuthStore((state) => state.login);
     const recaptchaRef = useRef<ReCAPTCHA>(null);
 
-    // Obtener codigo del state (navegación anterior)
-    const codigoAcceso = location.state?.codigo;
+    // Obtener codigo del state (navegación anterior) o del localStorage
+    const codigoAccesoFromState = location.state?.codigo;
+    const codigoAccesoFromStorage = localStorage.getItem('companyAccessCode');
+    const codigoAcceso = codigoAccesoFromState || codigoAccesoFromStorage;
     const empresaNombre = location.state?.empresaNombre; // Recuperamos nombre
 
     const [email, setEmail] = useState('');
@@ -29,8 +31,9 @@ const LoginEmpresa = () => {
 
     useEffect(() => {
         if (!codigoAcceso) {
-            // Si no hay código, volver al validación
+            // Si no hay código ni en state ni en localStorage, volver a validación
             navigate('/acceso-empresa');
+            return;
         }
 
         // Cargar email guardado si existe

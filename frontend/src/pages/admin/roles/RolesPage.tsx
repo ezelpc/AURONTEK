@@ -166,7 +166,7 @@ const RolesPage = () => {
                     <p className="text-slate-500">{t('roles.subtitle')}</p>
                 </div>
                 <ProtectedButton
-                    permission={[PERMISSIONS.ROLES_CREATE, PERMISSIONS.ROLES_MANAGE, 'roles.create', 'roles.edit']}
+                    permission={PERMISSIONS.ROLES_CREATE}
                     showTooltip={true}
                     onClick={() => handleOpenDialog()}
                 >
@@ -210,7 +210,7 @@ const RolesPage = () => {
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <ProtectedButton
-                                                    permission={[PERMISSIONS.ROLES_UPDATE, PERMISSIONS.ROLES_EDIT, PERMISSIONS.ROLES_MANAGE, 'roles.edit']}
+                                                    permission={PERMISSIONS.ROLES_EDIT}
                                                     showTooltip={true}
                                                     variant="ghost"
                                                     size="icon"
@@ -221,7 +221,7 @@ const RolesPage = () => {
                                                 </ProtectedButton>
                                                 {!isSystemRole(role) && (
                                                     <ProtectedButton
-                                                        permission={[PERMISSIONS.ROLES_DELETE, PERMISSIONS.ROLES_MANAGE, 'roles.delete']}
+                                                        permission={PERMISSIONS.ROLES_DELETE}
                                                         showTooltip={true}
                                                         variant="ghost"
                                                         size="icon"
@@ -353,9 +353,15 @@ const RolesPage = () => {
 
                     <DialogFooter className="mt-4">
                         <Button variant="outline" onClick={handleCloseDialog}>{t('common.cancel')}</Button>
-                        <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
+                        <ProtectedButton
+                            permission={editingRole ? PERMISSIONS.ROLES_EDIT : PERMISSIONS.ROLES_CREATE}
+                            onClick={handleSave}
+                            disabled={createMutation.isPending || updateMutation.isPending}
+                            showTooltip={true}
+                            tooltipMessage={editingRole ? "No autorizado para editar roles" : "No autorizado para crear roles"}
+                        >
                             <Save className="mr-2 h-4 w-4" /> {t('common.save')}
-                        </Button>
+                        </ProtectedButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

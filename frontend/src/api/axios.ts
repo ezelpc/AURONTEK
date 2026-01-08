@@ -38,7 +38,13 @@ api.interceptors.response.use(
             if (isAuthRoute) {
                 console.warn('❌ Error de autenticación, cerrando sesión');
                 useAuthStore.getState().logout();
-                window.location.href = '/access';
+
+                // Determinar ruta de redirección basada en el path actual
+                const currentPath = window.location.pathname;
+                const isAdminPath = currentPath.startsWith('/admin');
+                const redirectPath = isAdminPath ? '/admin/login' : '/acceso-empresa';
+
+                window.location.href = redirectPath;
             } else {
                 console.warn('⚠️ Request no autorizado (401):', originalRequest.url);
                 // No hacer logout automático, dejar que el componente maneje el error
