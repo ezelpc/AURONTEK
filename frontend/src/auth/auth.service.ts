@@ -42,5 +42,11 @@ export const authService = {
             console.error('❌ [auth.service] Error al actualizar estado:', error.response?.data || error.message);
             throw error;
         }
+    },
+
+    // Refrescar permisos del usuario actual
+    refreshPermissions: async (): Promise<{ permisos: string[], rol: string, updatedAt: Date }> => {
+        const response = await api.get('/auth/refresh-permissions');
+        return response.data;
     }
 };

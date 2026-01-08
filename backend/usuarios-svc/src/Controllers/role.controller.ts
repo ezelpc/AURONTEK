@@ -7,18 +7,25 @@ import { PERMISSION_GROUPS } from '../Constants/permissions';
 export const listarRoles = async (req: Request, res: Response) => {
     try {
         const { empresaId, scope } = req.query;
-        const usuarioRol = req.usuario.rol;
         const usuarioEmpresaId = req.usuario.empresaId;
 
         let query: any = { activo: true };
 
-        // 1. Admin General/Subroot (Global Visibility)
-        if (['admin-general', 'admin-subroot'].includes(usuarioRol)) {
-            // Can see all roles.
-            // If scope is 'internal', show only Global/Internal Roles (empresa: null OR AurontekHQ)
+        // Si el usuario tiene empresaId, mostrar roles de su empresa + roles globales
+        if (usuarioEmpresaId) {
+            query = {
+                $or: [
+                    { empresa: usuarioEmpresaId },
+                    { empresa: null },
+                    { empresa: { $exists: false } }
+                ],
+                activo: true
+            };
+        }
+        // Si no tiene empresaId (admin global), puede filtrar por empresa o ver todos
+        else {
             if (scope === 'internal') {
-                // Find AurontekHQ ID
-                // Note: hardcoding RFC 'AURONTEK001' or name 'Aurontek HQ' based on seed knowledge
+                // Mostrar solo roles globales/internos
                 const hq = await Empresa.findOne({ rfc: 'AURONTEK001' });
                 const hqId = hq ? hq._id : null;
 
@@ -36,9 +43,8 @@ export const listarRoles = async (req: Request, res: Response) => {
                     activo: true
                 };
             }
-            // If empresaId query param is provided, filter by it.
             else if (empresaId) {
-                console.log('🔍 Filtering roles by empresaId:', empresaId);
+                // Filtrar por empresa específica
                 query = {
                     $or: [
                         { empresa: empresaId },
@@ -47,37 +53,12 @@ export const listarRoles = async (req: Request, res: Response) => {
                     activo: true
                 };
             }
-            // If no empresaId and no scope internal, show ALL roles (Global + All Companies)
-        }
-        // 2. Admin Interno (Company Scoped)
-        else if (usuarioRol === 'admin-interno') {
-            if (!usuarioEmpresaId) {
-                return res.status(403).json({ msg: 'Usuario sin empresa asignada' });
-            }
-            // Show only Own Company Roles + Global Roles (if we want them to see base roles)
-            // Or just own company roles.
-            // Usually internal admins should only manage their own roles.
-            // But they might need to assign "common" roles.
-            // For management, list only what they can EDIT? Or assign?
-            // "generar roles... independientes" implies custom roles.
-            query = {
-                $or: [
-                    { empresa: usuarioEmpresaId },
-                    { empresa: null }
-                ],
-                activo: true
-            };
-        }
-        else {
-            return res.status(403).json({ msg: 'No autorizado para ver roles' });
+            // Si no hay filtros, mostrar todos los roles
         }
 
         const roles = await Role.find(query)
             .populate('empresa', 'nombre rfc')
             .sort({ creado: -1 });
-
-        console.log('✅ Roles found:', roles.length);
-        console.log('✅ Roles:', roles.map(r => ({ nombre: r.nombre, empresa: r.empresa })));
 
         res.json(roles);
     } catch (error: any) {
@@ -90,36 +71,11 @@ export const listarRoles = async (req: Request, res: Response) => {
 export const crearRole = async (req: Request, res: Response) => {
     try {
         const { nombre, description, permisos, empresaId } = req.body;
-        const usuarioRol = req.usuario.rol;
         const usuarioEmpresaId = req.usuario.empresaId;
 
-        // Validation based on Creator
-        let targetEmpresaId = null;
-
-        // Admin General/Subroot
-        if (['admin-general', 'admin-subroot'].includes(usuarioRol)) {
-            // Can create for any company OR Global (if no empresaId)
-            // User requirement: "admin-general y admin-subroot podremos ver todos... en caso de que se requiera un alta... y el admin-interno tenga problemas"
-            // So they can specify the target company.
-
-            if (empresaId) {
-                targetEmpresaId = empresaId;
-            } else {
-                // Si no se especifica empresa, y es Super Admin, asignar a Aurontek HQ por defecto
-                // en lugar de dejarlo Global (null), si así se desea para roles administrativos internos.
-                const hq = await Empresa.findOne({ rfc: 'AURONTEK001' });
-                targetEmpresaId = hq ? hq._id : null;
-            }
-        }
-        // Admin Interno
-        else if (usuarioRol === 'admin-interno') {
-            // Must create for OWN company
-            if (!usuarioEmpresaId) return res.status(403).json({ msg: 'Usuario sin empresa' });
-            targetEmpresaId = usuarioEmpresaId;
-        }
-        else {
-            return res.status(403).json({ msg: 'No autorizado para crear roles' });
-        }
+        // Si el usuario tiene empresaId, crear rol para su empresa
+        // Si no tiene empresaId (admin global), puede especificar la empresa o dejarla null
+        let targetEmpresaId = empresaId || usuarioEmpresaId || null;
 
         // Slug generation
         const slug = nombre.toLowerCase().replace(/ /g, '-');
@@ -140,8 +96,8 @@ export const crearRole = async (req: Request, res: Response) => {
             descripcion: description,
             empresa: targetEmpresaId,
             permisos,
-            nivel: usuarioRol === 'admin-interno' ? 50 : 100, // Defines hierarchy
-            creadoPor: req.usuario._id // Assuming ID is available
+            nivel: 50, // Default level
+            creadoPor: req.usuario._id
         });
 
         await nuevoRole.save();
@@ -158,49 +114,20 @@ export const actualizarRole = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { nombre, description, permisos } = req.body;
-        const usuarioRol = req.usuario.rol;
         const usuarioEmpresaId = req.usuario.empresaId;
 
         const role = await Role.findById(id);
         if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
 
-        // --- PROTECCIONES ESTRICTAS POR ROL ---
-
-        // 1. ADMIN GENERAL: INMUTABLE
-        if (role.slug === 'admin-general') {
-            return res.status(403).json({ msg: 'Los permisos de Admin General NO pueden ser modificados por nadie.' });
+        // Protección de roles del sistema (inmutables)
+        const systemRoles = ['admin-general', 'admin-subroot', 'admin-interno', 'administrador-interno'];
+        if (systemRoles.includes(role.slug)) {
+            return res.status(403).json({ msg: 'Los roles del sistema no pueden ser modificados.' });
         }
 
-        // 2. ADMIN INTERNO: PROTEGIDO (Nadie lo toca, "a excepcion de admin interno" se refiere a que NO se puede cambiar)
-        // Interpretación: "a todos los roles se les ppueden cambiar... a excepcion de admin interno" => Admin Interno es inmutable?
-        // O "solo admin interno puede cambiarlos"? "a excepcion de admin interno, para esto debe ser algun resolutor externo..."
-        // Parece que el usuario quiere decir: "Todos editables, EXCEPTO admin-interno (es fijo)".
-        // Si se requiere cambiar admin-interno, debe ser un 'resolutor externo con permisos' (soporte plataforma?) o admin sistema.
-        // Asumiremos Protección contra edición para usuarios normales, pero permitida para SUper Admin?
-        // User: "a excepcion de admin interno... para esto debe ser algun resolutor externo... o un admin subroot o un admin general"
-        // AH! Significa que el Admin Interno NO PUEDE cambiarse a sí mismo, pero los externos/superiores SI pueden.
-        // Entonces: Si quien edita es 'admin-interno', NO PUEDE editar su propio rol base.
-        if (role.slug === 'admin-interno' && usuarioRol === 'admin-interno') {
-            return res.status(403).json({ msg: 'El rol Admin Interno no puede modificarse a sí mismo. Requiere un administrador superior.' });
-        }
-
-        // 3. ADMIN SUBROOT: Solo Admin General puede editarlo
-        if (role.slug === 'admin-subroot' && usuarioRol !== 'admin-general') {
-            return res.status(403).json({ msg: 'Solo el Admin General puede modificar el rol Admin Subroot.' });
-        }
-
-
-        // Scope Check: Can this user edit this role?
-        const allowedEditors = ['admin-general', 'admin-subroot', 'resolutor-interno', 'soporte-plataforma']; // Added resolvers if they have permission
-        const hasPermission = (req.usuario.permisos || []).includes('roles.manage') || allowedEditors.includes(usuarioRol); // Simplificado
-
-        if (!hasPermission) {
-            // Check specifically for admin-interno editing OWN company roles (except admin-interno itself, checked above)
-            if (usuarioRol === 'admin-interno' && String(role.empresa) === String(usuarioEmpresaId)) {
-                // Allowed
-            } else {
-                return res.status(403).json({ msg: 'No autorizado para editar este rol' });
-            }
+        // Verificar scope: solo puede editar roles de su propia empresa
+        if (usuarioEmpresaId && String(role.empresa) !== String(usuarioEmpresaId)) {
+            return res.status(403).json({ msg: 'No autorizado para editar este rol' });
         }
 
         // Guardar valores originales para la sincronización
@@ -254,7 +181,7 @@ export const actualizarRole = async (req: Request, res: Response) => {
                 }
 
                 if (!matchesCompany) {
-                    console.log(`   ⏭️ Saltando usuario ${user.correo} (Empresa no coincide: Usr=${user.empresa} vs Rol=${role.empresa})`);
+                    console.log(`   ⏭️ Saltando usuario ${user.correo} (Empresa no coincide)`);
                     continue;
                 }
 
@@ -297,29 +224,22 @@ export const actualizarRole = async (req: Request, res: Response) => {
 export const eliminarRole = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const usuarioRol = req.usuario.rol;
         const usuarioEmpresaId = req.usuario.empresaId;
 
         const role = await Role.findById(id);
         if (!role) return res.status(404).json({ msg: 'Rol no encontrado' });
 
-        // Authorization
-        if (['admin-general', 'admin-subroot'].includes(usuarioRol)) {
-            // Allowed
-        } else if (usuarioRol === 'admin-interno') {
-            if (String(role.empresa) !== String(usuarioEmpresaId)) {
-                return res.status(403).json({ msg: 'No autorizado para eliminar este rol' });
-            }
-        } else {
-            return res.status(403).json({ msg: 'No autorizado' });
+        // Protección de roles del sistema
+        const systemRoles = ['admin-general', 'admin-subroot', 'admin-interno', 'administrador-interno'];
+        if (systemRoles.includes(role.slug)) {
+            return res.status(403).json({ msg: 'Los roles del sistema no pueden ser eliminados.' });
         }
 
-        // Soft Delete or Hard Delete?
-        // Usually Soft Delete is safer, but user might expect removal.
-        // Let's do Soft Delete (activo: false) or Hard Delete?
-        // If "crud no sirve", they probably expect it gone.
-        // Let's do Hard Delete for custom roles, but protect system logic?
-        // For now, simple Hard Delete.
+        // Verificar scope: solo puede eliminar roles de su propia empresa
+        if (usuarioEmpresaId && String(role.empresa) !== String(usuarioEmpresaId)) {
+            return res.status(403).json({ msg: 'No autorizado para eliminar este rol' });
+        }
+
         await Role.findByIdAndDelete(id);
         res.json({ msg: 'Rol eliminado correctamente' });
 

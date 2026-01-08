@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
+import { usePermissionRefresh } from '@/hooks/usePermissionRefresh';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, PlusCircle, Building2, Users, Globe, ShieldCheck, Briefcase } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
@@ -26,6 +27,9 @@ const NavbarItem = ({ to, icon: Icon, label, end = false }: { to: string, icon: 
 const EmpresaLayout = () => {
     const { user } = useAuthStore();
     const { t } = useTranslation();
+
+    // Auto-refresh permisos cada 5 minutos
+    usePermissionRefresh(5);
 
     if (!user) return null;
 

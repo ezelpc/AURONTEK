@@ -22,6 +22,10 @@ const LoginEmpresa = () => {
     const codigoAcceso = codigoAccesoFromState || codigoAccesoFromStorage;
     const empresaNombre = location.state?.empresaNombre; // Recuperamos nombre
 
+    console.log('🔍 [LoginEmpresa] codigoAccesoFromState:', codigoAccesoFromState);
+    console.log('🔍 [LoginEmpresa] codigoAccesoFromStorage:', codigoAccesoFromStorage);
+    console.log('🔍 [LoginEmpresa] codigoAcceso final:', codigoAcceso);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -30,8 +34,10 @@ const LoginEmpresa = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
+        console.log('🔍 [LoginEmpresa useEffect] codigoAcceso:', codigoAcceso);
         if (!codigoAcceso) {
             // Si no hay código ni en state ni en localStorage, volver a validación
+            console.log('⚠️ [LoginEmpresa] No hay código, redirigiendo a /acceso-empresa');
             navigate('/acceso-empresa');
             return;
         }

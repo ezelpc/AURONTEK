@@ -13,6 +13,7 @@ interface AuthState {
     setUser: (user: User) => void;
     login: (token: string, user: User) => void;
     logout: () => void;
+    refreshPermissions: () => Promise<void>;
 
     // Permission Helper
     hasPermission: (permission: string) => boolean;
@@ -47,6 +48,28 @@ export const useAuthStore = create<AuthState>()(
                 set({ token: null, user: null, isAuthenticated: false });
                 // Automatically set status to offline (gray)
                 useUIStore.getState().setStatus('offline');
+            },
+
+            refreshPermissions: async () => {
+                try {
+                    const { authService } = await import('@/auth/auth.service');
+                    const data = await authService.refreshPermissions();
+
+                    // Actualizar solo permisos del usuario
+                    const currentUser = get().user;
+                    if (currentUser) {
+                        set({
+                            user: {
+                                ...currentUser,
+                                permisos: data.permisos,
+                                rol: data.rol
+                            }
+                        });
+                        console.log('✅ Permisos actualizados:', data.permisos);
+                    }
+                } catch (error) {
+                    console.error('Error refreshing permissions:', error);
+                }
             },
 
             hasPermission: (permission: string) => {

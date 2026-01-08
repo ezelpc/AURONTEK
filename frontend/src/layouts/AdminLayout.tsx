@@ -1,6 +1,7 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/auth/auth.store';
+import { usePermissionRefresh } from '@/hooks/usePermissionRefresh';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard,
@@ -148,6 +149,9 @@ const AdminLayout = () => {
     const { t } = useTranslation();
     const [sidebarHovered, setSidebarHovered] = useState(false);
     const location = useLocation();
+
+    // Auto-refresh permisos cada 5 minutos
+    usePermissionRefresh(5);
 
     // Efecto para conectar socket y escuchar notificaciones
     useEffect(() => {

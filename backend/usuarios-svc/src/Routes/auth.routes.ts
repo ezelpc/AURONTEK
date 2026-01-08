@@ -12,5 +12,6 @@ router.post('/register', [verificarToken, esAdminInterno], authController.regist
 router.post('/logout', verificarToken, authController.logout);
 router.put('/status', verificarToken, authController.updateStatus);
 router.get('/check', verificarToken, authController.check);
+router.get('/refresh-permissions', verificarToken, authController.refreshPermissions);
 
 export default router;

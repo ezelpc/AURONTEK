@@ -459,4 +459,40 @@ const updateStatus = async (req: Request, res: Response) => {
   }
 };
 
-export default { login, register, logout, check, validarCodigoAcceso, forgotPassword, resetPassword, updateStatus };
+// GET /api/auth/refresh-permissions
+// Endpoint para refrescar permisos del usuario sin hacer logout
+const refreshPermissions = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ msg: 'Usuario no autenticado' });
+    }
+
+    // Buscar usuario y popular rol
+    const usuario: any = await Usuario.findById(userId)
+      .populate('rol')
+      .lean();
+
+    if (!usuario) {
+      return res.status(404).json({ msg: 'Usuario no encontrado' });
+    }
+
+    // Obtener permisos del rol
+    let permisos: string[] = [];
+    if (usuario.rol && typeof usuario.rol === 'object') {
+      permisos = usuario.rol.permisos || [];
+    }
+
+    return res.json({
+      permisos,
+      rol: typeof usuario.rol === 'object' ? usuario.rol.nombre : usuario.rol,
+      updatedAt: new Date()
+    });
+  } catch (error: any) {
+    console.error('Error al refrescar permisos:', error);
+    return res.status(500).json({ msg: 'Error al refrescar permisos', error: error.message });
+  }
+};
+
+export default { login, register, logout, check, validarCodigoAcceso, forgotPassword, resetPassword, updateStatus, refreshPermissions };
