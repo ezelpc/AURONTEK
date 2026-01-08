@@ -43,9 +43,11 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
     const navigate = useNavigate()
     const { openChat } = useChatStore()
     const [isOpen, setIsOpen] = useState(false);
-    const { user } = useAuthStore();
+    const { user, hasPermission } = useAuthStore();
 
-    const canDelete = user?.rol === 'admin-general' || user?.rol === 'admin-subroot';
+    // Check permissions strictly (Granular RBAC)
+    const canDelete = hasPermission('tickets.delete');
+    const canChangeStatus = hasPermission('tickets.change_status');
 
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
@@ -112,7 +114,6 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
         }
     };
 
-    const canChangeStatus = ['admin-general', 'admin-subroot', 'admin-interno', 'soporte', 'beca-soporte'].includes(user?.rol || '');
 
     return (
         <>

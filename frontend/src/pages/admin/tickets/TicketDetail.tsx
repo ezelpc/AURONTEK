@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ticketsService } from '@/api/tickets.service';
 
@@ -17,6 +17,7 @@ import { es } from 'date-fns/locale';
 const TicketDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const queryClient = useQueryClient();
     const [showChat, setShowChat] = useState(false);
@@ -77,6 +78,9 @@ const TicketDetail = () => {
     // Usuario dice: "se deshabilita cuando se cierra" -> Cerrado = Disabled.
     const isChatEnabled = ['en_proceso', 'resuelto'].includes(ticket.estado?.toLowerCase());
 
+    // Determine context (admin vs company)
+    const isCompanyPortal = location.pathname.includes('/empresa');
+
     // Auto-open chat if enabled? Or waiting for user click?
     // "te de la opcion de abrir chat" -> User click.
 
@@ -89,10 +93,16 @@ const TicketDetail = () => {
         <div className="max-w-7xl mx-auto pb-10 space-y-6 animate-in fade-in duration-500">
             {/* Header / Nav */}
             <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => navigate('/admin/tickets')} className="text-slate-600">
+                <Button
+                    variant="ghost"
+                    onClick={() => navigate(isCompanyPortal ? '/empresa/dashboard' : '/admin/tickets')}
+                    className="text-slate-600"
+                >
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Volver a Tickets
+                    {isCompanyPortal ? 'Volver al Dashboard' : 'Volver a Tickets'}
                 </Button>
+
+                {/* Show Actions Menu (Items filtered by permissions inside) */}
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-500 mr-2">Acciones:</span>
                     <TicketActionsMenu ticket={ticket} onUpdate={handleUpdate} />

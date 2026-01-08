@@ -55,7 +55,7 @@ const EmpresaLayout = () => {
                             <NavbarItem to="/empresa/servicios" icon={Globe} label={t('common.nav.services')} />
                         </ProtectedElement>
 
-                        <ProtectedElement permission="care_groups.view">
+                        <ProtectedElement permission="habilities.view">
                             <NavbarItem to="/empresa/habilidades" icon={Briefcase} label={t('common.nav.care_groups')} />
                         </ProtectedElement>
 

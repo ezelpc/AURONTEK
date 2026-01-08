@@ -90,7 +90,7 @@ const CompanyUsersPage = () => {
         mutationFn: async (data: LocalUserForm) => {
             return userService.createUser({
                 ...data,
-                empresaId: user?.empresaId,
+                empresa: user?.empresaId, // Backend expects 'empresa'
                 activo: true
             });
         },

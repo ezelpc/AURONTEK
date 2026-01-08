@@ -120,6 +120,11 @@ const crearUsuario = async (req: Request, res: Response) => {
     const rolUsuario = req.usuario.rol;
     const datosUsuario = req.body;
 
+    // Normalize 'empresa' field: Frontend might send 'empresaId'
+    if (!datosUsuario.empresa && datosUsuario.empresaId) {
+      datosUsuario.empresa = datosUsuario.empresaId;
+    }
+
     // Normalize email field: Frontend might send 'email' or 'correo'
     if (!datosUsuario.correo && datosUsuario.email) {
       datosUsuario.correo = datosUsuario.email;

@@ -141,7 +141,7 @@ const CompanyCareGroupsPage = () => {
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <ProtectedButton permission={PERMISSIONS.CARE_GROUPS_CREATE}>
+                        <ProtectedButton permission={PERMISSIONS.HABILITIES_CREATE}>
                             <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
                         </ProtectedButton>
                     </DialogTrigger>
@@ -196,7 +196,7 @@ const CompanyCareGroupsPage = () => {
                                     <TableCell>{group.descripcion || '-'}</TableCell>
                                     <TableCell className="text-right space-x-2">
                                         <ProtectedButton
-                                            permission={PERMISSIONS.CARE_GROUPS_UPDATE}
+                                            permission={PERMISSIONS.HABILITIES_EDIT}
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEdit(group)}
@@ -204,7 +204,7 @@ const CompanyCareGroupsPage = () => {
                                             <Pencil className="h-4 w-4" />
                                         </ProtectedButton>
                                         <ProtectedButton
-                                            permission={PERMISSIONS.CARE_GROUPS_DELETE}
+                                            permission={PERMISSIONS.HABILITIES_DELETE}
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => setDeletingId(group._id || '')}

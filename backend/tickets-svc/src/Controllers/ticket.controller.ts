@@ -186,29 +186,41 @@ const ticketController = {
         return;
       }
 
-      // Modificación: Permitir acceso global a admins de sistema
-      const isGlobalAdmin = ['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '');
+      // Modificación: Uso de Permisos Granulares
+      const permisos = req.usuario?.permisos || [];
+      const isGlobalAdmin = permisos.includes('tickets.view_all_global') || ['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '');
+      const canViewLocal = permisos.includes('tickets.view_all');
 
-      // Verificar permisos por empresa (Si NO es admin global)
-      if (!isGlobalAdmin && ticket.empresaId.toString() !== req.usuario?.empresaId) {
-        res.status(403).json({ msg: 'No autorizado para ver este ticket' });
+      // 1. Acceso Global: Si tiene tickets.view_all_global, pasa directo
+      if (isGlobalAdmin) {
+        res.json(ticket);
         return;
       }
 
-      // Validar acceso según rol
-      const tieneAcceso = (
-        isGlobalAdmin ||
-        req.usuario?.rol === 'admin-interno' ||
-        // req.usuario?.rol === 'admin-general' || // Already covered by isGlobalAdmin
+      // 2. Acceso Local: Si tiene tickets.view_all, validar que sea de su empresa
+      if (canViewLocal && ticket.empresaId.toString() === req.usuario?.empresaId) {
+        res.json(ticket);
+        return;
+      }
+
+      // 3. Acceso por Propiedad/Asignación (para usuarios sin permisos de "ver todo")
+      // - Creador del ticket
+      // - Agente Asignado
+      // - Tutor (si aplica)
+      const esPropio = (
         ticket.usuarioCreador?._id?.toString() === req.usuario?.id ||
         ticket.agenteAsignado?._id?.toString() === req.usuario?.id ||
         ticket.tutor?._id?.toString() === req.usuario?.id
       );
 
-      if (!tieneAcceso) {
-        res.status(403).json({ msg: 'No autorizado para ver este ticket' });
+      if (esPropio) {
+        res.json(ticket);
         return;
       }
+
+      // Si no cumple ninguna, rechazar
+      res.status(403).json({ msg: 'No autorizado para ver este ticket' });
+      return;
 
       res.json(ticket);
     } catch (error: any) {
@@ -235,14 +247,43 @@ const ticketController = {
         return;
       }
 
-      // Autorización: soporte, beca-soporte, admin-interno, admin-general, admin-subroot
-      if (!req.usuario || !['soporte', 'beca-soporte', 'admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario.rol || '')) {
-        res.status(403).json({ msg: 'No autorizado para actualizar el estado' });
+      // Autorización: Uso de Permisos Granulares
+      const permisos = req.usuario?.permisos || [];
+
+      // 1. Permiso Explícito: tickets.change_status
+      const tienePermiso = permisos.includes('tickets.change_status');
+
+      // 2. Roles Legacy (por si acaso, aunque deberíamos movernos a permisos)
+      const rolesPermitidos = ['soporte', 'beca-soporte', 'admin-interno', 'admin-general', 'admin-subroot'];
+      const esRolPermitido = req.usuario && rolesPermitidos.includes(req.usuario.rol || '');
+
+      if (!tienePermiso && !esRolPermitido) {
+        res.status(403).json({ msg: 'No autorizado para actualizar el estado (permiso tickets.change_status requerido)' });
         return;
       }
 
-      const ticket = await ticketService.actualizarEstado(id, estado, req.usuario.id, motivo, req.usuario.nombre);
-      res.json(ticket);
+      // 3. Validar Scope de Empresa (Si no es admin global)
+      // Necesitamos obtener el ticket primero para ver su empresa?
+      // ticketService.actualizarEstado ya lo busca, pero la validación de seguridad debería ser ANTES.
+      // Sin embargo, para eficiencia, confiamos en que el service o una consulta previa lo valide.
+      // Dado que updateTicket verifica existencia, PERO aqui necesitamos validar propiedad.
+
+      // Opcion A: Recuperar ticket para validar empresa
+      const ticket = await ticketService.obtenerTicket(id);
+      if (!ticket) {
+        res.status(404).json({ msg: 'Ticket no encontrado' });
+        return;
+      }
+
+      const isGlobal = permisos.includes('tickets.manage_global') || ['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '');
+      if (!isGlobal && ticket.empresaId.toString() !== req.usuario?.empresaId) {
+        res.status(403).json({ msg: 'No autorizado para modificar tickets de otra empresa' });
+        return;
+      }
+
+      // Si pasa validaciones, proceder
+      const ticketActualizado = await ticketService.actualizarEstado(id, estado, req.usuario!.id, motivo, req.usuario!.nombre);
+      res.json(ticketActualizado);
     } catch (error: any) {
       console.error('Error al actualizar estado:', error);
       res.status(error.message.includes('no encontrado') ? 404 : 500).json({ msg: error.message });

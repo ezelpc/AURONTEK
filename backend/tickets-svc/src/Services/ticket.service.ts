@@ -615,7 +615,8 @@ class TicketService {
         headers: {
           'Authorization': `Bearer ${SERVICE_TOKEN}`,
           'X-Service-Name': 'tickets-svc'
-        }
+        },
+        timeout: 3000 // 3s timeout to avoid blocking ticket creation
       });
 
       const usuarios = response.data; // Asumiendo que devuelve array de usuarios

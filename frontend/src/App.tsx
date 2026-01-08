@@ -64,10 +64,10 @@ function App() {
                         <Route index element={<Navigate to="dashboard" />} />
                         <Route path="dashboard" element={<EmpresaDashboard />} />
                         <Route path="nuevo-ticket" element={<CreateTicket />} />
-                        {/* <Route path="tickets/:id" element={<TicketDetail />} /> */}
+                        <Route path="tickets/:id" element={<TicketDetail />} />
                         <Route path="equipo" element={<CompanyUsersPage />} />
                         <Route path="servicios" element={<CompanyServicesPage />} />
-                        <Route element={<RequirePermission permission="care_groups.view" />}>
+                        <Route element={<RequirePermission permission="habilities.view" />}>
                             <Route path="habilidades" element={<CompanyCareGroupsPage />} />
                         </Route>
                         <Route element={<RequirePermission permission="roles.view" />}>
