@@ -93,7 +93,8 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
     const careGroups = empresaId
         ? allCareGroups.filter((group: any) => {
             const groupEmpresaId = group.empresa?._id || group.empresa?.id || group.empresa || group.empresaId;
-            return String(groupEmpresaId) === String(empresaId);
+            // Show if global (no company) OR belongs to selected company
+            return !groupEmpresaId || String(groupEmpresaId) === String(empresaId);
         })
         : [];
 
