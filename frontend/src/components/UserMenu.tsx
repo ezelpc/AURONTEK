@@ -28,7 +28,15 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
         try {
             // 1. Determinar ruta de redirección ANTES de hacer logout
             const isAdmin = user?.rol?.startsWith('admin');
-            const redirectPath = isAdmin ? '/admin/login' : '/acceso-empresa';
+
+            // Para usuarios de empresa, verificar si hay código guardado
+            let redirectPath = '/acceso-empresa';
+            if (!isAdmin) {
+                const rememberedCode = localStorage.getItem('companyAccessCode');
+                redirectPath = rememberedCode ? '/empresa/login' : '/acceso-empresa';
+            } else {
+                redirectPath = '/admin/login';
+            }
 
             // 2. Actualizar estado a offline (con timeout para no bloquear)
             setStatus('offline');
@@ -43,9 +51,8 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
             // 3. Ejecutar logout (limpia token, user, isAuthenticated)
             logout();
 
-            // 4. Limpiar cualquier dato residual del localStorage
-            localStorage.removeItem('companyAccessCode');
-            localStorage.removeItem('rememberedUser');
+            // 4. NO limpiar companyAccessCode ni rememberedUser si están guardados
+            // Solo limpiar el token de sesión
 
             // 5. Navegar a la página de login correspondiente
             navigate(redirectPath, { replace: true });
