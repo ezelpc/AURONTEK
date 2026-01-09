@@ -11,6 +11,7 @@ class TicketService {
   connection: any = null;
   exchange = 'tickets';
   _connecting = false;
+  _ready = false; // Flag para saber cuando está listo
 
   constructor() {
     this.initializeRabbitMQ();
@@ -22,24 +23,23 @@ class TicketService {
 
     const url = process.env.RABBITMQ_URL || process.env.RABBIT_MQ_URL || 'amqp://localhost';
 
-    // Debug: Mostrar valor de RABBITMQ_URL
-    console.log('🔍 DEBUG - RABBITMQ_URL:', process.env.RABBITMQ_URL ? 'Definida' : 'NO DEFINIDA');
-    console.log('🔍 DEBUG - URL a usar:', url.substring(0, 20) + '...');
+    console.log('📡 [RabbitMQ] Iniciando conexión...');
+    console.log('📡 [RabbitMQ] RABBITMQ_URL:', process.env.RABBITMQ_URL ? 'Definida ✅' : 'NO DEFINIDA ❌');
 
     let attempt = 0;
-    const MAX_ATTEMPTS = 3; // Limitar intentos
+    const MAX_ATTEMPTS = 5;
 
     const connectWithRetry = async (): Promise<void> => {
       attempt++;
 
       if (attempt > MAX_ATTEMPTS) {
-        console.warn(`⚠️  No se pudo conectar a RabbitMQ después de ${MAX_ATTEMPTS} intentos. Continuando sin RabbitMQ...`);
+        console.error(`❌ [RabbitMQ] No se pudo conectar después de ${MAX_ATTEMPTS} intentos`);
         this._connecting = false;
+        this._ready = false;
         return;
       }
 
       try {
-        // Ajuste Robustez: Agregar heartbeat a la URL si no existe para evitar desconexiones de CloudAMQP
         let connectionUrl = url;
         if (url.includes('cloudamqp')) {
           if (!url.includes('?')) {
@@ -49,31 +49,33 @@ class TicketService {
           }
         }
 
-        console.log('🔌 Conectando a RabbitMQ con heartbeat...');
+        console.log(`🔌 [RabbitMQ] Intento ${attempt}/${MAX_ATTEMPTS}...`);
         this.connection = await amqp.connect(connectionUrl);
         this.channel = await this.connection.createConfirmChannel();
         await this.channel.assertExchange(this.exchange, 'topic', { durable: true });
 
         this.connection.on('error', (err: any) => {
-          console.error('RabbitMQ connection error:', err);
+          console.error('❌ [RabbitMQ] Error de conexión:', err.message);
         });
 
         this.connection.on('close', () => {
-          console.warn('RabbitMQ conexión cerrada.');
+          console.warn('⚠️  [RabbitMQ] Conexión cerrada');
           this.channel = null;
           this.connection = null;
-          this._connecting = false;
+          this._ready = false;
         });
 
-        console.log('✅ Conexión establecida con RabbitMQ');
+        console.log('✅ [RabbitMQ] Conectado y listo');
         this._connecting = false;
-      } catch (err) {
-        console.error(`Error al conectar con RabbitMQ (intento ${attempt}/${MAX_ATTEMPTS}):`, err);
+        this._ready = true;
+      } catch (err: any) {
+        console.error(`⚠️  [RabbitMQ] Error intento ${attempt}: ${err.message}`);
         if (attempt < MAX_ATTEMPTS) {
-          setTimeout(connectWithRetry, 1000);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await connectWithRetry();
         } else {
-          console.warn('⚠️  RabbitMQ no disponible. Las funciones de mensajería estarán deshabilitadas.');
           this._connecting = false;
+          this._ready = false;
         }
       }
     };
@@ -82,23 +84,30 @@ class TicketService {
   }
 
   async publicarEvento(routingKey: string, data: any) {
+    // Esperar a que RabbitMQ esté listo (máximo 10 segundos)
+    const startTime = Date.now();
+    while (!this._ready && (Date.now() - startTime) < 10000) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     if (!this.channel) {
-      console.warn(`⚠️  No hay conexión con RabbitMQ. Evento '${routingKey}' no publicado.`);
-      return; // No lanzar error, solo advertir
+      console.warn(`⚠️  [RabbitMQ] No hay conexión. Evento '${routingKey}' no publicado.`);
+      return;
     }
 
     try {
       const payload = Buffer.from(JSON.stringify(data));
+      console.log(`📤 [RabbitMQ] Publicando '${routingKey}' (${payload.length} bytes)`);
+      
       this.channel.publish(this.exchange, routingKey, payload, { persistent: true }, (err: any, ok: any) => {
         if (err) {
-          console.error('Publish error:', err);
+          console.error(`❌ [RabbitMQ] Error publicando '${routingKey}':`, err.message);
         } else {
-          console.log(`Evento publicado: ${routingKey}`);
+          console.log(`✅ [RabbitMQ] Publicado '${routingKey}'`);
         }
       });
-    } catch (error) {
-      console.error('Error al publicar evento:', error);
-      // No lanzar error, solo registrar
+    } catch (error: any) {
+      console.error(`❌ [RabbitMQ] Excepción: ${error.message}`);
     }
   }
 
