@@ -1,96 +1,181 @@
-import mongoose from 'mongoose';
 import Servicio from './Models/Servicio';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import path from 'path';
 
-// Load env
-const ENV = process.env.NODE_ENV || 'development';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/aurontek';
+dotenv.config();
 
-if (ENV === 'development') {
-    const rootEnvPath = path.resolve(__dirname, '../../../.env');
-    const localEnvPath = path.resolve(__dirname, '../.env');
-    dotenv.config({ path: rootEnvPath });
-    dotenv.config({ path: localEnvPath });
-}
-
-const SERVICES = [
+const servicios = [
+    // Infraestructura (2 nuevos + 1 existente)
     {
-        nombre: 'Soporte General PC',
+        nombre: 'Instalación de cableado',
         tipo: 'Requerimiento',
-        categoria: 'Computo Personal',
-        gruposDeAtencion: 'Mesa de Servicio',
+        categoria: 'Redes',
         prioridad: 'Media',
-        alcance: 'global'
+        sla: '4HRS',
+        gruposDeAtencion: 'Infraestructura',
+        alcance: 'local'
     },
     {
-        nombre: 'Acceso a Servidores',
+        nombre: 'Configuración de switches',
         tipo: 'Requerimiento',
-        categoria: 'Infraestructura',
-        gruposDeAtencion: 'Soporte Ti',
+        categoria: 'Redes',
         prioridad: 'Alta',
-        alcance: 'global'
+        sla: '2HRS',
+        gruposDeAtencion: 'Infraestructura',
+        alcance: 'local'
+    },
+
+    // Mesa de Servicio (4 servicios)
+    {
+        nombre: 'Desbloqueo de cuenta',
+        tipo: 'Requerimiento',
+        categoria: 'Accesos',
+        prioridad: 'Alta',
+        sla: '1HR',
+        gruposDeAtencion: 'Mesa de Servicio',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Reseteo de contraseña',
+        tipo: 'Requerimiento',
+        categoria: 'Accesos',
+        prioridad: 'Alta',
+        sla: '30MIN',
+        gruposDeAtencion: 'Mesa de Servicio',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Instalación de software',
+        tipo: 'Requerimiento',
+        categoria: 'Software',
+        prioridad: 'Media',
+        sla: '4HRS',
+        gruposDeAtencion: 'Mesa de Servicio',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Configuración de correo',
+        tipo: 'Requerimiento',
+        categoria: 'Software',
+        prioridad: 'Media',
+        sla: '2HRS',
+        gruposDeAtencion: 'Mesa de Servicio',
+        alcance: 'local'
+    },
+
+    // Soporte Técnico (3 servicios)
+    {
+        nombre: 'Reparación de equipo',
+        tipo: 'Incidente',
+        categoria: 'Hardware',
+        prioridad: 'Alta',
+        sla: '8HRS',
+        gruposDeAtencion: 'Soporte Técnico',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Actualización de sistema operativo',
+        tipo: 'Requerimiento',
+        categoria: 'Software',
+        prioridad: 'Media',
+        sla: '6HRS',
+        gruposDeAtencion: 'Soporte Técnico',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Diagnóstico de hardware',
+        tipo: 'Incidente',
+        categoria: 'Hardware',
+        prioridad: 'Alta',
+        sla: '4HRS',
+        gruposDeAtencion: 'Soporte Técnico',
+        alcance: 'local'
+    },
+
+    // Seguridad (2 servicios)
+    {
+        nombre: 'Revisión de accesos',
+        tipo: 'Requerimiento',
+        categoria: 'Seguridad',
+        prioridad: 'Crítica',
+        sla: '2HRS',
+        gruposDeAtencion: 'Seguridad',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Análisis de vulnerabilidades',
+        tipo: 'Incidente',
+        categoria: 'Seguridad',
+        prioridad: 'Crítica',
+        sla: '1HR',
+        gruposDeAtencion: 'Seguridad',
+        alcance: 'local'
+    },
+
+    // Desarrollo (2 servicios)
+    {
+        nombre: 'Solicitud de ambiente de desarrollo',
+        tipo: 'Requerimiento',
+        categoria: 'Desarrollo',
+        prioridad: 'Media',
+        sla: '24HRS',
+        gruposDeAtencion: 'Desarrollo',
+        alcance: 'local'
+    },
+    {
+        nombre: 'Acceso a repositorio',
+        tipo: 'Requerimiento',
+        categoria: 'Desarrollo',
+        prioridad: 'Alta',
+        sla: '2HRS',
+        gruposDeAtencion: 'Desarrollo',
+        alcance: 'local'
     }
 ];
 
-// Minimal Empresa Model for lookup
-const empresaSchema = new mongoose.Schema({ nombre: String });
-const Empresa = mongoose.models.Empresa || mongoose.model('Empresa', empresaSchema);
-
-const seed = async () => {
+async function seed() {
     try {
-        await mongoose.connect(MONGODB_URI);
-        console.log(`✅ Connected to ${MONGODB_URI}`);
+        const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/aurontek';
+        await mongoose.connect(mongoUri);
+        console.log('✅ Conectado a MongoDB');
 
-        // Get Company ID
-        const empresa = await Empresa.findOne({ nombre: 'Aurontek HQ' });
-        if (!empresa) {
-            console.error('❌ Aurontek HQ not found in DB. Run usuarios-svc seed first.');
-            process.exit(1);
-        }
-        console.log(`🏢 Found Company: ${empresa.nombre} (${empresa._id})`);
+        let created = 0;
+        let updated = 0;
 
-        const SERVICES = [
-            {
-                nombre: 'Soporte General PC',
-                tipo: 'Requerimiento',
-                categoria: 'Computo Personal',
-                gruposDeAtencion: 'Mesa de Servicio',
-                prioridad: 'Media',
-                alcance: 'local',
-                empresaId: empresa._id,
-                activo: true
-            },
-            {
-                nombre: 'Acceso a Servidores',
-                tipo: 'Requerimiento',
-                categoria: 'Infraestructura',
-                gruposDeAtencion: 'Soporte Ti',
-                prioridad: 'Alta',
-                alcance: 'local',
-                empresaId: empresa._id,
-                activo: true
-            }
-        ];
+        for (const servicio of servicios) {
+            const existing = await Servicio.findOne({ nombre: servicio.nombre });
 
-        for (const svc of SERVICES) {
-            let exists = await Servicio.findOne({ nombre: svc.nombre });
-            if (!exists) {
-                await Servicio.create(svc);
-                console.log(`✅ Created service: ${svc.nombre} [${svc.gruposDeAtencion}] (Local)`);
+            if (existing) {
+                await Servicio.findByIdAndUpdate(existing._id, {
+                    ...servicio,
+                    activo: true,
+                    plantilla: []
+                });
+                updated++;
+                console.log(`📝 Actualizado: ${servicio.nombre}`);
             } else {
-                exists.gruposDeAtencion = svc.gruposDeAtencion;
-                exists.alcance = 'local'; // Force update
-                exists.empresaId = empresa._id; // Force update
-                await exists.save();
-                console.log(`🔄 Updated service: ${svc.nombre} -> Local / ${empresa._id}`);
+                await Servicio.create({
+                    ...servicio,
+                    activo: true,
+                    plantilla: []
+                });
+                created++;
+                console.log(`✨ Creado: ${servicio.nombre}`);
             }
         }
+
+        console.log('\n' + '='.repeat(60));
+        console.log(`✅ Seed completado exitosamente`);
+        console.log(`   📊 Servicios creados: ${created}`);
+        console.log(`   📝 Servicios actualizados: ${updated}`);
+        console.log(`   📦 Total: ${created + updated}`);
+        console.log('='.repeat(60));
+
         process.exit(0);
-    } catch (e) {
-        console.error(e);
+    } catch (error) {
+        console.error('❌ Error en seed:', error);
         process.exit(1);
     }
-};
+}
 
 seed();
