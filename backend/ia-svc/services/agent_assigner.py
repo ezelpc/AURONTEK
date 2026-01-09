@@ -8,7 +8,7 @@ class AgentAssigner:
     def __init__(self, usuarios_service_url: str, tickets_service_url: str):
         self.usuarios_service_url = usuarios_service_url
         self.tickets_service_url = tickets_service_url
-        self.service_token = os.getenv('SERVICE_TOKEN')
+        self.service_token = os.getenv('SERVICE_TOKEN', '23022e6bdb08ad3631c48af69253c5528f42cbed36b024b2fc041c0cfb23723b')
         
     def _get_headers(self):
         """Headers para autenticación entre servicios"""
@@ -28,25 +28,35 @@ class AgentAssigner:
         """
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                # Buscar usuarios con rol 'resolutor-empresa' del grupo específico
+                # Buscar usuarios activos de la empresa (sin filtrar por rol aquí)
                 response = await client.get(
                     f"{self.usuarios_service_url}/usuarios",
                     headers=self._get_headers(),
                     params={
                         "empresaId": empresa_id,
-                        "rol": "resolutor-empresa",
                         "activo": "true"
                     }
                 )
-                response.raise_for_status()
                 
                 data = response.json()
-                all_agents = data.get('data', data) if isinstance(data, dict) else data
+                # Manejar diferentes formatos de respuesta: {data: [...]}, {usuarios: [...]}, o [...]
+                if isinstance(data, dict):
+                    all_agents = data.get('data') or data.get('usuarios') or data
+                    # Si sigue siendo un dict (y no una lista dentro), es probable que sea el error
+                    if isinstance(all_agents, dict):
+                        print(f"⚠️ Formato de respuesta inesperado de usuarios-svc: {all_agents.keys()}")
+                        all_agents = []
+                else:
+                    all_agents = data
                 
-                # Filtrar por grupo de atención
+                # Roles válidos para asignación de tickets
+                valid_roles = ['soporte', 'Soporte', 'resolutor-empresa', 'beca-soporte', 'admin-interno']
+                
+                # Filtrar por rol válido Y grupo de atención
                 filtered_agents = [
                     agent for agent in all_agents
-                    if grupo_atencion in agent.get('gruposDeAtencion', [])
+                    if agent.get('rol') in valid_roles and 
+                       grupo_atencion in agent.get('gruposDeAtencion', [])
                 ]
                 
                 print(f"✅ Obtenidos {len(filtered_agents)}/{len(all_agents)} agentes del grupo '{grupo_atencion}' para empresa {empresa_id}")

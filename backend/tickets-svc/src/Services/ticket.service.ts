@@ -39,7 +39,18 @@ class TicketService {
       }
 
       try {
-        this.connection = await amqp.connect(url);
+        // Ajuste Robustez: Agregar heartbeat a la URL si no existe para evitar desconexiones de CloudAMQP
+        let connectionUrl = url;
+        if (url.includes('cloudamqp')) {
+          if (!url.includes('?')) {
+            connectionUrl += '?heartbeat=60';
+          } else if (!url.includes('heartbeat=')) {
+            connectionUrl += '&heartbeat=60';
+          }
+        }
+
+        console.log('🔌 Conectando a RabbitMQ con heartbeat...');
+        this.connection = await amqp.connect(connectionUrl);
         this.channel = await this.connection.createConfirmChannel();
         await this.channel.assertExchange(this.exchange, 'topic', { durable: true });
 
@@ -158,6 +169,24 @@ class TicketService {
         }
       }
 
+      // ✅ Poblar servicioNombre y gruposDeAtencion desde servicioId
+      if (datosTicket.servicioId && !datosTicket.servicioNombre) {
+        try {
+          const servicio = await Servicio.findById(datosTicket.servicioId);
+          if (servicio) {
+            datosTicket.servicioNombre = servicio.nombre;
+            // Guardar gruposDeAtencion para la IA
+            datosTicket.gruposDeAtencion = servicio.gruposDeAtencion;
+            console.log(`[TICKET] Servicio encontrado: ${servicio.nombre}, Grupo: ${servicio.gruposDeAtencion}`);
+          } else {
+            console.warn(`[TICKET] Servicio ${datosTicket.servicioId} no encontrado`);
+          }
+        } catch (err) {
+          console.error('[TICKET] Error al buscar servicio:', err);
+        }
+      }
+
+
       const nuevoTicket: any = await (Ticket as any).create(datosTicket);
 
       // Publicar evento para que la IA lo analice y sugiera asignación
@@ -169,6 +198,7 @@ class TicketService {
           empresaId: nuevoTicket.empresaId.toString(),
           usuarioCreador: nuevoTicket.usuarioCreador?.toString(),
           servicioNombre: nuevoTicket.servicioNombre || null,
+          gruposDeAtencion: datosTicket.gruposDeAtencion || null, // Usar datosTicket ya que no se guarda en el modelo
           tipo: nuevoTicket.tipo || null,
           prioridad: nuevoTicket.prioridad || null,
           categoria: nuevoTicket.categoria || null,
@@ -176,6 +206,8 @@ class TicketService {
           usuarioCreadorEmail: nuevoTicket.usuarioCreadorEmail
         }
       };
+
+      console.log('[RABBITMQ EVENT] Payload completo:', JSON.stringify(eventPayload, null, 2));
 
       try {
         await this.publicarEvento('ticket.creado', eventPayload);
@@ -619,7 +651,15 @@ class TicketService {
         timeout: 3000 // 3s timeout to avoid blocking ticket creation
       });
 
-      const usuarios = response.data; // Asumiendo que devuelve array de usuarios
+      // Manejar formato de respuesta {usuarios: [...]} o [...]
+      let usuarios = response.data;
+      if (usuarios && typeof usuarios === 'object' && !Array.isArray(usuarios)) {
+        usuarios = usuarios.usuarios || usuarios.data || [];
+      }
+      if (!Array.isArray(usuarios)) {
+        console.log('[AUTO-ASSIGN] Formato de respuesta inesperado:', typeof usuarios);
+        return;
+      }
 
       // Filtrar candidatos
       const candidatos = usuarios.filter((u: any) => {

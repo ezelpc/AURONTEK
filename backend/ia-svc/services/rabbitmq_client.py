@@ -14,9 +14,25 @@ class RabbitMQClient:
     def connect(self):
         """Establecer conexión con RabbitMQ"""
         if not self.connection or self.connection.is_closed:
-            self.connection = pika.BlockingConnection(
-                pika.URLParameters(self.url)
-            )
+            print(f"🔌 Conectando a RabbitMQ: {self.url.split('@')[-1] if '@' in self.url else 'localhost'}...")
+            
+            params = pika.URLParameters(self.url)
+            
+            # Ajuste de robustez de conexión
+            params.socket_timeout = 10
+            params.heartbeat = 60
+            params.blocked_connection_timeout = 300
+            
+            # Ajuste para SSL si es necesario (CloudAMQP suele requerirlo)
+            if self.url.startswith('amqps://'):
+                import ssl
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE  # Para evitar problemas con certs en desarrollo
+                params.ssl_options = pika.SSLOptions(context)
+
+
+            self.connection = pika.BlockingConnection(params)
             self.channel = self.connection.channel()
             
             # Declarar exchanges
@@ -86,8 +102,11 @@ class RabbitMQClient:
             self.channel.start_consuming()
             
         except Exception as e:
-            print(f"Error en consumo de mensajes: {e}")
-            raise
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"❌ Error CRÍTICO en consumo de mensajes: {e}")
+            print(f"📜 Traceback:\n{error_details}")
+            raise e
             
     def _handle_message(self, callback: Callable[[dict], Any], message: dict):
         """Manejar mensaje recibido"""

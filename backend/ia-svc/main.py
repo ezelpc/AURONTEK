@@ -80,7 +80,7 @@ async def verify_service_token(request, call_next):
 if os.getenv('DOCKER_ENV') == 'true':
     RABBITMQ_URL = os.getenv('RABBITMQ_URL')
 else:
-    RABBITMQ_URL = os.getenv('RABBITMQ_URL')
+    RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev')
 
 USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SERVICE_URL', 'http://localhost:3001')
 TICKETS_SERVICE_URL = os.getenv('TICKETS_SERVICE_URL', 'http://localhost:3002')
@@ -150,6 +150,7 @@ async def process_new_ticket(message: dict):
         print(f"📝 Título: {ticket_data.get('titulo', 'N/A')}")
         print(f"🏢 Empresa ID: {ticket_data.get('empresaId', 'N/A')}")
         print(f"🔧 Servicio: {ticket_data.get('servicioNombre', 'N/A')}")
+        print(f"🔧 Grupos Recibidos: {ticket_data.get('gruposDeAtencion', 'NO RECIBIDO')}")
         
         # 2. Clasificar ticket
         print("\n🔍 CLASIFICANDO TICKET...")
@@ -169,6 +170,11 @@ async def process_new_ticket(message: dict):
         
         # 4. Actualizar ticket_data para asignación
         ticket_data.update(classification)
+        
+        # Si el ticket ya tiene gruposDeAtencion del servicio, usarlo en lugar del default
+        if ticket_data.get('gruposDeAtencion'):
+            print(f"   ✅ Usando grupo del servicio: {ticket_data.get('gruposDeAtencion')}")
+            ticket_data['grupo_atencion'] = ticket_data.get('gruposDeAtencion')
         
         # 5. Asignar agente
         print("\n👥 ASIGNANDO AGENTE...")

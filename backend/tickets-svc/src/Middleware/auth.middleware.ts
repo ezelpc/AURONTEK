@@ -27,6 +27,21 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     return;
   }
 
+  // ✅ SERVICE TOKEN AUTHENTICATION (Priority Check)
+  // Permite que otros microservicios (como ia-svc) se comuniquen internamente
+  const serviceToken = process.env.SERVICE_TOKEN;
+  if (serviceToken && token === serviceToken) {
+    console.log('[AUTH DEBUG] Authenticated via SERVICE_TOKEN');
+    req.usuario = {
+      id: 'service-account',
+      nombre: 'System Service',
+      email: 'system@aurontek.com',
+      rol: 'admin-interno',
+      permisos: ['*'], // Full access for services
+    };
+    return next();
+  }
+
   try {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
