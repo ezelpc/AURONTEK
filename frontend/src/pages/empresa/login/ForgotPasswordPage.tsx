@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
-import { authService } from '@/api/auth.service';
+import { authService } from '@/auth/auth.service';
 import { toast } from 'sonner';
 import { Shield, Mail, Lock } from 'lucide-react';
 

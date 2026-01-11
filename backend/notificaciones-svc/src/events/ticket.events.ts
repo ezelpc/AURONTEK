@@ -48,8 +48,17 @@ export const handleTicketEvent = async (msg: ConsumeMessage) => {
                 data.ticket.id
             );
 
-            // TODO: Obtener email del agente y enviar correo
-            console.log(`📧 Debería enviar email al agente ${agenteId}`);
+            // Email al agente
+            if (data.ticket.agenteEmail) {
+                await sendTicketNotification({
+                    email: data.ticket.agenteEmail,
+                    ticketId: data.ticket.id,
+                    mensaje: `Se te ha asignado el ticket "${data.ticket.titulo}".`
+                });
+                console.log(`📧 Email enviado al agente ${data.ticket.agenteEmail}`);
+            } else {
+                console.warn(`⚠️ No se pudo enviar email al agente ${agenteId} (Falta email en payload)`);
+            }
         }
     }
 
@@ -68,7 +77,17 @@ export const handleTicketEvent = async (msg: ConsumeMessage) => {
                 data.ticket.id
             );
 
-            console.log(`📧 Debería enviar email al agente ${agenteId}`);
+            // Email al agente
+            if (data.ticket.agenteEmail) {
+                await sendTicketNotification({
+                    email: data.ticket.agenteEmail,
+                    ticketId: data.ticket.id,
+                    mensaje: `La IA te ha asignado el ticket "${data.ticket.titulo}".`
+                });
+                console.log(`📧 Email enviado al agente ${data.ticket.agenteEmail}`);
+            } else {
+                console.warn(`⚠️ No se pudo enviar email al agente ${agenteId} (Falta email en payload)`);
+            }
         }
     }
 

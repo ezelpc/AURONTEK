@@ -59,7 +59,7 @@ async function main() {
     });
 
     // Rutas API
-    app.use('/', notificationRoutes);
+    app.use('/api/notificaciones', notificationRoutes);
 
     // Iniciar servidor
     app.listen(PORT, () => {

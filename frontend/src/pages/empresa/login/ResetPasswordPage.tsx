@@ -3,10 +3,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { authService } from '@/api/auth.service';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { authService } from '@/auth/auth.service';
 import { toast } from 'sonner';
-import { Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Lock, CheckCircle } from 'lucide-react';
 
 const ResetPasswordPage = () => {
     const { token } = useParams<{ token: string }>();
