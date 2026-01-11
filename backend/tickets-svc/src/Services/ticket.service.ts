@@ -98,7 +98,7 @@ class TicketService {
     try {
       const payload = Buffer.from(JSON.stringify(data));
       console.log(`📤 [RabbitMQ] Publicando '${routingKey}' (${payload.length} bytes)`);
-      
+
       this.channel.publish(this.exchange, routingKey, payload, { persistent: true }, (err: any, ok: any) => {
         if (err) {
           console.error(`❌ [RabbitMQ] Error publicando '${routingKey}':`, err.message);
@@ -179,19 +179,20 @@ class TicketService {
       }
 
       // ✅ Poblar servicioNombre y gruposDeAtencion desde servicioId
+      console.log('[SERVICE] Buscando datos del servicio:', datosTicket.servicioId);
       if (datosTicket.servicioId && !datosTicket.servicioNombre) {
         try {
           const servicio = await Servicio.findById(datosTicket.servicioId);
           if (servicio) {
             datosTicket.servicioNombre = servicio.nombre;
-            // Guardar gruposDeAtencion para la IA
             datosTicket.gruposDeAtencion = servicio.gruposDeAtencion;
-            console.log(`[TICKET] Servicio encontrado: ${servicio.nombre}, Grupo: ${servicio.gruposDeAtencion}`);
+            console.log('[SERVICE] ✅ Servicio encontrado:', servicio.nombre);
+            console.log('[SERVICE]    Grupo de atención:', servicio.gruposDeAtencion);
           } else {
-            console.warn(`[TICKET] Servicio ${datosTicket.servicioId} no encontrado`);
+            console.warn('[SERVICE] ⚠️ Servicio no encontrado');
           }
         } catch (err) {
-          console.error('[TICKET] Error al buscar servicio:', err);
+          console.error('[SERVICE] ❌ Error:', err);
         }
       }
 
@@ -216,7 +217,14 @@ class TicketService {
         }
       };
 
-      console.log('[RABBITMQ EVENT] Payload completo:', JSON.stringify(eventPayload, null, 2));
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('[RABBITMQ] 📤 Preparando publicación de evento');
+      console.log('[RABBITMQ]    Routing Key: ticket.creado');
+      console.log('[RABBITMQ]    Ticket ID:', eventPayload.ticket.id);
+      console.log('[RABBITMQ]    Servicio:', eventPayload.ticket.servicioNombre);
+      console.log('[RABBITMQ]    Grupo:', eventPayload.ticket.gruposDeAtencion);
+      console.log('[RABBITMQ] Payload:', JSON.stringify(eventPayload, null, 2));
+      console.log('═══════════════════════════════════════════════════════════');
 
       try {
         await this.publicarEvento('ticket.creado', eventPayload);

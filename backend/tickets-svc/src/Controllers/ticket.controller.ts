@@ -8,8 +8,16 @@ const validarMongoId = (id: string): boolean => /^[0-9a-fA-F]{24}$/.test(id);
 const ticketController = {
   // POST /tickets
   async crear(req: Request, res: Response): Promise<void> {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🎫 [CONTROLLER] Petición de creación recibida');
+    console.log('   Usuario:', req.usuario?.nombre || 'NO AUTH');
+    console.log('   Body keys:', Object.keys(req.body));
+    console.log('   Servicio ID:', req.body.servicioId);
+    console.log('═══════════════════════════════════════════════════════════');
+
     try {
       if (!req.usuario) {
+        console.error('❌ [CONTROLLER] Usuario no autenticado');
         res.status(401).json({ msg: 'Usuario no autenticado' });
         return;
       }

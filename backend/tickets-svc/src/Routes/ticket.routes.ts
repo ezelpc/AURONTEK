@@ -20,7 +20,12 @@ router.get('/estadisticas', estadisticasController.obtenerEstadisticasGenerales)
 
 // ===== RUTAS DE TICKETS =====
 // Crear ticket (cualquier usuario autenticado)
-router.post('/', ticketController.crear);
+router.post('/', (req, res, next) => {
+  console.log('📍 [ROUTE] POST /tickets - Petición recibida en router');
+  console.log('   Path:', req.path);
+  console.log('   Method:', req.method);
+  next();
+}, ticketController.crear);
 
 // ✅ Subir adjuntos (Múltiples)
 import uploadController, { uploadConfig } from '../Controllers/upload.controller';
