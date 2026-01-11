@@ -660,12 +660,39 @@ class TicketService {
 
     await ticket.save();
 
+    // Obtener detalles del agente para el correo
+    let agenteEmail = '';
+    let agenteNombre = '';
+
+    try {
+      const usuarioUrl = process.env.USUARIOS_SVC_URL || 'http://localhost:3001';
+      // Use 'system' token or similar if needed, or rely on internal network trust?
+      // Ideally we should pass a token context, but this is a background service.
+      // We use a SERVICE_TOKEN if available or just public info? 
+      // Admin endpoints usually require token.
+      // Using a direct axios call if possible.
+      // Wait, tickets-svc usually communicates via Gateway or direct? Direct.
+
+      // Use the existing helper or raw call. 
+      // Helper `obtenerInfoUsuario` seems relevant but let's look at `asignarTicket` implementation later.
+      // For now, simple fetch.
+      const response = await axios.get(`${usuarioUrl}/usuarios/${agenteId}`);
+      const agente = response.data;
+      agenteEmail = agente.correo || agente.email;
+      agenteNombre = agente.nombre;
+    } catch (error) {
+      console.error(`[IA Assign] No se pudo obtener detalles del agente ${agenteId}:`, error);
+    }
+
     try {
       await this.publicarEvento('ticket.asignado_automaticamente', {
         ticket: {
           id: ticket._id.toString(),
           agenteId: agenteId.toString(),
-          estado: ticket.estado
+          agenteEmail, // Added email
+          agenteNombre, // Added name
+          estado: ticket.estado,
+          titulo: ticket.titulo
         }
       });
     } catch (e: any) {

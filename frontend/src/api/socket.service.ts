@@ -1,40 +1,36 @@
-import { Socket } from 'socket.io-client';
-// import { useAuthStore } from '@/auth/auth.store';
+import { io, Socket } from 'socket.io-client';
+import { useAuthStore } from '@/auth/auth.store';
 
 // URL del Gateway o Notificaciones SVC
 // Asumimos que el Gateway expone el socket en el mismo puerto o uno dedicado.
 // En desarrollo con Vite proxy, podría ser relativo o directo.
-// const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:3000');
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 class SocketService {
     private socket: Socket | null = null;
 
     connect() {
-        // TODO: Habilitar cuando se implemente el chat en tiempo real
-        // Por ahora está deshabilitado ya que es trabajo futuro
-        console.log('Socket.IO deshabilitado - Chat en tiempo real pendiente de implementación');
-        return;
-
-        /* 
         if (this.socket?.connected) return;
 
         const token = useAuthStore.getState().token;
         if (!token) return;
 
+        console.log('[Socket] Connecting to:', SOCKET_URL);
+
         this.socket = io(SOCKET_URL, {
             auth: { token },
-            transports: ['websocket'],
+            transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
             reconnection: true,
+            path: '/socket.io' // Gateway expects /socket.io
         });
 
         this.socket.on('connect', () => {
-            console.log('Socket conectado:', this.socket?.id);
+            console.log('✅ Socket conectado:', this.socket?.id);
         });
 
         this.socket.on('connect_error', (err) => {
-            console.error('Socket error conexión:', err.message);
+            console.error('❌ Socket error conexión:', err.message);
         });
-        */
     }
 
     disconnect() {

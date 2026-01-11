@@ -113,10 +113,10 @@ export const NotificationsMenu = () => {
             });
         };
 
-        socketService.on('notificacion', handleNotification);
+        socketService.on('notification.new', handleNotification);
 
         return () => {
-            socketService.off('notificacion');
+            socketService.off('notification.new');
         };
     }, []);
 
