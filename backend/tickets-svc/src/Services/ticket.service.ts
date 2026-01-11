@@ -227,7 +227,7 @@ class TicketService {
       try {
         const { notificarTicketCreado } = await import('./notificaciones.helper');
         const creadorInfo = await this.obtenerInfoUsuario(nuevoTicket.usuarioCreador?.toString() || '');
-        
+
         if (creadorInfo) {
           await notificarTicketCreado(
             nuevoTicket._id.toString(),
@@ -448,11 +448,11 @@ class TicketService {
 
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
 
-    // Si el ticket está en 'abierto', cambiarlo a 'en_proceso'
-    if (ticket.estado === 'abierto') {
+    // Si el ticket está en 'abierto', MANTENER en 'abierto' (Requerimiento de usuario)
+    /* if (ticket.estado === 'abierto') {
       ticket.estado = 'en_proceso';
       ticket.fechaRespuesta = new Date();
-    }
+    } */
 
     await ticket.save();
 
@@ -473,7 +473,7 @@ class TicketService {
     try {
       const { notificarTicketAsignado, obtenerInfoUsuario } = await import('./notificaciones.helper');
       const creadorInfo = await obtenerInfoUsuario(ticket.usuarioCreador?.toString() || '');
-      
+
       if (creadorInfo && agente.correo) {
         await notificarTicketAsignado(
           ticket._id.toString(),
@@ -652,11 +652,11 @@ class TicketService {
     // Validar que el agente existe (se hace en agent_assigner)
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
 
-    // Cambiar estado si está en 'abierto'
-    if (ticket.estado === 'abierto') {
+    // Cambiar estado si está en 'abierto' (DESHABILITADO)
+    /* if (ticket.estado === 'abierto') {
       ticket.estado = 'en_proceso';
       ticket.fechaRespuesta = new Date();
-    }
+    } */
 
     await ticket.save();
 
