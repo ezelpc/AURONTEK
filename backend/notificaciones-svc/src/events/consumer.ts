@@ -7,17 +7,19 @@ import { handleChatEvent } from './chat.events';
 setTimeout(async () => {
   try {
     const channel: any = getChannel();
-    
+
     if (!channel) {
       console.error('❌ Canal de RabbitMQ no disponible');
       return;
     }
 
     // Cola de tickets
+    await channel.assertExchange('tickets', 'topic', { durable: true });
     await channel.assertQueue('ticket_events', { durable: true });
+    await channel.bindQueue('ticket_events', 'tickets', 'ticket.#');
     channel.consume('ticket_events', async (msg: ConsumeMessage | null) => {
       if (!msg) return;
-      
+
       try {
         await handleTicketEvent(msg);
         channel.ack(msg);
@@ -31,7 +33,7 @@ setTimeout(async () => {
     await channel.assertQueue('chat_events', { durable: true });
     channel.consume('chat_events', async (msg: ConsumeMessage | null) => {
       if (!msg) return;
-      
+
       try {
         await handleChatEvent(msg);
         channel.ack(msg);
