@@ -124,12 +124,29 @@ const EmpresaDashboard = () => {
         .filter((t: any) => {
             if (!searchTerm) return true;
             const term = searchTerm.toLowerCase();
+
+            // Safe access to fields
+            const title = t.titulo?.toLowerCase() || '';
+            const id = (t._id || t.id || '').toLowerCase(); // Support both _id and id
+            const service = (t.servicio || t.servicioNombre || '').toLowerCase();
+
+            // Agent name check
+            let agentName = '';
+            if (t.agenteAsignado) {
+                if (typeof t.agenteAsignado === 'string') {
+                    // If it's just an ID, we might not want to search by it unless the user types the ID
+                    // but usually 'assigned user' implies name. If we don't have the name, skip.
+                    agentName = '';
+                } else if (typeof t.agenteAsignado === 'object') {
+                    agentName = (t.agenteAsignado.nombre || '').toLowerCase();
+                }
+            }
+
             return (
-                t.titulo?.toLowerCase().includes(term) ||
-                t.descripcion?.toLowerCase().includes(term) ||
-                t.servicioNombre?.toLowerCase().includes(term) ||
-                t.servicio?.toLowerCase().includes(term) ||
-                t.id?.toLowerCase().includes(term)
+                title.includes(term) ||
+                id.includes(term) ||
+                service.includes(term) ||
+                agentName.includes(term)
             );
         })
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
