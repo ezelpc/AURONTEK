@@ -31,12 +31,12 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   // Permite que otros microservicios (como ia-svc) se comuniquen internamente
   const serviceToken = process.env.SERVICE_TOKEN;
   if (serviceToken && token === serviceToken) {
-    console.log('[AUTH DEBUG] Authenticated via SERVICE_TOKEN');
+    console.log('[AUTH] ✅ Authenticated via SERVICE_TOKEN');
     req.usuario = {
       id: 'service-account',
       nombre: 'System Service',
       email: 'system@aurontek.com',
-      rol: 'admin-interno',
+      rol: undefined as any, // ⬅️ SIN ROL para trigger filtro de servicios internos
       permisos: ['*'], // Full access for services
     };
     return next();

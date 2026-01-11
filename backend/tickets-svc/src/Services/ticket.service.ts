@@ -450,12 +450,6 @@ class TicketService {
     const ticket: any = await (Ticket as any).findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
-    // Validar que el becario sea beca-soporte
-    const becario = await this.validarHabilidadesAgente(becarioId, empresaId);
-    if (becario.rol !== 'beca-soporte') {
-      throw new Error('Solo se puede delegar a usuarios con rol beca-soporte');
-    }
-
     // El ticket debe estar asignado al soporte que está delegando
     if (ticket.agenteAsignado?.toString() !== tutorId) {
       throw new Error('Solo puedes delegar tickets que estén asignados a ti');
@@ -465,21 +459,18 @@ class TicketService {
     ticket.tutor = new mongoose.Types.ObjectId(tutorId);
     // Asignar al becario
     ticket.agenteAsignado = new mongoose.Types.ObjectId(becarioId);
+    ticket.fechaAsignacion = new Date();
 
     await ticket.save();
 
-    try {
-      await this.publicarEvento('ticket.delegado', {
-        ticket: {
-          id: ticket._id.toString(),
-          becarioId: becarioId.toString(),
-          tutorId: tutorId.toString(),
-          becarioNombre: becario.nombre
-        }
-      });
-    } catch (e: any) {
-      console.error('No se pudo publicar ticket.delegado:', e.message || e);
-    }
+    // Publicar evento asíncrono - no bloquear respuesta
+    this.publicarEvento('ticket.delegado', {
+      ticket: {
+        id: ticket._id.toString(),
+        becarioId: becarioId.toString(),
+        tutorId: tutorId.toString()
+      }
+    }).catch(e => console.error('Error publicando ticket.delegado:', e.message));
 
     return ticket;
   }
@@ -592,11 +583,8 @@ class TicketService {
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
     ticket.fechaAsignacion = new Date();
 
-    // Cambiar estado si está en 'abierto'
-    if (ticket.estado === 'abierto') {
-      ticket.estado = 'en_proceso';
-      ticket.fechaRespuesta = new Date();
-    }
+    // NO cambiar el estado automáticamente - el agente debe aceptar el ticket
+    // El ticket permanece "abierto" hasta que el agente lo tome
 
     await ticket.save();
 
