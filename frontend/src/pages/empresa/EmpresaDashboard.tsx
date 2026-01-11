@@ -80,13 +80,13 @@ const EmpresaDashboard = () => {
         enabled: !!user?.id, // Solo ejecutar si el user.id existe
     });
 
-    // Calcular Estadísticas
+    // Calcular Estadísticas (estados vienen en lowercase del backend)
     const ticketsArray = Array.isArray(tickets) ? tickets : [];
     const stats = {
         total: ticketsArray.length,
-        abiertos: ticketsArray.filter((t: any) => t.estado === 'ABIERTO').length,
-        enProceso: ticketsArray.filter((t: any) => t.estado === 'EN_PROCESO').length,
-        cerrados: ticketsArray.filter((t: any) => t.estado === 'CERRADO' || t.estado === 'RESUELTO').length,
+        abiertos: ticketsArray.filter((t: any) => t.estado?.toLowerCase() === 'abierto').length,
+        enProceso: ticketsArray.filter((t: any) => t.estado?.toLowerCase() === 'en_proceso').length,
+        cerrados: ticketsArray.filter((t: any) => ['cerrado', 'resuelto'].includes(t.estado?.toLowerCase())).length,
     };
 
 
