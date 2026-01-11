@@ -66,7 +66,7 @@ class AgentAssigner:
                 print(f"❌ Error al obtener agentes: {e}")
                 raise Exception(f"Error al obtener agentes: {e}")
             
-    async def get_tickets_for_agent(self, agent_id: str, empresa_id: str, states: List[str] = None) -> List[Dict]:
+    async def get_agent_tickets(self, agent_id: str, empresa_id: str, states: List[str] = None) -> List[Dict]:
         """
         Obtener tickets de un agente
         
@@ -80,12 +80,14 @@ class AgentAssigner:
             
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
+                # Obtener TODOS los tickets de la empresa con límite alto
+                # El endpoint normal filtra por rol, necesitamos usar el service token
                 response = await client.get(
                     f"{self.tickets_service_url}/tickets",
                     headers=self._get_headers(),
                     params={
                         "empresaId": empresa_id,
-                        "agenteAsignado": agent_id
+                        "limite": "1000"  # Límite alto para obtener todos
                     }
                 )
                 response.raise_for_status()
@@ -93,11 +95,16 @@ class AgentAssigner:
                 data = response.json()
                 all_tickets = data.get('data', [])
                 
-                # Filtrar por estados
+                # Filtrar por agente asignado Y estados localmente
                 filtered_tickets = [
                     t for t in all_tickets
-                    if t.get('estado') in states
+                    if (t.get('agenteAsignado') == agent_id or 
+                        (isinstance(t.get('agenteAsignado'), dict) and 
+                         t.get('agenteAsignado', {}).get('_id') == agent_id))
+                    and t.get('estado') in states
                 ]
+                
+                print(f"   [DEBUG] Agente {agent_id}: {len(filtered_tickets)} tickets activos de {len(all_tickets)} totales")
                 
                 return filtered_tickets
                 
