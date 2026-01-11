@@ -4,6 +4,11 @@ import { verificarToken } from '../Middleware/auth.middleware';
 import { requirePermission } from '../Middleware/requirePermission';
 import { PERMISOS } from '../Constants/permissions';
 
+import multer from 'multer';
+
+const storage = multer.memoryStorage();
+const uploadCsv = multer({ storage });
+
 const router = Router();
 
 // Todas las rutas requieren autenticación
@@ -13,7 +18,7 @@ router.use(verificarToken);
 router.get('/template', habilidadController.downloadTemplate);
 
 // POST /api/habilidades/bulk - Carga masiva
-router.post('/bulk', requirePermission(PERMISOS.SERVICIOS_IMPORT), habilidadController.bulkUpload);
+router.post('/bulk', requirePermission(PERMISOS.HABILITIES_CREATE), uploadCsv.single('file'), habilidadController.bulkUpload);
 
 // GET /api/habilidades - Listar habilidades (cualquier usuario autenticado)
 router.get('/', requirePermission(PERMISOS.HABILITIES_VIEW), habilidadController.listarHabilidades);

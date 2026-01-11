@@ -353,7 +353,22 @@ const ticketController = {
       }
 
       // Permiso tickets.delegate ya validado por middleware requirePermission
-      // Cualquier usuario con el permiso puede delegar
+
+      // 1. Obtener el ticket para validar propiedad
+      const ticketExistente = await ticketService.obtenerTicket(id);
+      if (!ticketExistente) {
+        res.status(404).json({ msg: 'Ticket no encontrado' });
+        return;
+      }
+
+      // 2. Validar que el usuario actual sea el Agente Asignado
+      // (Requerimiento: "unicamente quien tenga el permiso para delegar y siempre y cuando sea un ticket que se asigno a ese mismo usuario")
+      const agenteAsignadoId = ticketExistente.agenteAsignado?._id?.toString() || ticketExistente.agenteAsignado?.toString();
+
+      if (agenteAsignadoId !== req.usuario.id) {
+        res.status(403).json({ msg: 'Solo puedes delegar tickets asignados a ti.' });
+        return;
+      }
 
       const ticket = await ticketService.delegarTicket(
         id,
