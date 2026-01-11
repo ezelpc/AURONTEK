@@ -83,74 +83,46 @@ const ticketController = {
 
       const rol = req.usuario?.rol || '';
       const empresaIdUsuario = req.usuario?.empresaId;
+      const permisos = req.usuario?.permisos || [];
       const esServicioInterno = req.headers['x-service-name']; // ia-svc, etc.
 
       // Construir filtros según ROL
       let filtros: any = {};
 
-      // 0. SERVICIOS INTERNOS (ia-svc, notificaciones-svc, etc): Solo filtrar por empresaId del query
+      // 1. SERVICES & GLOBAL ADMIN (tickets.view_all_global)
       if (esServicioInterno && !rol) {
-        // Servicios internos pueden consultar libremente filtrando solo por empresaId
-        if (req.query.empresaId) {
-          filtros.empresaId = req.query.empresaId;
-        }
-        console.log('[DEBUG LISTAR] Servicio interno:', esServicioInterno, 'filtros:', filtros);
-      }
-      // 1. Admin General / Subroot: Ven todo (o filtran por query)
-      else if (['admin-general', 'admin-subroot'].includes(rol)) {
-        // Sin filtros = ver todos los tickets
-        // Con empresaId en query = filtrar por empresa específica
+        // Internal services can query freely, filtering by empresaId if needed
         if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        console.log('[DEBUG LISTAR] Admin filtros:', filtros);
+        console.log('[DEBUG LISTAR] Permission: Internal Service');
       }
-      // 2. Soporte Plataforma: Vé tickets EXTERNOS (De clientes, no de HQ)
-      else if (rol === 'soporte-plataforma') {
-        // Si busca uno específico lo permitimos, si no, traemos todos los que NO son de su empresa (HQ)
-        if (req.query.empresaId) {
-          // Validar que no sea su propia empresa (HQ) para mantener la lógica? 
-          // O simplemente confiar. Mejor forzar externo.
-          if (req.query.empresaId !== empresaIdUsuario) {
-            filtros.empresaId = req.query.empresaId;
-          } else {
-            // Si intenta ver HQ, no devolver nada O bloquear.
-            // Bloqueo suave: filtro imposible
-            filtros.empresaId = '000000000000000000000000';
-          }
-        } else {
-          filtros.empresaId = { $ne: empresaIdUsuario };
-        }
+      else if (permisos.includes('tickets.view_all_global')) {
+        // Global Admin: Can see everything. Filter by empresaId if requested.
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        console.log('[DEBUG LISTAR] Permission: tickets.view_all_global');
       }
-      // 3. Resolutor Interno / Admin Interno / Otros Soporte: Vén solo SU empresa
+
+      // 2. COMPANY ADMIN (tickets.view_all) - See all tickets in their company
+      else if (permisos.includes('tickets.view_all')) {
+        filtros.empresaId = empresaIdUsuario;
+        console.log('[DEBUG LISTAR] Permission: tickets.view_all');
+      }
+
+      // 3. SUPPORT / ASSIGNED VIEW (tickets.view_assigned) - See assigned OR created
+      else if (permisos.includes('tickets.view_assigned')) {
+        filtros.empresaId = empresaIdUsuario;
+        filtros.$or = [
+          { usuarioCreador: req.usuario?.id },
+          { agenteAsignado: req.usuario?.id },
+          { tutor: req.usuario?.id }
+        ];
+        console.log('[DEBUG LISTAR] Permission: tickets.view_assigned');
+      }
+
+      // 4. STANDARD USER - See only created by them
       else {
         filtros.empresaId = empresaIdUsuario;
-
-        // 4. Filtros adicionales por Rol especifico dentro de la empresa
-
-        // Usuario / Cliente Final: Solo SUS tickets
-        if (['usuario', 'cliente-final'].includes(rol)) {
-          filtros.usuarioCreador = req.usuario?.id;
-        }
-        // Becario: ¿Solo los suyos o asignados? User: "becario de cualquier area...".
-        // Asumimos ver solo sus tickets creados o si se le delegan (asignado).
-        else if (rol === 'becario') {
-          filtros.$or = [
-            { usuarioCreador: req.usuario?.id },
-            { agenteAsignado: req.usuario?.id },
-            { tutor: req.usuario?.id } // Si fuera tutor?
-          ];
-        }
-        // Soporte (Empresa) / Beca-Soporte / Resolutor Empresa: Ver asignados
-        else if (['soporte', 'beca-soporte', 'resolutor-empresa'].includes(rol)) {
-          filtros.agenteAsignado = req.usuario?.id;
-        }
-        // Resolutor Interno (HQ): Vé todos los de su depto?
-        // User: "ver tikets internos de las areas de aurontek hq. asigandos a ellos"
-        else if (rol === 'resolutor-interno') {
-          // Puede ver todos los de HQ o filtrar?
-          // "ver todas las funciones de un ticket... si se le asignan permisos"
-          // Por ahora ve todos los de HQ (filtros.empresaId base)
-          // O podríamos restringir a asignados si 'asignado=true' viene en query.
-        }
+        filtros.usuarioCreador = req.usuario?.id;
+        console.log('[DEBUG LISTAR] Permission: Default (Created Only)');
       }
 
       // Filtros query params adicionales
@@ -323,8 +295,12 @@ const ticketController = {
         return;
       }
 
-      if (!['admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario.rol)) {
-        res.status(403).json({ msg: 'No autorizado para asignar tickets' });
+      const permisos = req.usuario?.permisos || [];
+      const canAssign = permisos.includes('tickets.assign') ||
+        ['admin-interno', 'admin-general', 'admin-subroot'].includes(req.usuario.rol || '');
+
+      if (!canAssign) {
+        res.status(403).json({ msg: 'No autorizado para asignar tickets (permiso tickets.assign requerido)' });
         return;
       }
 
@@ -466,8 +442,13 @@ const ticketController = {
         return;
       }
 
-      // Solo admin-general/subroot pueden eliminar tickets fisicamente
-      if (!['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '')) {
+      // Solo si tiene permiso (admin global o similar)
+      const permisos = req.usuario?.permisos || [];
+      const hasDeletePermission = permisos.includes('tickets.delete_global') ||
+        (['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '') && permisos.length === 0);
+
+      // Legacy fallback: admin-general/subroot
+      if (!hasDeletePermission && !['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '')) {
         res.status(403).json({ msg: 'No autorizado para eliminar tickets' });
         return;
       }

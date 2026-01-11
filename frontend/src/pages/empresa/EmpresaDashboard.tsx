@@ -70,25 +70,7 @@ const EmpresaDashboard = () => {
 
                 console.log('✅ Tickets obtenidos:', baseTickets.length, 'Filtro:', ticketFilter);
 
-                // Aplicar filtro seleccionado (segunda validación en frontend)
-                let filtered = baseTickets;
-
-                if (ticketFilter === 'my-tickets') {
-                    filtered = baseTickets.filter((t: any) => {
-                        const creatorId = t.usuarioCreador?._id || t.usuarioCreador;
-                        const userId = user?._id || user?.id;
-                        return creatorId && userId && creatorId.toString() === userId.toString();
-                    });
-                } else if (ticketFilter === 'assigned') {
-                    filtered = baseTickets.filter((t: any) => {
-                        const assignedId = t.agenteAsignado?._id || t.agenteAsignado;
-                        const userId = user?._id || user?.id;
-                        return assignedId && userId && String(assignedId) === String(userId);
-                    });
-                }
-                // 'all' no filtra adicional
-
-                return filtered;
+                return baseTickets;
             } catch (err: any) {
                 console.error('❌ Error obteniendo tickets:', err.message);
                 throw err;
@@ -98,7 +80,27 @@ const EmpresaDashboard = () => {
     });
 
     // Calcular Estadísticas (normalizar estados)
+    // Usamos 'tickets' (baseTickets) para las estadísticas globales del usuario/empresa
     const ticketsArray = Array.isArray(tickets) ? tickets : [];
+
+    // Aplicar filtro seleccionado para la LISTA DE ACTIVIDAD
+    let filteredTickets = ticketsArray;
+    if (ticketFilter === 'my-tickets') {
+        filteredTickets = ticketsArray.filter((t: any) => {
+            const creatorId = t.usuarioCreador?._id || t.usuarioCreador;
+            const userId = user?._id || user?.id;
+            return creatorId && userId && creatorId.toString() === userId.toString();
+        });
+    } else if (ticketFilter === 'assigned') {
+        filteredTickets = ticketsArray.filter((t: any) => {
+            const assignedId = t.agenteAsignado?._id || t.agenteAsignado;
+            const userId = user?._id || user?.id;
+            // Support both object populated or direct ID
+            const assignedIdStr = (typeof assignedId === 'object' && assignedId) ? assignedId._id?.toString() : assignedId?.toString();
+            return assignedIdStr && userId && assignedIdStr === userId.toString();
+        });
+    }
+    // 'all' usa ticketsArray directo
 
     // Normalizar función para estados
     const normalizeEstado = (estado: string): string => {
@@ -120,7 +122,7 @@ const EmpresaDashboard = () => {
     };
 
     // Filtrar y ordenar para Actividad Reciente + Buscador
-    const recentTickets = [...ticketsArray]
+    const recentTickets = [...filteredTickets]
         .filter((t: any) => {
             if (!searchTerm) return true;
             const term = searchTerm.toLowerCase();
