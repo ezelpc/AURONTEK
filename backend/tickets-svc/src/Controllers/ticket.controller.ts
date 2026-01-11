@@ -327,7 +327,7 @@ const ticketController = {
     }
   },
 
-  // ✅ NUEVO: PUT /tickets/:id/delegar - Delegación a Becario por Soporte
+  // ✅ NUEVO: PUT /tickets/:id/delegar - Delegación a Becario
   async delegar(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -343,16 +343,13 @@ const ticketController = {
         return;
       }
 
-      // Solo 'soporte' puede delegar
-      if (req.usuario.rol !== 'soporte') {
-        res.status(403).json({ msg: 'Solo usuarios con rol soporte pueden delegar tickets' });
-        return;
-      }
+      // Permiso tickets.delegate ya validado por middleware requirePermission
+      // Cualquier usuario con el permiso puede delegar
 
       const ticket = await ticketService.delegarTicket(
         id,
         becarioId,
-        req.usuario.id, // El soporte actual se convierte en tutor
+        req.usuario.id, // El usuario actual se convierte en tutor
         req.usuario.empresaId!
       );
 
