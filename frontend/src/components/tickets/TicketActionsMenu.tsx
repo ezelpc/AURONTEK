@@ -77,40 +77,39 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
     };
 
     const [isMotiveDialogOpen, setIsMotiveDialogOpen] = useState(false);
-    const [motive, setMotive] = useState('');
+    const [comment, setComment] = useState('');
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+    const [isCommentRequired, setIsCommentRequired] = useState(false);
 
     const handleStatusChange = async (status: string) => {
-        if (status === 'en_espera') {
-            setPendingStatus(status);
-            setMotive('');
-            setIsMotiveDialogOpen(true);
-            setIsOpen(false);
-            return;
-        }
-
-        await updateStatus(status);
+        // Siempre abrir dialog para permitir comentario opcional
+        setPendingStatus(status);
+        setComment('');
+        // Solo en_espera require comentario obligatorio
+        setIsCommentRequired(status === 'en_espera');
+        setIsMotiveDialogOpen(true);
+        setIsOpen(false);
     };
 
     const confirmStatusChange = async () => {
-        if (!motive.trim()) {
+        // Si es requerido y está vacío, mostrar error
+        if (isCommentRequired && !comment.trim()) {
             toast.error('El motivo es obligatorio para poner el ticket en espera');
             return;
         }
+
         if (pendingStatus) {
-            await updateStatus(pendingStatus, motive);
+            // Enviar comentario si existe, sino undefined
+            await updateStatus(pendingStatus, comment.trim() || undefined);
             setIsMotiveDialogOpen(false);
         }
     };
 
-    const updateStatus = async (status: string, motivo?: string) => {
+    const updateStatus = async (status: string, comentario?: string) => {
         try {
-            // Se asume que ticketsService.updateTicketStatus soporta motivo (necesitamos actualizar service frontend)
-            // O usamos ticketsService.updateTicket si updateTicketStatus no lo soporta
-            // Revisando ticketsService.updateTicketStatus: solo recibe id y estado.
-            // Actualizaremos el servicio frontend.
-            await ticketsService.updateTicketStatus(ticket._id || ticket.id!, status, motivo);
-            toast.success(`Estado actualizado a ${status.replace('_', ' ')}`);
+            await ticketsService.updateTicketStatus(ticket._id || ticket.id!, status, comentario);
+            const statusLabel = status.replace('_', ' ');
+            toast.success(`Estado actualizado a ${statusLabel}`);
             onUpdate?.();
         } catch (error: any) {
             toast.error(`Error: ${error.response?.data?.msg || error.message}`);
@@ -203,27 +202,43 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Modal para Motivo de Espera */}
+            {/* Modal para Comentario en Cambio de Estado */}
             <Dialog open={isMotiveDialogOpen} onOpenChange={setIsMotiveDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Motivo de Pausa</DialogTitle>
+                        <DialogTitle>
+                            {pendingStatus === 'en_espera' ? 'Motivo de Pausa' : 'Agregar Comentario'}
+                        </DialogTitle>
                         <DialogDescription>
-                            Por favor indica por qué se pone este ticket en espera. Esto pausará el SLA.
+                            {pendingStatus === 'en_espera'
+                                ? 'Por favor indica por qué se pone este ticket en espera. Esto pausará el SLA.'
+                                : 'Opcionalmente, agrega un comentario sobre este cambio de estado.'
+                            }
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <textarea
                             className="w-full p-2 border rounded-md bg-white dark:bg-slate-900 text-black dark:text-white border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600"
-                            placeholder="Ej: Esperando respuesta del cliente, Esperando repuesto..."
-                            value={motive}
-                            onChange={(e) => setMotive(e.target.value)}
+                            placeholder={
+                                pendingStatus === 'en_espera'
+                                    ? "Ej: Esperando respuesta del cliente, Esperando repuesto..."
+                                    : "Ej: Se coordinó con el usuario, Se validó la solución..."
+                            }
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
                             rows={3}
                         />
+                        {!isCommentRequired && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                El comentario es opcional
+                            </p>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsMotiveDialogOpen(false)}>Cancelar</Button>
-                        <Button onClick={confirmStatusChange} disabled={!motive.trim()}>Confirmar</Button>
+                        <Button onClick={confirmStatusChange} disabled={isCommentRequired && !comment.trim()}>
+                            Confirmar
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
