@@ -665,7 +665,7 @@ class TicketService {
           'Authorization': `Bearer ${SERVICE_TOKEN}`,
           'X-Service-Name': 'tickets-svc'
         },
-        timeout: 3000 // 3s timeout to avoid blocking ticket creation
+        timeout: 1500 // ⬇️ Reducido de 3000ms a 1500ms para mayor velocidad
       });
 
       // Manejar formato de respuesta {usuarios: [...]} o [...]
@@ -678,28 +678,31 @@ class TicketService {
         return;
       }
 
-      // Filtrar candidatos
-      const candidatos = usuarios.filter((u: any) => {
+      // Filtrar candidatos de manera eficiente
+      const candidatos = [];
+      for (const u of usuarios) {
         // Roles permitidos para asignación
-        const rolValido = ['soporte', 'beca-soporte', 'admin-interno', 'admin-empresa'].includes(u.rol);
+        if (!['soporte', 'beca-soporte', 'admin-interno', 'admin-empresa'].includes(u.rol)) {
+          continue;
+        }
 
-        // Debe pertenecer al grupo de atención (si el usuario tiene ese campo)
-        // El campo en usuario podría ser 'gruposDeAtencion' (string o array)
+        // Verificar grupo de atención
         let perteneceAlGrupo = false;
         if (u.gruposDeAtencion) {
           if (Array.isArray(u.gruposDeAtencion)) {
             perteneceAlGrupo = u.gruposDeAtencion.includes(grupoAtencion);
           } else {
-            perteneceAlGrupo = u.gruposDeAtencion === grupoAtencion || u.gruposDeAtencion.includes(grupoAtencion);
+            perteneceAlGrupo = u.gruposDeAtencion === grupoAtencion;
           }
+        } else if (u.rol === 'admin-interno') {
+          // Fallback para admins sin grupos
+          perteneceAlGrupo = true;
         }
 
-        // Si es admin-interno o soporte, a veces pueden ver todo, pero mejor respetar el grupo si existe
-        // Si el usuario no tiene grupos definidos, ¿lo asignamos? Asumamos que NO por seguridad, salvo admin
-        if (!u.gruposDeAtencion && u.rol === 'admin-interno') perteneceAlGrupo = true; // Fallback para admins
-
-        return rolValido && perteneceAlGrupo;
-      });
+        if (perteneceAlGrupo) {
+          candidatos.push(u);
+        }
+      }
 
       console.log(`[AUTO-ASSIGN] Encontrados ${candidatos.length} candidatos:`, candidatos.map((c: any) => c.nombre));
 
