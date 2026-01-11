@@ -8,6 +8,7 @@ import { Ticket, Activity, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-
 import { useAuthStore } from '@/auth/auth.store';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
+import { PERMISSIONS } from '@/constants/permissions';
 
 // Componente para Tarjeta de Estadísticas
 const StatCard = ({ title, value, icon: Icon, color, description }: any) => (
@@ -33,7 +34,7 @@ const EmpresaDashboard = () => {
         const filters: Array<{ value: string, label: string }> = [];
 
         // ASIGNADOS A MÍ - Si tiene permiso para ver asignados
-        if (hasPermission('tickets.view_assigned')) {
+        if (hasPermission(PERMISSIONS.TICKETS_VIEW_ASSIGNED)) {
             filters.push({ value: 'assigned', label: 'Asignados a mí' });
         }
 
@@ -41,7 +42,7 @@ const EmpresaDashboard = () => {
         filters.push({ value: 'my-tickets', label: 'Creados por mí' });
 
         // TODOS - Si tiene permiso
-        if (hasPermission('tickets.view_all_company')) {
+        if (hasPermission(PERMISSIONS.TICKETS_VIEW_ALL)) {
             filters.push({ value: 'all', label: 'Todos de mi empresa' });
         }
 
@@ -51,43 +52,72 @@ const EmpresaDashboard = () => {
     const availableFilters = getAvailableFilters();
     const [ticketFilter, setTicketFilter] = useState(availableFilters[0]?.value || 'my-tickets');
 
-    // Fetch Tickets (Backend debe filtrar por empresa)
+    // Fetch Tickets (Backend debe filtrar por empresa y permisos RBAC)
     const { data: tickets = [], isLoading } = useQuery({
         queryKey: ['my-tickets', user?.empresaId, user?.id, ticketFilter],
         queryFn: async () => {
-            let baseTickets = await ticketsService.getTickets({
-                empresaId: user?.empresaId
-            });
+            try {
+                // Backend filtra automáticamente por:
+                // 1. empresaId del usuario (middlewares verificarToken)
+                // 2. Permisos RBAC (ver todos, asignados, creados)
+                const baseTickets = await ticketsService.getTickets({
+                    empresaId: user?.empresaId
+                });
 
-            // Aplicar filtro seleccionado
-            if (ticketFilter === 'my-tickets') {
-                baseTickets = baseTickets.filter((t: any) => {
-                    const creatorId = t.usuarioCreador?._id || t.usuarioCreador;
-                    const userId = user?._id || user?.id;
-                    return creatorId && userId && creatorId.toString() === userId.toString();
-                });
-            } else if (ticketFilter === 'assigned') {
-                baseTickets = baseTickets.filter((t: any) => {
-                    const assignedId = t.agenteAsignado?._id || t.agenteAsignado;
-                    const userId = user?._id || user?.id;
-                    return assignedId && userId && assignedId.toString() === userId.toString();
-                });
+                console.log('✅ Tickets obtenidos:', baseTickets.length, 'Filtro:', ticketFilter);
+
+                // Aplicar filtro seleccionado (segunda validación en frontend)
+                let filtered = baseTickets;
+                
+                if (ticketFilter === 'my-tickets') {
+                    filtered = baseTickets.filter((t: any) => {
+                        const creatorId = t.usuarioCreador?._id || t.usuarioCreador;
+                        const userId = user?._id || user?.id;
+                        return creatorId && userId && creatorId.toString() === userId.toString();
+                    });
+                    console.log('🔍 Filtrados por creador:', filtered.length);
+                } else if (ticketFilter === 'assigned') {
+                    filtered = baseTickets.filter((t: any) => {
+                        const assignedId = t.agenteAsignado?._id || t.agenteAsignado;
+                        const userId = user?._id || user?.id;
+                        return assignedId && userId && String(assignedId) === String(userId);
+                    });
+                    console.log('🔍 Filtrados por asignado:', filtered.length);
+                }
+                // 'all' no filtra adicional
+
+                return filtered;
+            } catch (err: any) {
+                console.error('❌ Error obteniendo tickets:', err.message);
+                throw err;
             }
-            // 'all' no filtra adicional
-
-            return baseTickets;
         },
-        enabled: !!user?.id, // Solo ejecutar si el user.id existe
+        enabled: !!user?.id && !!user?.empresaId, // Requiere usuario y empresa
     });
 
-    // Calcular Estadísticas (estados vienen en lowercase del backend)
+    // Calcular Estadísticas (normalizar estados)
     const ticketsArray = Array.isArray(tickets) ? tickets : [];
+    
+    // Normalizar función para estados
+    const normalizeEstado = (estado: string): string => {
+        if (!estado) return '';
+        const estadoLower = estado.toLowerCase().trim();
+        // Mapear variaciones
+        if (estadoLower.includes('abierto')) return 'abierto';
+        if (estadoLower.includes('en_proceso') || estadoLower.includes('en proceso') || estadoLower.includes('enproceso')) return 'en_proceso';
+        if (estadoLower.includes('en_espera') || estadoLower.includes('en espera') || estadoLower.includes('enespera')) return 'en_espera';
+        if (estadoLower.includes('cerrado') || estadoLower.includes('resuelto')) return 'cerrado';
+        return estadoLower;
+    };
+
     const stats = {
         total: ticketsArray.length,
-        abiertos: ticketsArray.filter((t: any) => t.estado?.toLowerCase() === 'abierto').length,
-        enProceso: ticketsArray.filter((t: any) => t.estado?.toLowerCase() === 'en_proceso').length,
-        cerrados: ticketsArray.filter((t: any) => ['cerrado', 'resuelto'].includes(t.estado?.toLowerCase())).length,
+        abiertos: ticketsArray.filter((t: any) => normalizeEstado(t.estado) === 'abierto').length,
+        enProceso: ticketsArray.filter((t: any) => normalizeEstado(t.estado) === 'en_proceso').length,
+        cerrados: ticketsArray.filter((t: any) => normalizeEstado(t.estado) === 'cerrado').length,
     };
+
+    console.log('📊 Stats calculados:', stats, 'Total tickets:', ticketsArray.length);
 
 
     // Últimos 5 tickets
@@ -204,11 +234,12 @@ const EmpresaDashboard = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap ${ticket.estado?.toLowerCase() === 'abierto' ? 'bg-red-100 text-red-600' :
-                                                ticket.estado?.toLowerCase() === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
-                                                    ticket.estado?.toLowerCase() === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
-                                                        'bg-green-100 text-green-600'
-                                                }`}>
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap ${
+                                                normalizeEstado(ticket.estado) === 'abierto' ? 'bg-red-100 text-red-600' :
+                                                normalizeEstado(ticket.estado) === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
+                                                normalizeEstado(ticket.estado) === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
+                                                'bg-green-100 text-green-600'
+                                            }`}>
                                                 {ticket.estado}
                                             </span>
                                         </div>
@@ -220,13 +251,13 @@ const EmpresaDashboard = () => {
                 </Card>
 
                 {/* Quick Actions - Only if user has permission to manage services or users */}
-                {(hasPermission('servicios.view_local') || hasPermission('users.view')) && (
+                {(hasPermission(PERMISSIONS.SERVICIOS_VIEW_LOCAL) || hasPermission(PERMISSIONS.USERS_VIEW)) && (
                     <Card className="col-span-3 md:col-span-2 border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle>{t('company_portal.dashboard.quick_actions.title')}</CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-3">
-                            {hasPermission('servicios.view_local') && (
+                            {hasPermission(PERMISSIONS.SERVICIOS_VIEW_LOCAL) && (
                                 <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/servicios')}>
                                     <Clock className="mr-2 h-4 w-4" />
                                     <div className="flex flex-col items-start">
@@ -236,7 +267,7 @@ const EmpresaDashboard = () => {
                                 </Button>
                             )}
 
-                            {hasPermission('users.view') && (
+                            {hasPermission(PERMISSIONS.USERS_VIEW) && (
                                 <Button variant="outline" className="w-full justify-start h-auto py-3" onClick={() => navigate('/empresa/equipo')}>
                                     <Ticket className="mr-2 h-4 w-4" />
                                     <div className="flex flex-col items-start">

@@ -144,7 +144,7 @@ const CareGroupsPage = () => {
                         <FileDown className="mr-2 h-4 w-4" /> Plantilla
                     </Button>
                     <ProtectedButton
-                        permission={PERMISSIONS.SERVICIOS_IMPORT}
+                        permission={PERMISSIONS.HABILITIES_CREATE}
                         variant="outline"
                         className="relative"
                         title="Cargar grupos desde archivo CSV"
@@ -174,7 +174,7 @@ const CareGroupsPage = () => {
                         }
                     }}>
                         <DialogTrigger asChild>
-                            <ProtectedButton permission={PERMISSIONS.CARE_GROUPS_CREATE}>
+                            <ProtectedButton permission={PERMISSIONS.HABILITIES_CREATE}>
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
                             </ProtectedButton>
                         </DialogTrigger>
@@ -230,7 +230,7 @@ const CareGroupsPage = () => {
                                     <TableCell>{group.descripcion || '-'}</TableCell>
                                     <TableCell className="text-right space-x-2">
                                         <ProtectedButton
-                                            permission={PERMISSIONS.CARE_GROUPS_UPDATE}
+                                            permission={PERMISSIONS.HABILITIES_EDIT}
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEdit(group)}
@@ -238,7 +238,7 @@ const CareGroupsPage = () => {
                                             <Pencil className="h-4 w-4" />
                                         </ProtectedButton>
                                         <ProtectedButton
-                                            permission={PERMISSIONS.CARE_GROUPS_DELETE}
+                                            permission={PERMISSIONS.HABILITIES_DELETE}
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => setDeletingId(group._id || '')}

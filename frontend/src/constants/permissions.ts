@@ -9,6 +9,7 @@ export const PERMISSIONS = {
     USERS_VIEW: 'users.view',
     USERS_VIEW_GLOBAL: 'users.view_global',
     USERS_RECOVER_PASSWORD_LOCAL: 'users.recover_password_local',
+    USERS_RECOVER_PASSWORD_GLOBAL: 'users.recover_password_global',
 
     // Tickets
     TICKETS_CREATE: 'tickets.create',
@@ -57,6 +58,7 @@ export const PERMISSIONS = {
     ADMINS_VIEW: 'admins.view',
     ADMINS_EDIT: 'admins.edit',
     ADMINS_DELETE: 'admins.delete',
+    ADMINS_MANAGE: 'admins.manage',
 
     // Habilidades / Care Groups
     HABILITIES_VIEW: 'habilities.view',
@@ -125,6 +127,7 @@ export const PERMISSIONS_MAP: Record<string, { label: string, description: strin
     'admins.view': { label: 'Ver Admins', description: 'Listar administradores', group: 'Sistema' },
     'admins.edit': { label: 'Editar Admins', description: 'Modificar administradores', group: 'Sistema' },
     'admins.delete': { label: 'Eliminar Admins', description: 'Eliminar administradores', group: 'Sistema' },
+    'admins.manage': { label: 'Gestionar Admins', description: 'Gestión completa de administradores', group: 'Sistema' },
     'habilities.view': { label: 'Ver Habilidades', description: 'Listar habilidades', group: 'Habilidades' },
     'habilities.create': { label: 'Crear Habilidades', description: 'Crear nuevas habilidades', group: 'Habilidades' },
     'habilities.edit': { label: 'Editar Habilidades', description: 'Modificar habilidades', group: 'Habilidades' },

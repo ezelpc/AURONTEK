@@ -15,7 +15,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     DropdownMenu,
@@ -41,11 +40,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import { careGroupsService } from '@/api/care-groups.service';
+
 // Simplified User Interface for Company Admin
 interface LocalUserForm {
     nombre: string;
     email: string;
     rol: string;
+    gruposDeAtencion?: string[];
 }
 
 const CompanyUsersPage = () => {
@@ -62,6 +64,12 @@ const CompanyUsersPage = () => {
         queryKey: ['company-users', user?.empresaId],
         queryFn: () => userService.getUsers(user?.empresaId),
         enabled: !!user?.empresaId
+    });
+
+    // Fetch Care Groups
+    const { data: groups = [], isLoading: isLoadingGroups } = useQuery({
+        queryKey: ['care-groups'],
+        queryFn: careGroupsService.getAll
     });
 
     // Fetch Roles for my company
@@ -230,6 +238,33 @@ const CompanyUsersPage = () => {
                                         )}
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div>
+                                <Label>Grupos de Atención</Label>
+                                <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                                    {isLoadingGroups ? (
+                                        <p className="text-sm text-slate-500">Cargando grupos...</p>
+                                    ) : groups.length > 0 ? (
+                                        groups.map((group) => (
+                                            <div key={group._id} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`group-${group._id}`}
+                                                    className="rounded border-gray-300"
+                                                    {...register('gruposDeAtencion')}
+                                                    value={group._id}
+                                                    defaultChecked={editingUser?.gruposDeAtencion?.some((g: any) => (g._id || g) === group._id)}
+                                                />
+                                                <Label htmlFor={`group-${group._id}`} className="font-normal cursor-pointer">
+                                                    {group.nombre}
+                                                </Label>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-slate-500">No hay grupos de atención disponibles</p>
+                                    )}
+                                </div>
                             </div>
 
                             <DialogFooter>
