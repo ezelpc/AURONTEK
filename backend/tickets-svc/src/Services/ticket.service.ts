@@ -2,6 +2,7 @@
 import Ticket from '../Models/Ticket.model';
 import Servicio from '../Models/Servicio';
 import auditService from './audit.service';
+import { notificarTicketCreado, obtenerInfoUsuario } from './notificaciones.helper';
 import amqp from 'amqplib';
 import axios from 'axios';
 import mongoose from 'mongoose';
@@ -143,6 +144,30 @@ class TicketService {
     }
   }
 
+  // ✅ Obtener información de usuario (nombre y email)
+  async obtenerInfoUsuario(usuarioId: string): Promise<{ nombre: string; email: string } | null> {
+    try {
+      const response = await axios.get(
+        `${process.env.USUARIOS_SVC_URL}/usuarios/${usuarioId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.SERVICE_TOKEN}`,
+            'X-Service-Name': 'tickets-svc'
+          },
+          timeout: 5000
+        }
+      );
+
+      return {
+        nombre: response.data.nombre || 'Usuario',
+        email: response.data.correo || response.data.email || ''
+      };
+    } catch (error) {
+      console.warn('⚠️  Error obteniendo info de usuario:', usuarioId, error);
+      return null;
+    }
+  }
+
   async crearTicket(datosTicket: any) {
     try {
       // Calcular fecha de vencimiento basada en SLA del servicio (metadata)
@@ -196,8 +221,27 @@ class TicketService {
         }
       }
 
-
       const nuevoTicket: any = await (Ticket as any).create(datosTicket);
+
+      // ✅ NOTIFICAR CREACIÓN DE TICKET
+      try {
+        const { notificarTicketCreado } = await import('./notificaciones.helper');
+        const creadorInfo = await this.obtenerInfoUsuario(nuevoTicket.usuarioCreador?.toString() || '');
+        
+        if (creadorInfo) {
+          await notificarTicketCreado(
+            nuevoTicket._id.toString(),
+            nuevoTicket.titulo,
+            nuevoTicket.usuarioCreador?.toString() || '',
+            creadorInfo.email,
+            creadorInfo.nombre,
+            nuevoTicket.empresaId.toString()
+          );
+        }
+      } catch (notifErr: any) {
+        console.error('Error notificando creación de ticket:', notifErr.message);
+        // No lanzar error, solo registrar
+      }
 
       // Publicar evento para que la IA lo analice y sugiera asignación
       const eventPayload = {
@@ -376,7 +420,7 @@ class TicketService {
       console.error('No se pudo publicar estado actualizado:', e.message || e);
     }
 
-    // Registrar cambio de estado en el historial de auditoría CON comentario
+    // Registrar cambio de estado en el historial de auditoría
     try {
       await auditService.registrarCambioEstado(
         ticket._id.toString(),
@@ -386,8 +430,7 @@ class TicketService {
           correo: 'usuario@aurontek.com' // Podríamos pasarlo también si está disponible
         },
         estadoAnterior,
-        estado,
-        motivo // ⬅️ Pasar comentario/motivo al registro
+        estado
       );
     } catch (auditErr: any) {
       console.error('Error al registrar auditoría de estado:', auditErr.message || auditErr);
@@ -426,6 +469,27 @@ class TicketService {
       console.error('No se pudo publicar ticket.asignado:', e.message || e);
     }
 
+    // ✅ NOTIFICAR ASIGNACIÓN
+    try {
+      const { notificarTicketAsignado, obtenerInfoUsuario } = await import('./notificaciones.helper');
+      const creadorInfo = await obtenerInfoUsuario(ticket.usuarioCreador?.toString() || '');
+      
+      if (creadorInfo && agente.correo) {
+        await notificarTicketAsignado(
+          ticket._id.toString(),
+          ticket.titulo,
+          agenteId,
+          agente.correo,
+          agente.nombre,
+          creadorInfo.nombre,
+          creadorInfo.email,
+          empresaId
+        );
+      }
+    } catch (notifErr: any) {
+      console.error('Error notificando asignación de ticket:', notifErr.message);
+    }
+
     // Registrar asignación en el historial de auditoría
     try {
       await auditService.registrarAsignacion(
@@ -450,6 +514,12 @@ class TicketService {
     const ticket: any = await (Ticket as any).findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
+    // Validar que el becario sea beca-soporte
+    const becario = await this.validarHabilidadesAgente(becarioId, empresaId);
+    if (becario.rol !== 'beca-soporte') {
+      throw new Error('Solo se puede delegar a usuarios con rol beca-soporte');
+    }
+
     // El ticket debe estar asignado al soporte que está delegando
     if (ticket.agenteAsignado?.toString() !== tutorId) {
       throw new Error('Solo puedes delegar tickets que estén asignados a ti');
@@ -459,18 +529,21 @@ class TicketService {
     ticket.tutor = new mongoose.Types.ObjectId(tutorId);
     // Asignar al becario
     ticket.agenteAsignado = new mongoose.Types.ObjectId(becarioId);
-    ticket.fechaAsignacion = new Date();
 
     await ticket.save();
 
-    // Publicar evento asíncrono - no bloquear respuesta
-    this.publicarEvento('ticket.delegado', {
-      ticket: {
-        id: ticket._id.toString(),
-        becarioId: becarioId.toString(),
-        tutorId: tutorId.toString()
-      }
-    }).catch(e => console.error('Error publicando ticket.delegado:', e.message));
+    try {
+      await this.publicarEvento('ticket.delegado', {
+        ticket: {
+          id: ticket._id.toString(),
+          becarioId: becarioId.toString(),
+          tutorId: tutorId.toString(),
+          becarioNombre: becario.nombre
+        }
+      });
+    } catch (e: any) {
+      console.error('No se pudo publicar ticket.delegado:', e.message || e);
+    }
 
     return ticket;
   }
@@ -576,15 +649,14 @@ class TicketService {
     const ticket: any = await (Ticket as any).findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
-    // Guardar agente anterior para auditoría ANTES de modificar
-    const agenteAnterior = ticket.agenteAsignado?.toString() || null;
-
     // Validar que el agente existe (se hace en agent_assigner)
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
-    ticket.fechaAsignacion = new Date();
 
-    // NO cambiar el estado automáticamente - el agente debe aceptar el ticket
-    // El ticket permanece "abierto" hasta que el agente lo tome
+    // Cambiar estado si está en 'abierto'
+    if (ticket.estado === 'abierto') {
+      ticket.estado = 'en_proceso';
+      ticket.fechaRespuesta = new Date();
+    }
 
     await ticket.save();
 
@@ -602,6 +674,10 @@ class TicketService {
 
     // Registrar asignación automática en auditoría
     try {
+      // Necesitamos el nombre del agente para el log
+      // Como no tenemos el objeto agente completo aquí, lo intentamos obtener o usamos el ID
+      // O idealmente deberíamos obtener el usuario agente antes
+
       await auditService.registrarAsignacion(
         ticket._id.toString(),
         {
@@ -609,8 +685,8 @@ class TicketService {
           nombre: 'IA Service',
           correo: 'ia@aurontek.com'
         },
-        agenteAnterior, // ✅ Ahora es string o null
-        agenteId // ✅ String del nuevo agente
+        ticket.agenteAsignado ? 'Agente anterior' : null,
+        `Agente ${agenteId}` // Simplificación por ahora
       );
     } catch (auditErr: any) {
       console.error('Error al registrar auditoría de asignación IA:', auditErr.message || auditErr);
@@ -654,7 +730,7 @@ class TicketService {
           'Authorization': `Bearer ${SERVICE_TOKEN}`,
           'X-Service-Name': 'tickets-svc'
         },
-        timeout: 1500 // ⬇️ Reducido de 3000ms a 1500ms para mayor velocidad
+        timeout: 3000 // 3s timeout to avoid blocking ticket creation
       });
 
       // Manejar formato de respuesta {usuarios: [...]} o [...]
@@ -667,31 +743,28 @@ class TicketService {
         return;
       }
 
-      // Filtrar candidatos de manera eficiente
-      const candidatos = [];
-      for (const u of usuarios) {
+      // Filtrar candidatos
+      const candidatos = usuarios.filter((u: any) => {
         // Roles permitidos para asignación
-        if (!['soporte', 'beca-soporte', 'admin-interno', 'admin-empresa'].includes(u.rol)) {
-          continue;
-        }
+        const rolValido = ['soporte', 'beca-soporte', 'admin-interno', 'admin-empresa'].includes(u.rol);
 
-        // Verificar grupo de atención
+        // Debe pertenecer al grupo de atención (si el usuario tiene ese campo)
+        // El campo en usuario podría ser 'gruposDeAtencion' (string o array)
         let perteneceAlGrupo = false;
         if (u.gruposDeAtencion) {
           if (Array.isArray(u.gruposDeAtencion)) {
             perteneceAlGrupo = u.gruposDeAtencion.includes(grupoAtencion);
           } else {
-            perteneceAlGrupo = u.gruposDeAtencion === grupoAtencion;
+            perteneceAlGrupo = u.gruposDeAtencion === grupoAtencion || u.gruposDeAtencion.includes(grupoAtencion);
           }
-        } else if (u.rol === 'admin-interno') {
-          // Fallback para admins sin grupos
-          perteneceAlGrupo = true;
         }
 
-        if (perteneceAlGrupo) {
-          candidatos.push(u);
-        }
-      }
+        // Si es admin-interno o soporte, a veces pueden ver todo, pero mejor respetar el grupo si existe
+        // Si el usuario no tiene grupos definidos, ¿lo asignamos? Asumamos que NO por seguridad, salvo admin
+        if (!u.gruposDeAtencion && u.rol === 'admin-interno') perteneceAlGrupo = true; // Fallback para admins
+
+        return rolValido && perteneceAlGrupo;
+      });
 
       console.log(`[AUTO-ASSIGN] Encontrados ${candidatos.length} candidatos:`, candidatos.map((c: any) => c.nombre));
 
