@@ -48,5 +48,17 @@ export const authService = {
     refreshPermissions: async (): Promise<{ permisos: string[], rol: string, updatedAt: Date }> => {
         const response = await api.get('/auth/refresh-permissions');
         return response.data;
+    },
+
+    // Recuperación de Contraseña (Empresas)
+    forgotPassword: async (data: { email: string, codigoAcceso: string }): Promise<{ msg: string }> => {
+        const response = await api.post('/auth/forgot-password', data);
+        return response.data;
+    },
+
+    resetPassword: async (token: string, password: string): Promise<{ msg: string }> => {
+        // Enviar token en body para máxima compatibilidad, aunque backend lo busca en body o params
+        const response = await api.post('/auth/reset-password', { token, password });
+        return response.data;
     }
 };

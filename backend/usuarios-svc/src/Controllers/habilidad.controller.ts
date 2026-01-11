@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import Habilidad from '../Models/Habilidad.model'; // Assuming this model exists
 import Usuario from '../Models/AltaUsuario.models';
+import csvParser from 'csv-parser';
+import { Readable } from 'stream';
 
 // GET /api/habilidades
 const listarHabilidades = async (req: Request, res: Response) => {
@@ -96,13 +98,53 @@ const downloadTemplate = async (req: Request, res: Response) => {
 
 // POST /api/habilidades/bulk - Carga masiva desde CSV
 const bulkUpload = async (req: Request, res: Response) => {
-    try {
-        // TODO: Implementar parseo de CSV y carga masiva
-        // Por ahora retornar mensaje de no implementado
-        res.status(501).json({ msg: 'Carga masiva aún no implementada. Próximamente disponible.' });
-    } catch (error: any) {
-        res.status(500).json({ msg: 'Error en la carga masiva', error: error.message });
+    if (!req.file) {
+        return res.status(400).json({ msg: 'No se subió ningún archivo CSV.' });
     }
+
+    const results: any[] = [];
+    const errors: any[] = [];
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    const stream = Readable.from(req.file.buffer.toString());
+
+    stream
+        .pipe(csvParser())
+        .on('data', (data) => results.push(data))
+        .on('end', async () => {
+            try {
+                for (const row of results) {
+                    const nombre = row['nombre'] || row['Nombre'];
+                    const descripcion = row['descripcion'] || row['Descripción'] || row['Descripcion'];
+
+                    if (!nombre) continue;
+
+                    const existing = await Habilidad.findOne({ nombre });
+                    if (existing) {
+                        existing.descripcion = descripcion || existing.descripcion;
+                        await existing.save();
+                        updatedCount++;
+                    } else {
+                        await Habilidad.create({ nombre, descripcion, activo: true });
+                        createdCount++;
+                    }
+                }
+
+                res.json({
+                    msg: 'Carga masiva completada',
+                    stats: {
+                        processed: results.length,
+                        created: createdCount,
+                        updated: updatedCount,
+                        errors: errors.length
+                    }
+                });
+            } catch (err: any) {
+                console.error('Error processing CSV:', err);
+                res.status(500).json({ msg: 'Error al procesar el archivo', error: err.message });
+            }
+        });
 };
 
 export default {

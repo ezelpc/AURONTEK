@@ -198,9 +198,9 @@ const LoginEmpresa = () => {
                                         Recordar usuario
                                     </label>
                                 </div>
-                                <a href="#" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+                                <Link to="/empresa/forgot-password" className="text-xs text-brand-600 hover:text-brand-700 font-medium">
                                     ¿Olvidaste tu contraseña?
-                                </a>
+                                </Link>
                             </div>
                         </div>
 
