@@ -44,9 +44,7 @@ export const careGroupsService = {
     bulkUpload: async (file: File): Promise<any> => {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await api.post('/habilidades/bulk', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const response = await api.post('/habilidades/bulk', formData);
         return response.data;
     }
 };
