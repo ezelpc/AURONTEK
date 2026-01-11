@@ -246,7 +246,12 @@ const EmpresaDashboard = () => {
                                         onClick={() => navigate(`/empresa/tickets/${ticket._id || ticket.id}`)}
                                     >
                                         <div className="space-y-1 flex-1">
-                                            <p className="text-sm font-medium leading-none truncate max-w-[200px] md:max-w-md">{ticket.titulo}</p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                    #{ticket._id ? ticket._id.slice(-6).toUpperCase() : '---'}
+                                                </span>
+                                                <p className="text-sm font-medium leading-none truncate max-w-[200px] md:max-w-md">{ticket.titulo}</p>
+                                            </div>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                                 <span>{ticket.servicio || ticket.servicioNombre}</span>
                                                 <span>•</span>
@@ -265,9 +270,9 @@ const EmpresaDashboard = () => {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap ${normalizeEstado(ticket.estado) === 'abierto' ? 'bg-red-100 text-red-600' :
-                                                    normalizeEstado(ticket.estado) === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
-                                                        normalizeEstado(ticket.estado) === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
-                                                            'bg-green-100 text-green-600'
+                                                normalizeEstado(ticket.estado) === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
+                                                    normalizeEstado(ticket.estado) === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
+                                                        'bg-green-100 text-green-600'
                                                 }`}>
                                                 {ticket.estado}
                                             </span>
