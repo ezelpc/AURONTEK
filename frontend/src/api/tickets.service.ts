@@ -164,5 +164,11 @@ export const ticketsService = {
     getTicketHistory: async (ticketId: string): Promise<any[]> => {
         const response = await api.get(`/tickets/${ticketId}/history`);
         return response.data;
+    },
+
+    // Delegar ticket a becario (Tutor/Soporte)
+    delegateTicket: async (id: string, becarioId: string): Promise<Ticket> => {
+        const response = await api.put<{ ticket: Ticket }>(`/tickets/${id}/delegar`, { becarioId });
+        return response.data.ticket;
     }
 };

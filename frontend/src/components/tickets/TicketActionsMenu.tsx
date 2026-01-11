@@ -9,7 +9,7 @@ import {
     DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Eye, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Eye, Trash2, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/auth/auth.store';
@@ -33,6 +33,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { DelegateDialog } from './DelegateDialog';
 
 interface TicketActionsMenuProps {
     ticket: Ticket;
@@ -43,13 +44,15 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
     const navigate = useNavigate()
     const { openChat } = useChatStore()
     const [isOpen, setIsOpen] = useState(false);
-    const { user, hasPermission } = useAuthStore();
+    const { hasPermission } = useAuthStore();
 
     // Check permissions strictly (Granular RBAC)
     const canDelete = hasPermission('tickets.delete');
     const canChangeStatus = hasPermission('tickets.change_status');
+    const canDelegate = hasPermission('tickets.delegate');
 
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+    const [isDelegateDialogOpen, setIsDelegateDialogOpen] = useState(false);
 
     const handleDelete = async () => {
         try {
@@ -148,6 +151,21 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
                             </>
                         )}
 
+                        {canDelegate && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setIsDelegateDialogOpen(true);
+                                        setIsOpen(false);
+                                    }}
+                                >
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Delegar a Becario
+                                </DropdownMenuItem>
+                            </>
+                        )}
+
                         {canDelete && (
                             <>
                                 <DropdownMenuSeparator />
@@ -209,6 +227,17 @@ export const TicketActionsMenu = ({ ticket, onUpdate }: TicketActionsMenuProps) 
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal para Delegación */}
+            <DelegateDialog
+                ticketId={ticket._id || ticket.id!}
+                isOpen={isDelegateDialogOpen}
+                onClose={() => setIsDelegateDialogOpen(false)}
+                onSuccess={() => {
+                    setIsDelegateDialogOpen(false);
+                    onUpdate?.();
+                }}
+            />
         </>
     );
 }
