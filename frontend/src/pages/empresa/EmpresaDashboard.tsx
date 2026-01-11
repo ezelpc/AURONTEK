@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { ticketsService } from '@/api/tickets.service';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Ticket, Activity, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import { useAuthStore } from '@/auth/auth.store';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 
 // Componente para Tarjeta de Estadísticas
 const StatCard = ({ title, value, icon: Icon, color, description }: any) => (
@@ -26,10 +28,55 @@ const EmpresaDashboard = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
 
+    // Filtros inteligentes RBAC
+    const getAvailableFilters = () => {
+        const filters: Array<{ value: string, label: string }> = [];
+
+        // ASIGNADOS A MÍ - Para soporte/resolutores
+        if (user?.rol && ['soporte', 'beca-soporte', 'resolutor-empresa', 'becario'].includes(user.rol)) {
+            filters.push({ value: 'assigned', label: 'Asignados a mí' });
+        }
+
+        // CREADOS POR MÍ - Para todos
+        filters.push({ value: 'my-tickets', label: 'Creados por mí' });
+
+        // TODOS - Si tiene permiso
+        if (hasPermission('tickets.view_all_company')) {
+            filters.push({ value: 'all', label: 'Todos de mi empresa' });
+        }
+
+        return filters;
+    };
+
+    const availableFilters = getAvailableFilters();
+    const [ticketFilter, setTicketFilter] = useState(availableFilters[0]?.value || 'my-tickets');
+
     // Fetch Tickets (Backend debe filtrar por empresa)
     const { data: tickets = [], isLoading } = useQuery({
-        queryKey: ['my-tickets', user?.empresaId, user?.id],
-        queryFn: () => ticketsService.getTickets({ empresaId: user?.empresaId, usuarioCreador: user?.id }),
+        queryKey: ['my-tickets', user?.empresaId, user?.id, ticketFilter],
+        queryFn: async () => {
+            let baseTickets = await ticketsService.getTickets({
+                empresaId: user?.empresaId
+            });
+
+            // Aplicar filtro seleccionado
+            if (ticketFilter === 'my-tickets') {
+                baseTickets = baseTickets.filter((t: any) => {
+                    const creatorId = t.usuarioCreador?._id || t.usuarioCreador;
+                    const userId = user?._id || user?.id;
+                    return creatorId && userId && creatorId.toString() === userId.toString();
+                });
+            } else if (ticketFilter === 'assigned') {
+                baseTickets = baseTickets.filter((t: any) => {
+                    const assignedId = t.agenteAsignado?._id || t.agenteAsignado;
+                    const userId = user?._id || user?.id;
+                    return assignedId && userId && assignedId.toString() === userId.toString();
+                });
+            }
+            // 'all' no filtra adicional
+
+            return baseTickets;
+        },
         enabled: !!user?.id, // Solo ejecutar si el user.id existe
     });
 
@@ -58,9 +105,26 @@ const EmpresaDashboard = () => {
                         {t('company_portal.dashboard.summary', { company: user?.empresa || 'Empresa' })}
                     </p>
                 </div>
-                <Button onClick={() => navigate('/empresa/nuevo-ticket')} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" /> {t('company_portal.dashboard.new_ticket')}
-                </Button>
+                <div className="flex gap-2 items-center">
+                    {/* Filtros RBAC */}
+                    {availableFilters.length > 1 && (
+                        <Select value={ticketFilter} onValueChange={setTicketFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableFilters.map(filter => (
+                                    <SelectItem key={filter.value} value={filter.value}>
+                                        {filter.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <Button onClick={() => navigate('/empresa/nuevo-ticket')} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="mr-2 h-4 w-4" /> {t('company_portal.dashboard.new_ticket')}
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Grid */}
@@ -121,18 +185,29 @@ const EmpresaDashboard = () => {
                                         className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0 hover:bg-slate-50 p-2 rounded-md transition-colors cursor-pointer"
                                         onClick={() => navigate(`/empresa/tickets/${ticket._id || ticket.id}`)}
                                     >
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 flex-1">
                                             <p className="text-sm font-medium leading-none truncate max-w-[200px] md:max-w-md">{ticket.titulo}</p>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <span>{ticket.servicio}</span>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                                <span>{ticket.servicio || ticket.servicioNombre}</span>
                                                 <span>•</span>
                                                 <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                                                {ticket.agenteAsignado && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span className="text-blue-600 font-medium">
+                                                            👤 {typeof ticket.agenteAsignado === 'string'
+                                                                ? 'Asignado'
+                                                                : ticket.agenteAsignado.nombre || 'Agente'}
+                                                        </span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${ticket.estado === 'ABIERTO' ? 'bg-red-100 text-red-600' :
-                                                ticket.estado === 'EN_PROCESO' ? 'bg-orange-100 text-orange-600' :
-                                                    'bg-green-100 text-green-600'
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap ${ticket.estado?.toLowerCase() === 'abierto' ? 'bg-red-100 text-red-600' :
+                                                ticket.estado?.toLowerCase() === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
+                                                    ticket.estado?.toLowerCase() === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
+                                                        'bg-green-100 text-green-600'
                                                 }`}>
                                                 {ticket.estado}
                                             </span>
