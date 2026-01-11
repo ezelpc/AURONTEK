@@ -29,8 +29,8 @@ const TicketsPage = () => {
             filters.push({ value: 'all', label: 'Todos' });
         }
 
-        // ASIGNADOS A MÍ - Para soporte/resolutores
-        if (user?.rol && ['soporte', 'beca-soporte', 'resolutor-empresa', 'resolutor-interno', 'becario'].includes(user.rol)) {
+        // ASIGNADOS A MÍ - Si tiene permiso para ver asignados
+        if (hasPermission(PERMISSIONS.TICKETS_VIEW_ASSIGNED)) {
             filters.push({ value: 'assigned', label: 'Asignados a mí' });
         }
 

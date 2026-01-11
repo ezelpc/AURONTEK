@@ -32,8 +32,8 @@ const EmpresaDashboard = () => {
     const getAvailableFilters = () => {
         const filters: Array<{ value: string, label: string }> = [];
 
-        // ASIGNADOS A MÍ - Para soporte/resolutores
-        if (user?.rol && ['soporte', 'beca-soporte', 'resolutor-empresa', 'becario'].includes(user.rol)) {
+        // ASIGNADOS A MÍ - Si tiene permiso para ver asignados
+        if (hasPermission('tickets.view_assigned')) {
             filters.push({ value: 'assigned', label: 'Asignados a mí' });
         }
 
