@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowUpDown } from "lucide-react"
 import { TicketActionsMenu } from "@/components/tickets/TicketActionsMenu"
+import { useAuthStore } from "@/auth/auth.store"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,6 +15,21 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ticketsService } from "@/api/tickets.service"
 import { toast } from "sonner"
+
+// Validación RBAC: ¿Puede este usuario cambiar el estado del ticket?
+const canUserChangeStatus = (ticket: any): boolean => {
+    const { user, hasPermission } = useAuthStore.getState();
+
+    // 1. Es el agente asignado?
+    const assignedId = ticket.agenteAsignado?._id || ticket.agenteAsignado;
+    const userId = user?._id || user?.id;
+    const isAssigned = assignedId && userId && assignedId.toString() === userId.toString();
+
+    // 2. O tiene permiso explícito de admin?
+    const hasExplicitPermission = hasPermission('tickets.change_status');
+
+    return isAssigned || hasExplicitPermission;
+};
 
 // Helper function to handle status changes
 const handleStatusChange = async (ticket: any, newStatus: string, table: any) => {
@@ -107,6 +123,18 @@ export const columns: ColumnDef<Ticket>[] = [
                     break;
             }
 
+            // RBAC: Solo mostrar dropdown si usuario puede cambiar estado
+            const ticket = row.original;
+            if (!canUserChangeStatus(ticket)) {
+                // Badge estático - sin interacción
+                return (
+                    <Badge variant={variant} style={badgeStyle}>
+                        {displayText}
+                    </Badge>
+                );
+            }
+
+            // Badge con dropdown para cambiar estado
             return (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
