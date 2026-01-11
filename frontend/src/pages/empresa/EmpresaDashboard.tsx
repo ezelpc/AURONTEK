@@ -24,10 +24,14 @@ const StatCard = ({ title, value, icon: Icon, color, description }: any) => (
     </Card>
 );
 
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+
 const EmpresaDashboard = () => {
     const { user, hasPermission } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Filtros inteligentes RBAC
     const getAvailableFilters = () => {
@@ -68,21 +72,19 @@ const EmpresaDashboard = () => {
 
                 // Aplicar filtro seleccionado (segunda validación en frontend)
                 let filtered = baseTickets;
-                
+
                 if (ticketFilter === 'my-tickets') {
                     filtered = baseTickets.filter((t: any) => {
                         const creatorId = t.usuarioCreador?._id || t.usuarioCreador;
                         const userId = user?._id || user?.id;
                         return creatorId && userId && creatorId.toString() === userId.toString();
                     });
-                    console.log('🔍 Filtrados por creador:', filtered.length);
                 } else if (ticketFilter === 'assigned') {
                     filtered = baseTickets.filter((t: any) => {
                         const assignedId = t.agenteAsignado?._id || t.agenteAsignado;
                         const userId = user?._id || user?.id;
                         return assignedId && userId && String(assignedId) === String(userId);
                     });
-                    console.log('🔍 Filtrados por asignado:', filtered.length);
                 }
                 // 'all' no filtra adicional
 
@@ -97,7 +99,7 @@ const EmpresaDashboard = () => {
 
     // Calcular Estadísticas (normalizar estados)
     const ticketsArray = Array.isArray(tickets) ? tickets : [];
-    
+
     // Normalizar función para estados
     const normalizeEstado = (estado: string): string => {
         if (!estado) return '';
@@ -117,11 +119,21 @@ const EmpresaDashboard = () => {
         cerrados: ticketsArray.filter((t: any) => normalizeEstado(t.estado) === 'cerrado').length,
     };
 
-    console.log('📊 Stats calculados:', stats, 'Total tickets:', ticketsArray.length);
-
-
-    // Últimos 5 tickets
-    const recentTickets = [...ticketsArray].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+    // Filtrar y ordenar para Actividad Reciente + Buscador
+    const recentTickets = [...ticketsArray]
+        .filter((t: any) => {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return (
+                t.titulo?.toLowerCase().includes(term) ||
+                t.descripcion?.toLowerCase().includes(term) ||
+                t.servicioNombre?.toLowerCase().includes(term) ||
+                t.servicio?.toLowerCase().includes(term) ||
+                t.id?.toLowerCase().includes(term)
+            );
+        })
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -136,21 +148,6 @@ const EmpresaDashboard = () => {
                     </p>
                 </div>
                 <div className="flex gap-2 items-center">
-                    {/* Filtros RBAC */}
-                    {availableFilters.length > 1 && (
-                        <Select value={ticketFilter} onValueChange={setTicketFilter}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableFilters.map(filter => (
-                                    <SelectItem key={filter.value} value={filter.value}>
-                                        {filter.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
                     <Button onClick={() => navigate('/empresa/nuevo-ticket')} className="bg-blue-600 hover:bg-blue-700">
                         <Plus className="mr-2 h-4 w-4" /> {t('company_portal.dashboard.new_ticket')}
                     </Button>
@@ -193,9 +190,40 @@ const EmpresaDashboard = () => {
             <div className="grid gap-4 md:grid-cols-7">
                 {/* Recent Activity */}
                 <Card className="col-span-4 md:col-span-5 border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle>{t('company_portal.dashboard.recent_activity.title')}</CardTitle>
-                        <CardDescription>{t('company_portal.dashboard.recent_activity.desc')}</CardDescription>
+                    <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle>{t('company_portal.dashboard.recent_activity.title')}</CardTitle>
+                            <CardDescription>{t('company_portal.dashboard.recent_activity.desc')}</CardDescription>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                            {/* Buscador */}
+                            <div className="relative w-full sm:w-[200px]">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+                                <Input
+                                    placeholder="Buscar ticket..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-8"
+                                />
+                            </div>
+
+                            {/* Filtros RBAC */}
+                            {availableFilters.length > 1 && (
+                                <Select value={ticketFilter} onValueChange={setTicketFilter}>
+                                    <SelectTrigger className="w-full sm:w-[180px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableFilters.map(filter => (
+                                            <SelectItem key={filter.value} value={filter.value}>
+                                                {filter.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -203,10 +231,12 @@ const EmpresaDashboard = () => {
                                 <p className="text-sm text-slate-500">{t('common.loading')}</p>
                             ) : recentTickets.length === 0 ? (
                                 <div className="text-center py-8 text-slate-500">
-                                    <p>{t('company_portal.dashboard.recent_activity.no_activity')}</p>
-                                    <Button variant="link" onClick={() => navigate('/empresa/nuevo-ticket')}>
-                                        {t('company_portal.dashboard.recent_activity.create_first')}
-                                    </Button>
+                                    <p>{searchTerm ? 'No se encontraron tickets con esa búsqueda.' : t('company_portal.dashboard.recent_activity.no_activity')}</p>
+                                    {!searchTerm && (
+                                        <Button variant="link" onClick={() => navigate('/empresa/nuevo-ticket')}>
+                                            {t('company_portal.dashboard.recent_activity.create_first')}
+                                        </Button>
+                                    )}
                                 </div>
                             ) : (
                                 recentTickets.map((ticket: any) => (
@@ -234,12 +264,11 @@ const EmpresaDashboard = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap ${
-                                                normalizeEstado(ticket.estado) === 'abierto' ? 'bg-red-100 text-red-600' :
-                                                normalizeEstado(ticket.estado) === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
-                                                normalizeEstado(ticket.estado) === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
-                                                'bg-green-100 text-green-600'
-                                            }`}>
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap ${normalizeEstado(ticket.estado) === 'abierto' ? 'bg-red-100 text-red-600' :
+                                                    normalizeEstado(ticket.estado) === 'en_proceso' ? 'bg-orange-100 text-orange-600' :
+                                                        normalizeEstado(ticket.estado) === 'en_espera' ? 'bg-yellow-100 text-yellow-600' :
+                                                            'bg-green-100 text-green-600'
+                                                }`}>
                                                 {ticket.estado}
                                             </span>
                                         </div>
