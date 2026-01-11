@@ -38,5 +38,10 @@ export const userService = {
         const response = await api.get<any>(url);
         // Backend might wrap in { usuarios: [] }
         return Array.isArray(response.data) ? response.data : response.data.usuarios || [];
+    },
+
+    // Recuperar Contraseña (Admin)
+    recoverPassword: async (userId: string): Promise<void> => {
+        await api.post(`/usuarios/${userId}/recover-password`);
     }
 };

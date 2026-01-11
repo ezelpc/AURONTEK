@@ -3,6 +3,7 @@ export interface User {
     id: string; // Used by frontend logic often
     nombre: string;
     email: string;
+    correo?: string; // Raw DB field
     rol: string;
     empresaId?: string;
     empresa?: string; // Sometimes populated with name
@@ -10,6 +11,7 @@ export interface User {
     permisos: string[];
     activo: boolean;
     foto?: string;
+    fotoPerfil?: string; // Raw DB field
 }
 
 export interface Service {

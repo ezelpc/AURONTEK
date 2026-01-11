@@ -6,6 +6,7 @@ import { LayoutDashboard, PlusCircle, Building2, Users, Globe, ShieldCheck, Brie
 import { Toaster } from '@/components/ui/sonner';
 import { ProtectedElement } from '@/components/ProtectedElement';
 import { UserMenu } from '@/components/UserMenu';
+import NotificationsPanel from '@/components/NotificationsPanel';
 import { useTranslation } from 'react-i18next';
 
 const NavbarItem = ({ to, icon: Icon, label, end = false }: { to: string, icon: any, label: string, end?: boolean }) => (
@@ -65,6 +66,7 @@ const EmpresaLayout = () => {
                     </nav>
 
                     <div className="flex items-center gap-4">
+                        <NotificationsPanel className="" />
                         <UserMenu />
                     </div>
                 </div>

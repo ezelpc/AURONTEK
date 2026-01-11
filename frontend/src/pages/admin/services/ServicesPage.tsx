@@ -48,7 +48,8 @@ const ServicesPage = () => {
     const pageTitle = activeTab === 'local' ? t('services.title_internal') : t('services.title');
 
     // Get the permission based on active tab
-    const requiredPermission = activeTab === 'global' ? PERMISSIONS.SERVICIOS_MANAGE_GLOBAL : PERMISSIONS.SERVICIOS_MANAGE_LOCAL;
+    // Get the permission based on active tab
+    // const requiredPermission = ... (Removed)
 
     // Fetch Services based on active tab
     const { data: services = [], isLoading } = useQuery({
@@ -130,7 +131,7 @@ const ServicesPage = () => {
                         {!readonly && (
                             <TableCell className="text-right">
                                 <ProtectedButton
-                                    permission={requiredPermission}
+                                    permission={activeTab === 'global' ? PERMISSIONS.SERVICIOS_EDIT_GLOBAL : PERMISSIONS.SERVICIOS_EDIT_LOCAL}
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => { setEditingService(service); setIsCreating(false); }}
@@ -138,7 +139,7 @@ const ServicesPage = () => {
                                     <Pencil className="h-4 w-4" />
                                 </ProtectedButton>
                                 <ProtectedButton
-                                    permission={requiredPermission}
+                                    permission={activeTab === 'global' ? PERMISSIONS.SERVICIOS_DELETE_GLOBAL : PERMISSIONS.SERVICIOS_DELETE_LOCAL}
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleDelete(service._id!)}
@@ -209,7 +210,7 @@ const ServicesPage = () => {
                             <Upload className="mr-2 h-4 w-4" /> {t('services.import')}
                         </ProtectedButton>
                         <ProtectedButton
-                            permission={requiredPermission}
+                            permission={activeTab === 'global' ? PERMISSIONS.SERVICIOS_CREATE_GLOBAL : PERMISSIONS.SERVICIOS_CREATE_LOCAL}
                             onClick={() => setIsCreating(true)}
                         >
                             <Plus className="mr-2 h-4 w-4" /> {t('services.new_service')}

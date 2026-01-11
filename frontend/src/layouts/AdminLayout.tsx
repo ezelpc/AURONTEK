@@ -244,12 +244,12 @@ const AdminLayout = () => {
                         </ProtectedElement>
 
                         {/* Servicios - Submenu with local/global */}
-                        <ProtectedElement permission={[PERMISSIONS.SERVICIOS_MANAGE_LOCAL, PERMISSIONS.SERVICIOS_MANAGE_GLOBAL]}>
+                        <ProtectedElement permission={[PERMISSIONS.SERVICIOS_VIEW_LOCAL, PERMISSIONS.SERVICIOS_VIEW_GLOBAL]}>
                             <SidebarSubmenu icon={Globe} label={t('common.nav.services')} isActive={isServicesActive}>
-                                <ProtectedElement permission={PERMISSIONS.SERVICIOS_MANAGE_LOCAL}>
+                                <ProtectedElement permission={PERMISSIONS.SERVICIOS_VIEW_LOCAL}>
                                     <SidebarItem to="/admin/servicios?tipo=local" icon={MapPin} label={t('common.nav.services_local')} isSubmenuItem />
                                 </ProtectedElement>
-                                <ProtectedElement permission={PERMISSIONS.SERVICIOS_MANAGE_GLOBAL}>
+                                <ProtectedElement permission={PERMISSIONS.SERVICIOS_VIEW_GLOBAL}>
                                     <SidebarItem to="/admin/servicios?tipo=global" icon={GlobeLock} label={t('common.nav.services_global')} isSubmenuItem />
                                 </ProtectedElement>
                             </SidebarSubmenu>

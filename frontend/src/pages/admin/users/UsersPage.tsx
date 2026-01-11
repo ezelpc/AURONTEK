@@ -4,6 +4,7 @@ import { userService } from '@/api/user.service';
 import { companiesService } from '@/api/companies.service';
 import { rolesService } from '@/api/roles.service';
 import UserForm from './UserForm';
+import { ResetPasswordDialog } from '@/components/users/ResetPasswordDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 import { ProtectedButton } from '@/components/ProtectedButton';
@@ -39,6 +40,7 @@ const UsersPage = () => {
     const [selectedCompany, setSelectedCompany] = useState<string>(''); // '' = Todas
     const [searchTerm, setSearchTerm] = useState('');
     const [editingUser, setEditingUser] = useState<any | null>(null);
+    const [resetUser, setResetUser] = useState<any | null>(null);
     const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
     // 1. Fetch Companies for Filter (Only if Super Admin)
@@ -190,6 +192,16 @@ const UsersPage = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Reset Password Dialog */}
+            {resetUser && (
+                <ResetPasswordDialog
+                    open={!!resetUser}
+                    onOpenChange={(open) => !open && setResetUser(null)}
+                    userId={resetUser.id || resetUser._id}
+                    userName={resetUser.nombre}
+                />
+            )}
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -361,6 +373,15 @@ const UsersPage = () => {
                                                 ) : (
                                                     <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
                                                 )}
+                                            </ProtectedButton>
+                                            <ProtectedButton
+                                                permission={[PERMISSIONS.USERS_RECOVER_PASSWORD_LOCAL, PERMISSIONS.USERS_RECOVER_PASSWORD_GLOBAL]}
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setResetUser(user)}
+                                                className="dark:hover:bg-slate-800 text-orange-500 hover:text-orange-600"
+                                            >
+                                                <Key className="h-4 w-4" />
                                             </ProtectedButton>
                                             <ProtectedButton
                                                 permission={PERMISSIONS.USERS_DELETE}

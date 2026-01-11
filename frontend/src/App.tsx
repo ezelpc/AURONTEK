@@ -5,8 +5,6 @@ import { useUIStore } from '@/components/ui.store';
 import LoginAdmin from '@/pages/admin/LoginAdmin';
 import ValidarAcceso from '@/pages/empresa/ValidarAcceso';
 import LoginEmpresa from '@/pages/empresa/LoginEmpresa';
-import ForgotPasswordPage from '@/pages/empresa/login/ForgotPasswordPage';
-import ResetPasswordPage from '@/pages/empresa/login/ResetPasswordPage';
 import AdminLayout from '@/layouts/AdminLayout';
 import TicketsPage from '@/pages/admin/tickets/TicketsPage';
 import AdminCreateTicket from '@/pages/admin/tickets/AdminCreateTicket';
@@ -58,11 +56,7 @@ function App() {
 
                 {/* Flujo Empresa */}
                 <Route path="/acceso-empresa" element={<ValidarAcceso />} />
-                <Route path="/acceso-empresa" element={<ValidarAcceso />} />
                 <Route path="/empresa/login" element={<LoginEmpresa />} />
-                <Route path="/empresa/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/empresa/reset-password/:token" element={<ResetPasswordPage />} />
-                <Route path="/empresa/reset-password" element={<ResetPasswordPage />} /> {/* Fallback for query param */}
 
                 {/* Flujo Empresa (Protegido por RequireAuth también, aunque con backend checks) */}
                 <Route element={<RequireAuth />}>
