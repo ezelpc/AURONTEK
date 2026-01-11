@@ -16,11 +16,37 @@ import { PERMISSIONS } from '@/constants/permissions';
 
 const TicketsPage = () => {
     const navigate = useNavigate();
-    const { user } = useAuthStore();
+    const { user, hasPermission } = useAuthStore();
     const [searchParams] = useSearchParams();
     const tipo = searchParams.get('tipo') || 'local'; // Default to 'local'
 
-    const [ticketFilter, setTicketFilter] = useState<'all' | 'created_by_me' | 'assigned'>('all');
+    // Determinar filtros disponibles basado en permisos RBAC
+    const getAvailableFilters = () => {
+        const filters: Array<{ value: string, label: string }> = [];
+
+        // TODOS - Solo si tiene permiso global o de empresa
+        if (hasPermission(PERMISSIONS.TICKETS_VIEW_ALL_GLOBAL) || hasPermission(PERMISSIONS.TICKETS_VIEW_ALL_COMPANY)) {
+            filters.push({ value: 'all', label: 'Todos' });
+        }
+
+        // ASIGNADOS A MÍ - Para soporte/resolutores
+        if (user?.rol && ['soporte', 'beca-soporte', 'resolutor-empresa', 'resolutor-interno', 'becario'].includes(user.rol)) {
+            filters.push({ value: 'assigned', label: 'Asignados a mí' });
+        }
+
+        // CREADOS POR MÍ - Para todos los usuarios
+        filters.push({ value: 'created_by_me', label: 'Creados por mí' });
+
+        // Si no hay filtros (no debería pasar), default a creados por mí
+        if (filters.length === 0) {
+            filters.push({ value: 'created_by_me', label: 'Mis Tickets' });
+        }
+
+        return filters;
+    };
+
+    const availableFilters = getAvailableFilters();
+    const [ticketFilter, setTicketFilter] = useState<string>(availableFilters[0]?.value || 'created_by_me');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCompany, setSelectedCompany] = useState<string>('all');
 
@@ -150,20 +176,24 @@ const TicketsPage = () => {
                     />
                 </div>
 
-                {/* Filter Dropdown */}
-                <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-slate-500" />
-                    <Select value={ticketFilter} onValueChange={(value: any) => setTicketFilter(value)}>
-                        <SelectTrigger className="w-[200px]">
-                            <SelectValue placeholder="Filtrar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos</SelectItem>
-                            {isLocalView && <SelectItem value="created_by_me">Creados por mí</SelectItem>}
-                            <SelectItem value="assigned">Asignados a mí</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+                {/* Filter Dropdown - RBAC Inteligente */}
+                {availableFilters.length > 1 && (
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-slate-500" />
+                        <Select value={ticketFilter} onValueChange={(value: any) => setTicketFilter(value)}>
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Filtrar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableFilters.map(filter => (
+                                    <SelectItem key={filter.value} value={filter.value}>
+                                        {filter.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
 
                 {/* Company Filter (only for global view) */}
                 {!isLocalView && (
