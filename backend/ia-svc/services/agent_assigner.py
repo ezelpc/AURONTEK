@@ -95,16 +95,26 @@ class AgentAssigner:
                 data = response.json()
                 all_tickets = data.get('data', [])
                 
-                # Filtrar por agente asignado Y estados localmente
-                filtered_tickets = [
-                    t for t in all_tickets
-                    if (t.get('agenteAsignado') == agent_id or 
-                        (isinstance(t.get('agenteAsignado'), dict) and 
-                         t.get('agenteAsignado', {}).get('_id') == agent_id))
-                    and t.get('estado') in states
-                ]
+                print(f"   [DEBUG] Total tickets empresa: {len(all_tickets)}")
+                print(f"   [DEBUG] Buscando agente ID: {agent_id}")
                 
-                print(f"   [DEBUG] Agente {agent_id}: {len(filtered_tickets)} tickets activos de {len(all_tickets)} totales")
+                # Filtrar por agente asignado Y estados localmente
+                filtered_tickets = []
+                for t in all_tickets:
+                    agente_asignado = t.get('agenteAsignado')
+                    
+                    # Log detallado de cada ticket para debug
+                    if agente_asignado:
+                        agente_id_ticket = agente_asignado if isinstance(agente_asignado, str) else agente_asignado.get('_id')
+                        print(f"   [DEBUG] Ticket {t.get('_id', 'NO_ID')[:8]}: agente={agente_id_ticket[:8] if agente_id_ticket else 'None'}, estado={t.get('estado')}")
+                        
+                        if (agente_asignado == agent_id or 
+                            (isinstance(agente_asignado, dict) and agente_asignado.get('_id') == agent_id)):
+                            if t.get('estado') in states:
+                                filtered_tickets.append(t)
+                                print(f"   [DEBUG] ✅ MATCH - Ticket incluido")
+                
+                print(f"   [DEBUG] Agente {agent_id[:8]}: {len(filtered_tickets)} tickets activos de {len(all_tickets)} totales")
                 
                 return filtered_tickets
                 
@@ -175,7 +185,7 @@ class AgentAssigner:
             }
         """
         # Obtener tickets activos
-        active_tickets = await self.get_tickets_for_agent(agent_id, empresa_id)
+        active_tickets = await self.get_agent_tickets(agent_id, empresa_id)
         
         # Obtener tickets históricos (últimos 30 días para eficiencia)
         now = datetime.now()
@@ -184,7 +194,7 @@ class AgentAssigner:
         
         # Obtener todos los tickets del agente (activos + cerrados recientes)
         all_states = ['abierto', 'en_proceso', 'en_espera', 'resuelto', 'cerrado']
-        all_tickets = await self.get_tickets_for_agent(agent_id, empresa_id, all_states)
+        all_tickets = await self.get_agent_tickets(agent_id, empresa_id, all_states)
         
         # Filtrar tickets de últimos 30 días
         recent_tickets = [

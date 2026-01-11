@@ -83,12 +83,21 @@ const ticketController = {
 
       const rol = req.usuario?.rol || '';
       const empresaIdUsuario = req.usuario?.empresaId;
+      const esServicioInterno = req.headers['x-service-name']; // ia-svc, etc.
 
       // Construir filtros según ROL
       let filtros: any = {};
 
+      // 0. SERVICIOS INTERNOS (ia-svc, notificaciones-svc, etc): Solo filtrar por empresaId del query
+      if (esServicioInterno && !rol) {
+        // Servicios internos pueden consultar libremente filtrando solo por empresaId
+        if (req.query.empresaId) {
+          filtros.empresaId = req.query.empresaId;
+        }
+        console.log('[DEBUG LISTAR] Servicio interno:', esServicioInterno, 'filtros:', filtros);
+      }
       // 1. Admin General / Subroot: Ven todo (o filtran por query)
-      if (['admin-general', 'admin-subroot'].includes(rol)) {
+      else if (['admin-general', 'admin-subroot'].includes(rol)) {
         // Sin filtros = ver todos los tickets
         // Con empresaId en query = filtrar por empresa específica
         if (req.query.empresaId) filtros.empresaId = req.query.empresaId;

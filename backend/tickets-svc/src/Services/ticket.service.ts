@@ -376,7 +376,7 @@ class TicketService {
       console.error('No se pudo publicar estado actualizado:', e.message || e);
     }
 
-    // Registrar cambio de estado en el historial de auditoría
+    // Registrar cambio de estado en el historial de auditoría CON comentario
     try {
       await auditService.registrarCambioEstado(
         ticket._id.toString(),
@@ -386,7 +386,8 @@ class TicketService {
           correo: 'usuario@aurontek.com' // Podríamos pasarlo también si está disponible
         },
         estadoAnterior,
-        estado
+        estado,
+        motivo // ⬅️ Pasar comentario/motivo al registro
       );
     } catch (auditErr: any) {
       console.error('Error al registrar auditoría de estado:', auditErr.message || auditErr);
@@ -584,8 +585,12 @@ class TicketService {
     const ticket: any = await (Ticket as any).findById(ticketId);
     if (!ticket) throw new Error('Ticket no encontrado');
 
+    // Guardar agente anterior para auditoría ANTES de modificar
+    const agenteAnterior = ticket.agenteAsignado?.toString() || null;
+
     // Validar que el agente existe (se hace en agent_assigner)
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
+    ticket.fechaAsignacion = new Date();
 
     // Cambiar estado si está en 'abierto'
     if (ticket.estado === 'abierto') {
@@ -609,10 +614,6 @@ class TicketService {
 
     // Registrar asignación automática en auditoría
     try {
-      // Necesitamos el nombre del agente para el log
-      // Como no tenemos el objeto agente completo aquí, lo intentamos obtener o usamos el ID
-      // O idealmente deberíamos obtener el usuario agente antes
-
       await auditService.registrarAsignacion(
         ticket._id.toString(),
         {
@@ -620,8 +621,8 @@ class TicketService {
           nombre: 'IA Service',
           correo: 'ia@aurontek.com'
         },
-        ticket.agenteAsignado ? 'Agente anterior' : null,
-        `Agente ${agenteId}` // Simplificación por ahora
+        agenteAnterior, // ✅ Ahora es string o null
+        agenteId // ✅ String del nuevo agente
       );
     } catch (auditErr: any) {
       console.error('Error al registrar auditoría de asignación IA:', auditErr.message || auditErr);

@@ -71,17 +71,29 @@ class AuditService {
         ticketId: string,
         usuario: { id: string; nombre: string; correo: string },
         estadoAnterior: string,
-        estadoNuevo: string
+        estadoNuevo: string,
+        comentario?: string
     ): Promise<ITicketHistory> {
+        const cambios: Array<{ campo: string, valorAnterior: any, valorNuevo: any }> = [
+            { campo: 'Estado', valorAnterior: estadoAnterior, valorNuevo: estadoNuevo }
+        ];
+
+        // Si hay comentario, agregarlo como un cambio adicional para que sea visible
+        if (comentario) {
+            cambios.push({
+                campo: 'Comentario',
+                valorAnterior: '',
+                valorNuevo: comentario
+            });
+        }
+
         return this.registrarCambio({
             ticketId,
             tipo: 'status_change',
             usuarioId: usuario.id,
             usuarioNombre: usuario.nombre,
             usuarioCorreo: usuario.correo,
-            cambios: [
-                { campo: 'Estado', valorAnterior: estadoAnterior, valorNuevo: estadoNuevo }
-            ]
+            cambios
         });
     }
 
