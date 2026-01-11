@@ -8,6 +8,7 @@ import { verificarRecaptcha } from '../Utils/recaptcha';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 // POST /api/auth/login
 // POST /api/auth/login
@@ -229,40 +230,38 @@ const validarCodigoAcceso = async (req: Request, res: Response) => {
 
 const resetPassword = async (req: Request, res: Response) => {
   const { token, password } = req.body;
+  // Support token in body or params if adjusted in future, but stick to body as per original code for now
+  // Actually, let's look for token in params too if not in body, just in case.
+  const tokenToUse = token || req.params.token;
 
-  if (!token || !password) {
+  if (!tokenToUse || !password) {
     return res.status(400).json({ msg: 'El token y la nueva contraseña son requeridos.' });
   }
 
   try {
-    // 1. Verificar el token de reseteo.
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    if (!decoded || !decoded.id) {
-      return res.status(401).json({ msg: 'Token inválido o expirado.' });
-    }
+    // Hash del token para buscar en DB
+    const resetPasswordToken = crypto.createHash('sha256').update(tokenToUse).digest('hex');
 
-    // 2. Hashear la nueva contraseña.
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 3. Actualizar la contraseña del usuario.
-    const usuario = await Usuario.findByIdAndUpdate(
-      decoded.id,
-      { contraseña: hashedPassword },
-      { new: true }
-    );
+    // Buscar usuario con token válido y no expirado
+    const usuario = await Usuario.findOne({
+      resetPasswordToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
 
     if (!usuario) {
-      return res.status(404).json({ msg: 'Usuario no encontrado.' });
+      return res.status(400).json({ msg: 'Token inválido o ha expirado.' });
     }
+
+    // Actualizar password
+    usuario.contraseña = password; // Pre-save hook will hash it
+    usuario.resetPasswordToken = undefined;
+    usuario.resetPasswordExpires = undefined;
+
+    await usuario.save();
 
     res.json({ msg: 'Contraseña actualizada correctamente.' });
 
   } catch (error: any) {
-    // Si el error es por JWT expirado
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ msg: 'El token de recuperación ha expirado. Por favor, solicita uno nuevo.' });
-    }
     console.error('Error al resetear contraseña:', error);
     res.status(500).json({ msg: 'Error al resetear la contraseña.', error: error.message });
   }

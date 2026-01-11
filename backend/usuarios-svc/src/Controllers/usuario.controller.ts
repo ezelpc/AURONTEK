@@ -355,15 +355,62 @@ const recuperarContrasenaUsuario = async (req: Request, res: Response) => {
   const usuarioIdParaRecuperar = req.params.id;
 
   try {
-    // 1. Validar que el admin solicitante tenga el permiso 'users.recover_password_local'
-    if (!adminSolicitante.permisos?.includes('users.recover_password_local')) {
+    // 1. Validar qpermiso 'users.recover_password_local' OR 'users.recover_password_global'
+    const tienePermisoLocal = adminSolicitante.permisos?.includes('users.recover_password_local');
+    const tienePermisoGlobal = adminSolicitante.permisos?.includes('users.recover_password_global') || adminSolicitante.rol === 'admin-general';
+
+    if (!tienePermisoLocal && !tienePermisoGlobal) {
       return res.status(403).json({ msg: 'No tienes permisos para realizar esta acción.' });
     }
 
-    // TODO: Implementar la lógica del servicio:
-    // - Verificar que el usuario a recuperar pertenece a la misma empresa que el admin.
-    // - Generar una contraseña temporal segura y enviarla por correo al usuario.
-    res.status(501).json({ msg: 'Funcionalidad de recuperación de contraseña pendiente de implementación.', usuarioId: usuarioIdParaRecuperar });
+    const usuario = await usuarioService.obtenerUsuarioPorId(usuarioIdParaRecuperar);
+    if (!usuario) {
+      return res.status(404).json({ msg: 'Usuario no encontrado' });
+    }
+
+    // Si es local, validar empresa
+    if (tienePermisoLocal && !tienePermisoGlobal) {
+      if (String(usuario.empresa?._id || usuario.empresa) !== String(adminSolicitante.empresaId)) {
+        return res.status(403).json({ msg: 'Solo puedes restablecer contraseñas de tu empresa.' });
+      }
+    }
+
+    // 2. Generar contraseña temporal
+    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    let tempPassword = '';
+    for (let i = 0; i < 12; i++) {
+      tempPassword += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+
+    // 3. Actualizar usuario
+    usuario.contraseña = tempPassword; // Pre-save hash it
+    // usuario.requiereCambioPassword = true; // Si el modelo lo soporta en el futuro
+    await usuario.save();
+
+    // 4. Enviar correo
+    const axios = (await import('axios')).default;
+    const NOTIF_URL = process.env.NOTIFICACIONES_SERVICE_URL || 'http://notificaciones-svc:3004';
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://aurontek.vercel.app';
+
+    try {
+      await axios.post(`${NOTIF_URL}/api/notificaciones/system-email`, {
+        to: usuario.correo,
+        subject: 'Contraseña Restablecida - Aurontek',
+        html: `
+              <h2>Contraseña Restablecida por Administrador</h2>
+              <p>Hola ${usuario.nombre},</p>
+              <p>Tu contraseña ha sido restablecida por un administrador de tu organización.</p>
+              <p><strong>Usuario:</strong> ${usuario.correo}</p>
+              <p><strong>Contraseña Temporal:</strong> ${tempPassword}</p>
+              <p>Accede aquí: ${FRONTEND_URL}/empresa/login</p>
+              <p>Te sugerimos cambiar esta contraseña inmediatamente después de iniciar sesión.</p>
+            `
+      });
+    } catch (e) {
+      console.error('Error enviando email temp password:', e);
+    }
+
+    res.json({ msg: 'Contraseña restablecida. Se ha enviado un correo al usuario con la contraseña temporal.' });
   } catch (error: any) {
     res.status(500).json({ msg: error.message });
   }

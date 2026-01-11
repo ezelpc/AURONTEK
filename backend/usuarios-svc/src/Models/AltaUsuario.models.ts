@@ -40,7 +40,9 @@ const UsuarioSchema = new Schema({
   },
   habilidades: [{ type: String }],
   gruposDeAtencion: [{ type: String }], // Grupos técnicos de atención (ej: "Mesa de Servicio", "Telecomunicaciones")
-  fotoPerfil: { type: String, default: null }
+  fotoPerfil: { type: String, default: null },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 }, {
   timestamps: {
     createdAt: 'creado',
