@@ -120,9 +120,18 @@ class RabbitMQClient:
                 
                 def message_handler(ch, method, properties, body):
                     """Callback para manejar mensajes recibidos"""
+                    print('═══════════════════════════════════════════════════════════')
+                    print(f'📨 [RABBITMQ-IA] Mensaje recibido!')
+                    print(f'   Routing Key: {method.routing_key}')
+                    print(f'   Body Size: {len(body)} bytes')
+                    
                     try:
                         message = json.loads(body)
-                        print(f'📨 [RabbitMQ] Recibido: {routing_key}')
+                        ticket_id = message.get('ticket', {}).get('id', 'NO_ID')
+                        print(f'   Ticket ID: {ticket_id}')
+                        print(f'   Message keys: {list(message.keys())}')
+                        print('═══════════════════════════════════════════════════════════')
+                        
                         # Ejecutar callback en thread separado
                         threading.Thread(
                             target=partial(self._handle_message, callback, message),
@@ -130,6 +139,8 @@ class RabbitMQClient:
                         ).start()
                     except json.JSONDecodeError as je:
                         print(f'❌ [RabbitMQ] Error decodificando JSON: {je}')
+                    except Exception as e:
+                        print(f'❌ [RabbitMQ] Error procesando: {e}')
                     finally:
                         ch.basic_ack(delivery_tag=method.delivery_tag)
                 
