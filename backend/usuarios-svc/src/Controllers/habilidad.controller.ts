@@ -107,29 +107,46 @@ const bulkUpload = async (req: Request, res: Response) => {
     let createdCount = 0;
     let updatedCount = 0;
 
-    const stream = Readable.from(req.file.buffer.toString());
+    const stream = Readable.from(req.file.buffer);
 
     stream
         .pipe(csvParser())
-        .on('data', (data) => results.push(data))
+        .on('data', (data) => {
+            // console.log('[BULK DEBUG] Row:', data);
+            results.push(data);
+        })
         .on('end', async () => {
+            console.log(`[BULK DEBUG] Finished parsing. Rows found: ${results.length}`);
             try {
                 for (const row of results) {
-                    const nombre = row['nombre'] || row['Nombre'];
-                    const descripcion = row['descripcion'] || row['Descripción'] || row['Descripcion'];
+                    // Normalize keys to lowercase to handle case sensitivity issues
+                    const normalizedRow: any = {};
+                    Object.keys(row).forEach(key => {
+                        normalizedRow[key.trim().toLowerCase()] = row[key];
+                    });
 
-                    if (!nombre) continue;
+                    const nombre = normalizedRow['nombre'];
+                    const descripcion = normalizedRow['descripcion'] || normalizedRow['descripción'];
+
+                    if (!nombre) {
+                        console.warn('[BULK WARNING] Row skipped, missing name:', row);
+                        continue;
+                    }
 
                     const existing = await Habilidad.findOne({ nombre });
                     if (existing) {
+                        console.log(`[BULK DEBUG] Updating existing ability: ${nombre}`);
                         existing.descripcion = descripcion || existing.descripcion;
                         await existing.save();
                         updatedCount++;
                     } else {
+                        console.log(`[BULK DEBUG] Creating new ability: ${nombre}`);
                         await Habilidad.create({ nombre, descripcion, activo: true });
                         createdCount++;
                     }
                 }
+
+                console.log('[BULK SUCCESS] Stats:', { created: createdCount, updated: updatedCount });
 
                 res.json({
                     msg: 'Carga masiva completada',
