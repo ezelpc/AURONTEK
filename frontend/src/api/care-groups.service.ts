@@ -8,8 +8,8 @@ export interface CareGroup {
 }
 
 export const careGroupsService = {
-    getAll: async (): Promise<CareGroup[]> => {
-        const response = await api.get<CareGroup[]>('/habilidades');
+    getAll: async (params?: any): Promise<CareGroup[]> => {
+        const response = await api.get<CareGroup[]>('/habilidades', { params });
         return response.data;
     },
 

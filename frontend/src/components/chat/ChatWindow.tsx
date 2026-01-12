@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/auth/auth.store';
-import { chatService, Mensaje } from '@/api/chat.service';
+import { chatService, Message } from '@/api/chat.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({ ticketId, disabled = false }: ChatWindowProps) {
     const { user, token } = useAuthStore();
-    const [messages, setMessages] = useState<Mensaje[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);

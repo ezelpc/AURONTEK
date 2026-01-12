@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, X, Minimize2, Maximize2, Paperclip, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Send, Loader2, X, Minimize2, Maximize2, Paperclip, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/auth/auth.store';
 import { socketService } from '@/api/socket.service';
-import { chatService, Message } from '@/api/chat.service';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { chatService } from '@/api/chat.service';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -22,13 +22,13 @@ interface ChatWindowProps {
     positionIndex: number;
 }
 
-export const ChatWindow = ({ ticketId, onClose, onMinimize, isMinimized, style, positionIndex }: ChatWindowProps) => {
+export const ChatWindow = ({ ticketId, onClose, onMinimize, isMinimized, style }: ChatWindowProps) => {
     const [message, setMessage] = useState('');
     const [uploading, setUploading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const user = useAuthStore((state) => state.user);
-    const queryClient = useQueryClient();
+    // const queryClient = useQueryClient();
 
     // Fetch Ticket Info for Header
     const { data: ticket } = useQuery({

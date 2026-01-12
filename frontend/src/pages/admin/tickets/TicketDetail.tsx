@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Clock, User, Building, Paperclip, MessageSquare, X, Image as ImageIcon, FileText } from 'lucide-react';
+import { ArrowLeft, Clock, User, Building, MessageSquare, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { TicketTimeline } from '@/components/tickets/TicketTimeline';
 import { TicketActionsMenu } from '@/components/tickets/TicketActionsMenu';
