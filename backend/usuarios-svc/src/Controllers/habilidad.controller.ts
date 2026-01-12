@@ -98,90 +98,74 @@ const downloadTemplate = async (req: Request, res: Response) => {
 
 // POST /api/habilidades/bulk - Carga masiva desde CSV
 const bulkUpload = async (req: Request, res: Response) => {
-    console.log('='.repeat(60));
-    console.log('[BULK DEBUG] Request received');
-    console.log('[BULK DEBUG] Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('[BULK DEBUG] Content-Type:', req.headers['content-type']);
-    console.log('[BULK DEBUG] req.file:', req.file);
-    console.log('[BULK DEBUG] req.files:', (req as any).files);
-    console.log('[BULK DEBUG] req.body:', req.body);
-    console.log('='.repeat(60));
+    console.log('[BULK UPLOAD] Starting processing...');
 
     if (!req.file) {
-        console.error('[BULK ERROR] No file received!');
-        console.error('[BULK ERROR] This usually means:');
-        console.error('[BULK ERROR] 1. Multer middleware not running');
-        console.error('[BULK ERROR] 2. Field name mismatch (expecting "file")');
-        console.error('[BULK ERROR] 3. Content-Type not multipart/form-data');
-        return res.status(400).json({
-            msg: 'No se subió ningún archivo CSV.',
-            debug: {
-                contentType: req.headers['content-type'],
-                bodyPreview: req.body ? Object.keys(req.body) : 'null',
-                headers: Object.keys(req.headers)
-            }
-        });
+        return res.status(400).json({ msg: 'No se recibió ningún archivo CSV.' });
     }
 
     const results: any[] = [];
     const errors: any[] = [];
-    let createdCount = 0;
-    let updatedCount = 0;
+    let stats = { processed: 0, created: 0, updated: 0, failed: 0 };
 
     const stream = Readable.from(req.file.buffer);
 
     stream
-        .pipe(csvParser())
-        .on('data', (data) => {
-            // console.log('[BULK DEBUG] Row:', data);
-            results.push(data);
+        .pipe(csvParser({
+            mapHeaders: ({ header }) => header.trim().toLowerCase()
+        }))
+        .on('data', (data) => results.push(data))
+        .on('error', (err) => {
+            console.error('[BULK ERROR] Stream error:', err);
+            errors.push(`Error parseando CSV: ${err.message}`);
         })
         .on('end', async () => {
-            console.log(`[BULK DEBUG] Finished parsing. Rows found: ${results.length}`);
-            try {
-                for (const row of results) {
-                    // Normalize keys to lowercase to handle case sensitivity issues
-                    const normalizedRow: any = {};
-                    Object.keys(row).forEach(key => {
-                        normalizedRow[key.trim().toLowerCase()] = row[key];
-                    });
+            stats.processed = results.length;
+            console.log(`[BULK] Rows to process: ${results.length}`);
 
-                    const nombre = normalizedRow['nombre'];
-                    const descripcion = normalizedRow['descripcion'] || normalizedRow['descripción'];
+            for (let i = 0; i < results.length; i++) {
+                const row = results[i];
+                try {
+                    const nombre = row.nombre;
+                    const descripcion = row.descripcion || row.descripción;
 
                     if (!nombre) {
-                        console.warn('[BULK WARNING] Row skipped, missing name:', row);
+                        errors.push(`Fila ${i + 1}: El nombre es obligatorio.`);
+                        stats.failed++;
                         continue;
                     }
 
-                    const existing = await Habilidad.findOne({ nombre });
+                    const existing = await Habilidad.findOne({
+                        nombre: { $regex: new RegExp(`^${nombre.trim()}$`, 'i') }
+                    });
+
                     if (existing) {
-                        console.log(`[BULK DEBUG] Updating existing ability: ${nombre}`);
                         existing.descripcion = descripcion || existing.descripcion;
                         await existing.save();
-                        updatedCount++;
+                        stats.updated++;
                     } else {
-                        console.log(`[BULK DEBUG] Creating new ability: ${nombre}`);
-                        await Habilidad.create({ nombre, descripcion, activo: true });
-                        createdCount++;
+                        await Habilidad.create({
+                            nombre: nombre.trim(),
+                            descripcion: descripcion?.trim() || '',
+                            activo: true
+                        });
+                        stats.created++;
                     }
+                } catch (err: any) {
+                    console.error(`[BULK ERROR] Row ${i + 1} failed:`, err);
+                    errors.push(`Fila ${i + 1} (${row.nombre || 'Sin nombre'}): ${err.message}`);
+                    stats.failed++;
                 }
-
-                console.log('[BULK SUCCESS] Stats:', { created: createdCount, updated: updatedCount });
-
-                res.json({
-                    msg: 'Carga masiva completada',
-                    stats: {
-                        processed: results.length,
-                        created: createdCount,
-                        updated: updatedCount,
-                        errors: errors.length
-                    }
-                });
-            } catch (err: any) {
-                console.error('Error processing CSV:', err);
-                res.status(500).json({ msg: 'Error al procesar el archivo', error: err.message });
             }
+
+            console.log('[BULK SUCCESS] Final stats:', stats);
+
+            res.json({
+                msg: stats.failed > 0 ? 'Carga masiva completada con algunos errores' : 'Carga masiva completada con éxito',
+                stats,
+                errors: errors.slice(0, 10), // Limit errors in response
+                totalErrors: errors.length
+            });
         });
 };
 

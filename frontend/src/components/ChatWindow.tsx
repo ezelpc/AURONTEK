@@ -111,9 +111,14 @@ export const ChatWindow = ({ ticketId, onClose, onMinimize, isMinimized, style, 
                 empresaId
             });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload error:', error);
-            toast.error('Error al subir imagen');
+            const msg = error.message || 'Error al subir imagen';
+            if (msg.includes('preset')) {
+                toast.error('Error de configuración: Preset de Cloudinary no encontrado. Verifique la configuración en el dashboard de Cloudinary.');
+            } else {
+                toast.error(`Error al subir imagen: ${msg}`);
+            }
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

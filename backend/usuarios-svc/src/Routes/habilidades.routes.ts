@@ -19,21 +19,14 @@ router.get('/template', habilidadController.downloadTemplate);
 
 // POST /api/habilidades/bulk - Carga masiva
 router.post('/bulk',
+    uploadCsv.single('file'), // Move to top to ensure immediate parsing
     (req, res, next) => {
-        console.log('🔍 [BULK] Request intercepted BEFORE multer');
-        console.log('🔍 [BULK] Headers:', req.headers);
+        console.log('🔍 [BULK] Request intercepted after multer');
         console.log('🔍 [BULK] Content-Type:', req.headers['content-type']);
-        console.log('🔍 [BULK] Body (before multer):', req.body);
+        console.log('🔍 [BULK] req.file status:', req.file ? 'RECEIVED' : 'MISSING');
         next();
     },
-    requirePermission(PERMISOS.SERVICIOS_IMPORT),
-    uploadCsv.single('file'),
-    (req, res, next) => {
-        console.log('🔍 [BULK] Request intercepted AFTER multer');
-        console.log('🔍 [BULK] req.file:', req.file);
-        console.log('🔍 [BULK] req.body (after multer):', req.body);
-        next();
-    },
+    requirePermission(PERMISOS.HABILITIES_CREATE), // Use more appropriate permission
     habilidadController.bulkUpload
 );
 
