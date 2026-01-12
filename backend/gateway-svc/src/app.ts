@@ -22,6 +22,10 @@ export const createApp = () => {
 
     app.use(cors({
         origin: (origin, callback) => {
+            // Log para debug
+            console.log('[CORS DEBUG] Origin recibido:', origin);
+            console.log('[CORS DEBUG] Allowed origins:', allowedOrigins);
+
             // Permitir requests sin origin SOLO en desarrollo (como Postman, curl)
             if (!origin && process.env.NODE_ENV !== 'production') {
                 return callback(null, true);
