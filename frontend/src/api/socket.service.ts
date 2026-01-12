@@ -5,12 +5,25 @@ class SocketService {
     private chatSocket: Socket | null = null;
     private notificationsSocket: Socket | null = null;
 
+    private currentToken: string | null = null;
+
     // Conectar al servicio de chat
     connectChat() {
-        if (this.chatSocket?.connected) return this.chatSocket;
-
         const token = useAuthStore.getState().token;
         if (!token) return null;
+
+        // Si ya está conectado con EL MISMO token, retornar socket existente
+        if (this.chatSocket?.connected && this.currentToken === token) {
+            return this.chatSocket;
+        }
+
+        // Si hay cambio de token o desconexión, limpiar anterior
+        if (this.chatSocket) {
+            console.log('[Chat Socket] Token changed or reconnecting, disconnecting old socket...');
+            this.disconnect();
+        }
+
+        this.currentToken = token;
 
         const CHAT_URL = import.meta.env.VITE_CHAT_URL || 'http://localhost:3003';
         console.log('[Chat Socket] Connecting to:', CHAT_URL);
@@ -34,10 +47,17 @@ class SocketService {
 
     // Conectar al servicio de notificaciones
     connectNotifications() {
-        if (this.notificationsSocket?.connected) return this.notificationsSocket;
-
         const token = useAuthStore.getState().token;
         if (!token) return null;
+
+        if (this.notificationsSocket?.connected && this.currentToken === token) {
+            return this.notificationsSocket;
+        }
+
+        if (this.notificationsSocket) {
+            this.notificationsSocket.disconnect();
+        }
+        // Note: currentToken is mostly managed by connectChat, but we use same token.
 
         const NOTIF_URL = import.meta.env.VITE_NOTIFICATIONS_URL || 'http://localhost:3004';
         console.log('[Notifications Socket] Connecting to:', NOTIF_URL);

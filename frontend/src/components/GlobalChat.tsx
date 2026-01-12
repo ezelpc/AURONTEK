@@ -118,7 +118,12 @@ export const GlobalChat = () => {
 
                 queryClient.setQueryData(['chat', activeTicketId], (old: Message[] = []) => {
                     if (old.some(m => m._id === newMessage._id)) return old;
-                    return [...old, newMessage];
+                    // Ensure emisorId is the object for display purposes
+                    const msgToStore = {
+                        ...newMessage,
+                        emisorId: (newMessage as any).emisor || newMessage.emisorId
+                    };
+                    return [...old, msgToStore];
                 });
 
                 // Invalidate queries to refresh list/history
@@ -381,7 +386,7 @@ export const GlobalChat = () => {
                     >
                         <MessageCircle className="h-7 w-7" />
                         {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200 z-50">
                                 {unreadCount > 9 ? '9+' : unreadCount}
                             </span>
                         )}
