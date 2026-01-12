@@ -102,7 +102,7 @@ export const GlobalChat = () => {
 
                 if (!isOwn) {
                     try {
-                        const audio = new Audio('/pop.mp3');
+                        const audio = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
                         audio.volume = 0.5;
                         if (audio) {
                             audio.play().catch(err => console.log('Audio play failed (interaction required?):', err));
@@ -121,7 +121,7 @@ export const GlobalChat = () => {
                     // Ensure emisorId is the object for display purposes
                     const msgToStore = {
                         ...newMessage,
-                        emisorId: (newMessage as any).emisor || newMessage.emisorId
+                        // emisorId: (newMessage as any).emisor || newMessage.emisorId
                     };
                     return [...old, msgToStore];
                 });
@@ -350,12 +350,12 @@ export const GlobalChat = () => {
 
                                                 return (
                                                     <div key={msg._id} className={cn("flex flex-col mb-2", isOwn ? "items-end" : "items-start")}>
-                                                        {/* Sender Name */}
-                                                        {!isOwn && (
+                                                        {/* Sender Name - HIDDEN per user request */}
+                                                        {/* {!isOwn && (
                                                             <span className="text-[10px] text-slate-500 ml-1 mb-0.5 font-medium">
                                                                 {senderName}
                                                             </span>
-                                                        )}
+                                                        )} */}
 
                                                         <div className={cn(
                                                             "max-w-[85%] rounded-2xl px-3 py-2 text-sm break-words shadow-sm",
