@@ -522,6 +522,7 @@ class TicketService {
           agente.nombre,
           creadorInfo.nombre,
           creadorInfo.email,
+          ticket.usuarioCreador?.toString() || '',
           empresaId
         );
       }

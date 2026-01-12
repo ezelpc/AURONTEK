@@ -158,6 +158,7 @@ export async function notificarTicketAsignado(
     agentNombre: string,
     creadorNombre: string,
     creadorEmail: string,
+    usuarioCreadorId: string,
     empresaId: string
 ): Promise<void> {
     try {
