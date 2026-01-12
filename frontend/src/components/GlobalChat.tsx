@@ -20,8 +20,12 @@ export const GlobalChat = () => {
     const user = useAuthStore((state) => state.user);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const toggleChat = () => setIsOpen(!isOpen);
+    const toggleChat = () => {
+        setIsOpen(!isOpen);
+        if (!isOpen) setUnreadCount(0); // Reset on open
+    };
 
     // 1. Cargar lista de tickets activos (conversaciones)
     const { data: tickets = [], isLoading: loadingTickets } = useQuery({
@@ -100,9 +104,15 @@ export const GlobalChat = () => {
                     try {
                         const audio = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
                         audio.volume = 0.5;
-                        audio.play().catch(err => console.error('Audio play failed:', err));
+                        if (audio) {
+                            audio.play().catch(err => console.log('Audio play failed (interaction required?):', err));
+                        }
                     } catch (e) {
                         console.error('Audio error:', e);
+                    }
+
+                    if (!isOpen) {
+                        setUnreadCount(prev => prev + 1);
                     }
                 }
 
@@ -110,6 +120,12 @@ export const GlobalChat = () => {
                     if (old.some(m => m._id === newMessage._id)) return old;
                     return [...old, newMessage];
                 });
+
+                // Invalidate queries to refresh list/history
+                queryClient.invalidateQueries({ queryKey: ['my-active-tickets'] });
+                if (newMessage.ticketId === activeTicketId) {
+                    queryClient.invalidateQueries({ queryKey: ['chat', activeTicketId] });
+                }
             };
 
             socketService.onNewMessage(handleNewMessage);
@@ -295,11 +311,11 @@ export const GlobalChat = () => {
                                             </div>
                                         ) : (
                                             messages.map((msg) => {
-                                                const isOwn = typeof msg.emisorId === 'object'
+                                                const isOwn = (msg.emisorId && typeof msg.emisorId === 'object')
                                                     ? (msg.emisorId as any)._id === user?.id
                                                     : msg.emisorId === user?.id;
 
-                                                const senderName = typeof msg.emisorId === 'object'
+                                                const senderName = (msg.emisorId && typeof msg.emisorId === 'object')
                                                     ? (msg.emisorId as any).nombre
                                                     : 'Usuario';
 
@@ -361,10 +377,14 @@ export const GlobalChat = () => {
                 {!isOpen && (
                     <Button
                         onClick={toggleChat}
-                        className="h-14 w-14 rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white p-0 flex items-center justify-center transition-all hover:scale-110 hover:shadow-2xl active:scale-95"
+                        className="h-14 w-14 rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white p-0 flex items-center justify-center transition-all hover:scale-110 hover:shadow-2xl active:scale-95 relative"
                     >
                         <MessageCircle className="h-7 w-7" />
-                        {/* Indicador de no leídos (mock - puede conectarse a un contador de notificaciones reales) */}
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
                     </Button>
                 )}
             </div>
