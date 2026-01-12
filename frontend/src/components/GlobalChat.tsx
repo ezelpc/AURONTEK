@@ -168,13 +168,20 @@ export const GlobalChat = () => {
     const handleSend = () => {
         if (!message.trim() || !activeTicketId) return;
 
-        console.log('[GlobalChat] Sending message to:', activeTicketId);
+        // Find active ticket to get empresaId (Required for Admin users)
+        const activeTicket = tickets.find(t => t._id === activeTicketId);
+        const empresaId = typeof activeTicket?.empresaId === 'object'
+            ? (activeTicket.empresaId as any)._id
+            : activeTicket?.empresaId;
+
         socketService.sendMessage({
             ticketId: activeTicketId,
             contenido: message.trim(),
-            tipo: 'texto'
+            empresaId: empresaId
         });
+
         setMessage('');
+        // Focus stays on input
     };
 
     if (!user) return null;

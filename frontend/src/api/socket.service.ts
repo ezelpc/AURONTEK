@@ -108,7 +108,7 @@ class SocketService {
         this.chatSocket?.emit('join-ticket-room', ticketId);
     }
 
-    sendMessage(data: { ticketId: string; contenido: string; tipo?: string; metadata?: any }) {
+    sendMessage(data: { ticketId: string; contenido: string; tipo?: string; metadata?: any; empresaId?: string }) {
         console.log('[Chat Socket] Sending message:', data);
         console.log('[Chat Socket] Socket connected:', this.chatSocket?.connected);
         if (!this.chatSocket?.connected) {

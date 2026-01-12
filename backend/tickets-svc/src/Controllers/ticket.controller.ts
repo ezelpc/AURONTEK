@@ -239,7 +239,7 @@ const ticketController = {
 
       // Modificación: Uso de Permisos Granulares
       const permisos = req.usuario?.permisos || [];
-      const isGlobalAdmin = permisos.includes('tickets.view_all_global') || ['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '');
+      const isGlobalAdmin = permisos.includes('*') || permisos.includes('tickets.view_all_global') || ['admin-general', 'admin-subroot'].includes(req.usuario?.rol || '');
       const canViewLocal = permisos.includes('tickets.view_all');
 
       // 1. Acceso Global: Si tiene tickets.view_all_global, pasa directo
