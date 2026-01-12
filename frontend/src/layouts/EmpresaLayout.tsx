@@ -8,6 +8,7 @@ import { ProtectedElement } from '@/components/ProtectedElement';
 import { UserMenu } from '@/components/UserMenu';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import { useTranslation } from 'react-i18next';
+import { GlobalChat } from '@/components/GlobalChat';
 
 const NavbarItem = ({ to, icon: Icon, label, end = false }: { to: string, icon: any, label: string, end?: boolean }) => (
     <NavLink
@@ -77,6 +78,7 @@ const EmpresaLayout = () => {
                 <Outlet />
             </main>
 
+            <GlobalChat />
             <Toaster />
         </div>
     );

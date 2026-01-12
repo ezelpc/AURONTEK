@@ -1,61 +1,119 @@
-import { io, Socket } from 'socket.io-client';
+import { Socket, io } from 'socket.io-client';
 import { useAuthStore } from '@/auth/auth.store';
 
-// URL del Gateway o Notificaciones SVC
-// Asumimos que el Gateway expone el socket en el mismo puerto o uno dedicado.
-// En desarrollo con Vite proxy, podría ser relativo o directo.
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-
 class SocketService {
-    private socket: Socket | null = null;
+    private chatSocket: Socket | null = null;
+    private notificationsSocket: Socket | null = null;
 
-    connect() {
-        if (this.socket?.connected) return;
+    // Conectar al servicio de chat
+    connectChat() {
+        if (this.chatSocket?.connected) return this.chatSocket;
 
         const token = useAuthStore.getState().token;
-        if (!token) return;
+        if (!token) return null;
 
-        console.log('[Socket] Connecting to:', SOCKET_URL);
+        const CHAT_URL = import.meta.env.VITE_CHAT_URL || 'http://localhost:3003';
+        console.log('[Chat Socket] Connecting to:', CHAT_URL);
 
-        this.socket = io(SOCKET_URL, {
+        this.chatSocket = io(CHAT_URL, {
             auth: { token },
-            transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
-            reconnection: true,
-            path: '/socket.io' // Gateway expects /socket.io
+            transports: ['websocket', 'polling'],
+            reconnection: true
         });
 
-        this.socket.on('connect', () => {
-            console.log('✅ Socket conectado:', this.socket?.id);
+        this.chatSocket.on('connect', () => {
+            console.log('✅ Chat socket conectado:', this.chatSocket?.id);
         });
 
-        this.socket.on('connect_error', (err) => {
-            console.error('❌ Socket error conexión:', err.message);
+        this.chatSocket.on('connect_error', (err) => {
+            console.error('❌ Chat socket error:', err.message);
         });
+
+        return this.chatSocket;
     }
 
+    // Conectar al servicio de notificaciones
+    connectNotifications() {
+        if (this.notificationsSocket?.connected) return this.notificationsSocket;
+
+        const token = useAuthStore.getState().token;
+        if (!token) return null;
+
+        const NOTIF_URL = import.meta.env.VITE_NOTIFICATIONS_URL || 'http://localhost:3004';
+        console.log('[Notifications Socket] Connecting to:', NOTIF_URL);
+
+        this.notificationsSocket = io(NOTIF_URL, {
+            auth: { token },
+            transports: ['websocket', 'polling'],
+            reconnection: true
+        });
+
+        this.notificationsSocket.on('connect', () => {
+            console.log('✅ Notifications socket conectado:', this.notificationsSocket?.id);
+        });
+
+        this.notificationsSocket.on('connect_error', (err) => {
+            console.error('❌ Notifications socket error:', err.message);
+        });
+
+        return this.notificationsSocket;
+    }
+
+    // Desconectar ambos sockets
     disconnect() {
-        if (this.socket) {
-            this.socket.disconnect();
-            this.socket = null;
+        if (this.chatSocket) {
+            this.chatSocket.disconnect();
+            this.chatSocket = null;
+        }
+        if (this.notificationsSocket) {
+            this.notificationsSocket.disconnect();
+            this.notificationsSocket = null;
         }
     }
 
-    // Suscribirse a eventos
-    on(event: string, callback: (...args: any[]) => void) {
-        this.socket?.on(event, callback);
+    // Obtener socket de chat
+    getChatSocket() {
+        return this.chatSocket;
     }
 
-    off(event: string) {
-        this.socket?.off(event);
+    // Obtener socket de notificaciones
+    getNotificationsSocket() {
+        return this.notificationsSocket;
     }
 
-    // Unirse a salas especificas (ej: chat ticket)
-    joinRoom(room: string) {
-        this.socket?.emit('join', room);
+    // Métodos de chat
+    joinTicketRoom(ticketId: string) {
+        console.log('[Chat Socket] Joining room:', ticketId);
+        console.log('[Chat Socket] Socket connected:', this.chatSocket?.connected);
+        this.chatSocket?.emit('join-ticket-room', ticketId);
     }
 
-    leaveRoom(room: string) {
-        this.socket?.emit('leave', room);
+    sendMessage(data: { ticketId: string; contenido: string; tipo?: string; metadata?: any }) {
+        console.log('[Chat Socket] Sending message:', data);
+        console.log('[Chat Socket] Socket connected:', this.chatSocket?.connected);
+        if (!this.chatSocket?.connected) {
+            console.error('[Chat Socket] Socket not connected!');
+            return;
+        }
+        this.chatSocket.emit('send-message', data);
+    }
+
+    onNewMessage(callback: (message: any) => void) {
+        console.log('[Chat Socket] Listening for new messages');
+        this.chatSocket?.on('new-message', callback);
+    }
+
+    offNewMessage() {
+        this.chatSocket?.off('new-message');
+    }
+
+    // Métodos de notificaciones
+    onNewNotification(callback: (notification: any) => void) {
+        this.notificationsSocket?.on('nueva-notificacion', callback);
+    }
+
+    offNewNotification() {
+        this.notificationsSocket?.off('nueva-notificacion');
     }
 }
 

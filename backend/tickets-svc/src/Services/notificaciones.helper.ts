@@ -40,7 +40,7 @@ export async function crearNotificacion(payload: NotificationPayload): Promise<v
 
         // Hacer llamada al servicio de notificaciones - POST a /api/notificaciones/crear
         await axios.post(
-            `${NOTIFICACIONES_SVC_URL}`,
+            `${NOTIFICACIONES_SVC_URL}/crear`,
             {
                 usuarioId: payload.usuarioId,
                 titulo: payload.titulo,

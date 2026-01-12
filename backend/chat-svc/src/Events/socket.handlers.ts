@@ -4,33 +4,37 @@ import chatService from '../Services/chat.service';
 
 export const setupSocketHandlers = (io: Server) => {
     io.on('connection', (socket: SocketWithUser) => {
-        // console.log(`Cliente conectado: ${socket.user.id} (${socket.user.rol})`);
-
-        // socket.join(`user:${socket.user.id}`); // Already in middleware
+        console.log(`[CHAT DEBUG] Cliente conectado: ${socket.user.id} (${socket.user.rol})`);
 
         socket.on('join-ticket-room', async (ticketId: string) => {
+            console.log(`[CHAT DEBUG] join-ticket-room request for ${ticketId} from ${socket.user.id}`);
             if (!ticketId) return;
 
             try {
                 const tieneAcceso = await chatService.validarAcceso(socket.user.id, ticketId);
+                console.log(`[CHAT DEBUG] Acceso a ${ticketId}: ${tieneAcceso}`);
 
                 if (tieneAcceso) {
                     socket.join(`ticket:${ticketId}`);
                     socket.emit('room-joined', { ticketId, status: 'success' });
-                    // console.log(`[Chat] Usuario ${socket.user.id} unido al ticket ${ticketId}`);
+                    console.log(`[CHAT DEBUG] Usuario ${socket.user.id} unido al ticket ${ticketId}`);
                 } else {
-                    console.warn(`[Chat] Acceso denegado a ${socket.user.id} en ticket ${ticketId}`);
+                    console.warn(`[CHAT WARN] Acceso denegado a ${socket.user.id} en ticket ${ticketId}`);
                     socket.emit('error', { message: 'No tienes permisos para acceder a este chat.' });
                 }
             } catch (error) {
-                console.error('Error al unirse a sala:', error);
+                console.error('[CHAT ERROR] Error al unirse a sala:', error);
                 socket.emit('error', { message: 'Error interno al procesar solicitud.' });
             }
         });
 
         socket.on('send-message', async (data: any) => {
+            console.log(`[CHAT DEBUG] send-message received from ${socket.user.id}`, data);
             try {
-                if (!data.ticketId || !data.contenido) return;
+                if (!data.ticketId || !data.contenido) {
+                    console.warn('[CHAT WARN] Missing data in send-message');
+                    return;
+                }
 
                 const mensajeData = {
                     ticketId: data.ticketId,
@@ -42,6 +46,7 @@ export const setupSocketHandlers = (io: Server) => {
                 };
 
                 const mensaje: any = await chatService.guardarMensaje(mensajeData);
+                console.log(`[CHAT DEBUG] Mensaje guardado: ${mensaje._id}`);
 
                 // Broadcast a la sala del ticket
                 io.to(`ticket:${data.ticketId}`).emit('new-message', {
@@ -52,9 +57,10 @@ export const setupSocketHandlers = (io: Server) => {
                         rol: socket.user.rol
                     }
                 });
+                console.log(`[CHAT DEBUG] Mensaje emitido a sala ticket:${data.ticketId}`);
 
             } catch (error: any) {
-                console.error('Error enviando mensaje:', error);
+                console.error('[CHAT ERROR] Error enviando mensaje:', error);
                 socket.emit('error', { message: 'No se pudo enviar el mensaje', detalle: error.message });
             }
         });

@@ -13,14 +13,20 @@ import chatRoutes from './Routes/chat.routes';
 import { socketAuthMiddleware } from './Middleware/socket.auth';
 import { setupInternalListener } from './Events/internal.listener';
 import { setupSocketHandlers } from './Events/socket.handlers';
+import './Models/UsuarioStub'; // Register Usuario model for populate
 
 // ✅ Cargar variables de entorno solo en desarrollo
 const ENV = process.env.NODE_ENV || 'development';
 
 if (ENV === 'development') {
+    const rootEnvPath = path.resolve(__dirname, '../../../.env');
     const localEnvPath = path.resolve(__dirname, '../.env');
+
+    dotenv.config({ path: rootEnvPath });
     dotenv.config({ path: localEnvPath });
-    console.log(`[${ENV}] 📄 Cargando variables desde .env local`);
+
+    console.log(`[${ENV}] 📄 Cargando variables desde archivos .env (Root & Local)`);
+    console.log(`[${ENV}] JWT_SECRET Loaded: ${process.env.JWT_SECRET ? 'YES' : 'NO'}`);
 }
 
 console.log(`[${ENV}] 🌍 Entorno detectado`);
@@ -39,9 +45,16 @@ async function main() {
 
     app.use(express.json());
 
+    // Debug Middleware
+    app.use((req, res, next) => {
+        console.log(`[CHAT-SVC] Received request: ${req.method} ${req.url}`);
+        next();
+    });
+
     // Routes
-    app.use('/', chatRoutes); // Mount at root since gateway handles path rewrite? 
-    // Gateway rewrites /chat -> / inside chat-svc. Correct.
+    // Routes
+    app.use('/', chatRoutes);
+    app.use('/chat', chatRoutes); // Fallback if Gateway sends /chat prefix
 
     app.get('/health', (req, res) => {
         res.json({ status: 'OK', service: 'chat-svc', timestamp: new Date(), redis: pubClient.isOpen });

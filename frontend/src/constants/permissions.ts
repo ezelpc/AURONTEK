@@ -40,11 +40,12 @@ export const PERMISSIONS = {
     ROLES_EDIT: 'roles.edit',
     ROLES_DELETE: 'roles.delete',
 
-    // Servicios
+    // GESTIÓN DE CATÁLOGOS DE SERVICIOS
     SERVICIOS_CREATE_LOCAL: 'servicios.create_local',
     SERVICIOS_EDIT_LOCAL: 'servicios.edit_local',
     SERVICIOS_DELETE_LOCAL: 'servicios.delete_local',
     SERVICIOS_VIEW_LOCAL: 'servicios.view_local',
+    SERVICIOS_MANAGE_LOCAL: 'servicios.manage_local', // Manage all local service operations
     SERVICIOS_CREATE_GLOBAL: 'servicios.create_global',
     SERVICIOS_EDIT_GLOBAL: 'servicios.edit_global',
     SERVICIOS_DELETE_GLOBAL: 'servicios.delete_global',
@@ -54,11 +55,12 @@ export const PERMISSIONS = {
     // Sistema
     USUARIOS_IMPORT: 'usuarios.import',
     USUARIOS_EXPORT_LAYOUT: 'usuarios.export_layout',
+    // GESTIÓN DE ADMINISTRADORES (ROOT ONLY)
     ADMINS_CREATE: 'admins.create',
     ADMINS_VIEW: 'admins.view',
     ADMINS_EDIT: 'admins.edit',
     ADMINS_DELETE: 'admins.delete',
-    ADMINS_MANAGE: 'admins.manage',
+    ADMINS_MANAGE: 'admins.manage', // Manage all admin operations
 
     // Habilidades / Care Groups
     HABILITIES_VIEW: 'habilities.view',
@@ -114,6 +116,7 @@ export const PERMISSIONS_MAP: Record<string, { label: string, description: strin
     'servicios.edit_local': { label: 'Editar Servicios Locales', description: 'Modificar servicios propios', group: 'Servicios' },
     'servicios.delete_local': { label: 'Eliminar Servicios Locales', description: 'Eliminar servicios propios', group: 'Servicios' },
     'servicios.view_local': { label: 'Ver Servicios Locales', description: 'Ver catálogo propio', group: 'Servicios' },
+    'servicios.manage_local': { label: 'Gestionar Servicios Locales', description: 'Gestión completa de servicios locales', group: 'Servicios' },
     'servicios.create_global': { label: 'Crear Servicios Globales', description: 'Crear servicios en catálogo sistema', group: 'Servicios (Global)' },
     'servicios.edit_global': { label: 'Editar Servicios Globales', description: 'Modificar servicios del sistema', group: 'Servicios (Global)' },
     'servicios.delete_global': { label: 'Eliminar Servicios Globales', description: 'Eliminar servicios del sistema', group: 'Servicios (Global)' },

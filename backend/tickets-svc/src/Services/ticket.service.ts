@@ -353,6 +353,48 @@ class TicketService {
     return enrichedTicket;
   }
 
+  async obtenerEstadisticas(filtros: any = {}) {
+    try {
+      // Get total count
+      const total = await (Ticket as any).countDocuments(filtros);
+
+      // Get counts by status
+      const abiertos = await (Ticket as any).countDocuments({ ...filtros, estado: 'abierto' });
+      const enProceso = await (Ticket as any).countDocuments({ ...filtros, estado: 'en_proceso' });
+      const enEspera = await (Ticket as any).countDocuments({ ...filtros, estado: 'en_espera' });
+      const resueltos = await (Ticket as any).countDocuments({ ...filtros, estado: 'resuelto' });
+      const cerrados = await (Ticket as any).countDocuments({ ...filtros, estado: 'cerrado' });
+      const cancelados = await (Ticket as any).countDocuments({ ...filtros, estado: 'cancelado' });
+
+      // Get counts by priority
+      const prioridadBaja = await (Ticket as any).countDocuments({ ...filtros, prioridad: 'baja' });
+      const prioridadMedia = await (Ticket as any).countDocuments({ ...filtros, prioridad: 'media' });
+      const prioridadAlta = await (Ticket as any).countDocuments({ ...filtros, prioridad: 'alta' });
+      const prioridadCritica = await (Ticket as any).countDocuments({ ...filtros, prioridad: 'critica' });
+
+      return {
+        total,
+        porEstado: {
+          abierto: abiertos,
+          en_proceso: enProceso,
+          en_espera: enEspera,
+          resuelto: resueltos,
+          cerrado: cerrados,
+          cancelado: cancelados
+        },
+        porPrioridad: {
+          baja: prioridadBaja,
+          media: prioridadMedia,
+          alta: prioridadAlta,
+          critica: prioridadCritica
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      throw error;
+    }
+  }
+
   async actualizarEstado(id: string, estado: string, usuarioId?: string, motivo?: string, usuarioNombre?: string) {
     const ticket: any = await (Ticket as any).findById(id);
     if (!ticket) throw new Error('Ticket no encontrado');
@@ -448,11 +490,8 @@ class TicketService {
 
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
 
-    // Si el ticket está en 'abierto', MANTENER en 'abierto' (Requerimiento de usuario)
-    /* if (ticket.estado === 'abierto') {
-      ticket.estado = 'en_proceso';
-      ticket.fechaRespuesta = new Date();
-    } */
+    // ✅ NO cambiar el estado automáticamente
+    // El agente debe cambiar el estado manualmente cuando comience a trabajar
 
     await ticket.save();
 
@@ -652,47 +691,17 @@ class TicketService {
     // Validar que el agente existe (se hace en agent_assigner)
     ticket.agenteAsignado = new mongoose.Types.ObjectId(agenteId);
 
-    // Cambiar estado si está en 'abierto' (DESHABILITADO)
-    /* if (ticket.estado === 'abierto') {
-      ticket.estado = 'en_proceso';
-      ticket.fechaRespuesta = new Date();
-    } */
+    // ✅ NO cambiar el estado automáticamente
+    // El agente debe cambiar el estado manualmente cuando comience a trabajar
 
     await ticket.save();
-
-    // Obtener detalles del agente para el correo
-    let agenteEmail = '';
-    let agenteNombre = '';
-
-    try {
-      const usuarioUrl = process.env.USUARIOS_SVC_URL || 'http://localhost:3001';
-      // Use 'system' token or similar if needed, or rely on internal network trust?
-      // Ideally we should pass a token context, but this is a background service.
-      // We use a SERVICE_TOKEN if available or just public info? 
-      // Admin endpoints usually require token.
-      // Using a direct axios call if possible.
-      // Wait, tickets-svc usually communicates via Gateway or direct? Direct.
-
-      // Use the existing helper or raw call. 
-      // Helper `obtenerInfoUsuario` seems relevant but let's look at `asignarTicket` implementation later.
-      // For now, simple fetch.
-      const response = await axios.get(`${usuarioUrl}/usuarios/${agenteId}`);
-      const agente = response.data;
-      agenteEmail = agente.correo || agente.email;
-      agenteNombre = agente.nombre;
-    } catch (error) {
-      console.error(`[IA Assign] No se pudo obtener detalles del agente ${agenteId}:`, error);
-    }
 
     try {
       await this.publicarEvento('ticket.asignado_automaticamente', {
         ticket: {
           id: ticket._id.toString(),
           agenteId: agenteId.toString(),
-          agenteEmail, // Added email
-          agenteNombre, // Added name
-          estado: ticket.estado,
-          titulo: ticket.titulo
+          estado: ticket.estado
         }
       });
     } catch (e: any) {

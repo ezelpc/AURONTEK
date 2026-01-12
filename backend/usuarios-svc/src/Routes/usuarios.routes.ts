@@ -66,6 +66,12 @@ router.delete('/:id',
   usuarioController.eliminarUsuario
 );
 
+// POST /api/usuarios/:id/recover-password - Restablecer contraseña (Admin Local/Global)
+router.post('/:id/recover-password',
+  verificarToken,
+  usuarioController.recuperarContrasenaUsuario
+);
+
 // --- 🔹 Rutas de Carga Masiva ---
 
 // GET /api/usuarios/actions/layout - Descargar plantilla CSV

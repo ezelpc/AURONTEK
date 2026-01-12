@@ -82,8 +82,8 @@ const ticketController = {
       const { pagina = 1, limite = 10, estado, prioridad, asignado } = req.query;
 
       const rol = req.usuario?.rol || '';
-      const empresaIdUsuario = req.usuario?.empresaId;
-      const permisos = req.usuario?.permisos || [];
+      const empresaIdUsuario = (req as any).usuario?.empresaId;
+      const permisos = (req as any).usuario?.permisos || [];
       const esServicioInterno = req.headers['x-service-name']; // ia-svc, etc.
 
       // Construir filtros según ROL
@@ -95,10 +95,10 @@ const ticketController = {
         if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
         console.log('[DEBUG LISTAR] Permission: Internal Service');
       }
-      else if (permisos.includes('tickets.view_all_global')) {
+      else if (permisos.includes('*') || permisos.includes('tickets.view_all_global')) {
         // Global Admin: Can see everything. Filter by empresaId if requested.
         if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        console.log('[DEBUG LISTAR] Permission: tickets.view_all_global');
+        console.log('[DEBUG LISTAR] Permission: tickets.view_all_global (Wildcard Match)');
       }
 
       // 2. COMPANY ADMIN (tickets.view_all) - See all tickets in their company
@@ -111,9 +111,9 @@ const ticketController = {
       else if (permisos.includes('tickets.view_assigned')) {
         filtros.empresaId = empresaIdUsuario;
         filtros.$or = [
-          { usuarioCreador: req.usuario?.id },
-          { agenteAsignado: req.usuario?.id },
-          { tutor: req.usuario?.id }
+          { usuarioCreador: (req as any).usuario?.id },
+          { agenteAsignado: (req as any).usuario?.id },
+          { tutor: (req as any).usuario?.id }
         ];
         console.log('[DEBUG LISTAR] Permission: tickets.view_assigned');
       }
@@ -121,13 +121,23 @@ const ticketController = {
       // 4. STANDARD USER - See only created by them
       else {
         filtros.empresaId = empresaIdUsuario;
-        filtros.usuarioCreador = req.usuario?.id;
+        filtros.usuarioCreador = (req as any).usuario?.id;
         console.log('[DEBUG LISTAR] Permission: Default (Created Only)');
       }
 
       // Filtros query params adicionales
       if (estado) filtros.estado = estado;
       if (prioridad) filtros.prioridad = prioridad;
+      if (req.query.usuarioCreador && req.query.usuarioCreadorEmail) {
+        filtros.$or = [
+          { usuarioCreador: req.query.usuarioCreador },
+          { usuarioCreadorEmail: req.query.usuarioCreadorEmail }
+        ];
+      } else {
+        if (req.query.usuarioCreador) filtros.usuarioCreador = req.query.usuarioCreador;
+        if (req.query.usuarioCreadorEmail) filtros.usuarioCreadorEmail = req.query.usuarioCreadorEmail;
+      }
+      if (req.query.agenteAsignado) filtros.agenteAsignado = req.query.agenteAsignado;
 
       // asignado query override (si el rol lo permite)
       // Si el rol ya forzó filtros (ej. soporte solo asignados), esto podría entrar en conflicto.
@@ -153,6 +163,58 @@ const ticketController = {
     } catch (error: any) {
       console.error('Error al listar tickets:', error);
       res.status(500).json({ msg: 'Error al listar tickets', error: error.message });
+    }
+  },
+
+  // GET /tickets/estadisticas/dashboard
+  async obtenerEstadisticas(req: Request, res: Response): Promise<void> {
+    try {
+      const { estado, mayorPrioridad, asignado } = req.query;
+
+      const rol = req.usuario?.rol || '';
+      const empresaIdUsuario = req.usuario?.empresaId;
+      const permisos = req.usuario?.permisos || [];
+      const esServicioInterno = req.headers['x-service-name'];
+
+      let filtros: any = {};
+
+      // 1. SERVICES & GLOBAL ADMIN (tickets.view_all_global)
+      if (esServicioInterno && !rol) {
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+      }
+      else if (permisos.includes('tickets.view_all_global')) {
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+      }
+      // 2. COMPANY ADMIN (tickets.view_all)
+      else if (permisos.includes('tickets.view_all')) {
+        filtros.empresaId = empresaIdUsuario;
+      }
+      // 3. SUPPORT / ASSIGNED VIEW (tickets.view_assigned)
+      else if (permisos.includes('tickets.view_assigned')) {
+        filtros.empresaId = empresaIdUsuario;
+        filtros.$or = [
+          { usuarioCreador: req.usuario?.id },
+          { agenteAsignado: req.usuario?.id },
+          { tutor: req.usuario?.id }
+        ];
+      }
+      // 4. STANDARD USER
+      else {
+        filtros.empresaId = empresaIdUsuario;
+        filtros.usuarioCreador = req.usuario?.id;
+      }
+
+      // Filtros adicionales si se requieren en estadísticas (aunque dashboard suele querer totales)
+      // Si el frontend manda filtros, los respetamos
+      if (estado) filtros.estado = estado;
+
+      console.log('[DEBUG STATS] Filtros:', filtros);
+
+      const stats = await ticketService.obtenerEstadisticas(filtros);
+      res.json(stats);
+    } catch (error: any) {
+      console.error('Error al obtener estadísticas:', error);
+      res.status(500).json({ msg: 'Error al obtener estadísticas', error: error.message });
     }
   },
 

@@ -11,13 +11,15 @@
     "cache": "rimraf node_modules package-lock.json && npm install"
   },
   "dependencies": {
+    "@types/socket.io": "^3.0.1",
     "amqplib": "^0.10.3",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
     "redis": "^5.10.0",
-    "resend": "^4.8.0"
+    "resend": "^4.8.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.5",

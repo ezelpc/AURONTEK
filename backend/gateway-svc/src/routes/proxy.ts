@@ -94,12 +94,19 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
         onProxyRes: removeCorsHeaders
     } as Options));
 
-    // Habilidades routes
+    // Habilidades routes - Special handling for file uploads
     router.use('/habilidades', createProxyMiddleware({
         target: USUARIOS_SVC_URL,
         changeOrigin: true,
         pathRewrite: (path) => '/habilidades' + path,
-        onProxyRes: removeCorsHeaders
+        onProxyRes: removeCorsHeaders,
+        // Important: Don't parse body for multipart/form-data
+        onProxyReq: (proxyReq: any, req: any, res: any) => {
+            if (req.method === 'POST' && req.path === '/habilidades/bulk') {
+                console.log('[GATEWAY] Proxying file upload to usuarios-svc');
+                console.log('[GATEWAY] Content-Type:', req.headers['content-type']);
+            }
+        }
     } as Options));
 
     // Companies routes (translate to empresas)
@@ -147,32 +154,35 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
         }
     } as Options));
 
-    // Notificaciones routes
-    router.use('/notificaciones', createProxyMiddleware({
-        target: NOTIFICACIONES_SVC_URL,
-        changeOrigin: true,
-        pathRewrite: (path) => {
-            const newPath = '/notificaciones' + path;
-            console.log(`[PROXY NOTIF] Original path: ${path}`);
-            console.log(`[PROXY NOTIF] Rewritten path: ${newPath}`);
-            console.log(`[PROXY NOTIF] Full URL: ${NOTIFICACIONES_SVC_URL}${newPath}`);
-            return newPath;
-        },
-        logLevel: 'debug',
-        onProxyReq: (proxyReq: any, req: any, res: any) => {
-            console.log(`[PROXY NOTIF] Sending request to: ${NOTIFICACIONES_SVC_URL}${proxyReq.path}`);
-        },
-        onProxyRes: removeCorsHeaders,
-        onError: (err: any, req: any, res: any) => {
-            console.error(`[PROXY NOTIF ERROR]`, err.message);
-        }
-    } as Options));
 
+
+    // Chat routes
     // Chat routes
     router.use('/chat', createProxyMiddleware({
         target: CHAT_SVC_URL,
         changeOrigin: true,
-        pathRewrite: (path) => '/chat' + path,
+        pathRewrite: (path, req) => {
+            console.log(`[PROXY DEBUG CHAT] Method: ${req.method} URL: ${req.url} PathArg: ${path}`);
+            let newPath = path.replace(/\/chat/i, '');
+            if (!newPath.startsWith('/')) newPath = '/' + newPath;
+            console.log(`[PROXY CHAT] Rewrite: ${path} -> ${newPath}`);
+            return newPath;
+        },
+        onProxyRes: removeCorsHeaders,
+        ws: true
+    } as Options));
+
+    // Notificaciones routes
+    router.use('/notificaciones', createProxyMiddleware({
+        target: NOTIFICACIONES_SVC_URL,
+        changeOrigin: true,
+        pathRewrite: (path, req) => {
+            console.log(`[PROXY DEBUG NOTIF] Method: ${req.method} URL: ${req.url} PathArg: ${path}`);
+            let newPath = path.replace(/\/notificaciones/i, '');
+            if (!newPath.startsWith('/')) newPath = '/' + newPath;
+            console.log(`[PROXY NOTIF] Rewrite: ${path} -> ${newPath}`);
+            return newPath;
+        },
         onProxyRes: removeCorsHeaders
     } as Options));
 

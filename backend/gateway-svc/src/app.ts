@@ -67,6 +67,14 @@ export const createApp = () => {
         console.log(`[GATEWAY DEBUG] ${req.method} ${req.url}`);
         console.log(`[GATEWAY DEBUG] Full path: ${req.path}`);
         console.log(`[GATEWAY DEBUG] Auth Header: ${req.headers.authorization ? 'PRESENT' : 'MISSING'}`);
+
+        // Special logging for bulk upload
+        if (req.url.includes('/bulk')) {
+            console.log('🔥 [GATEWAY] BULK UPLOAD REQUEST DETECTED');
+            console.log('🔥 [GATEWAY] Content-Type:', req.headers['content-type']);
+            console.log('🔥 [GATEWAY] All Headers:', JSON.stringify(req.headers, null, 2));
+        }
+
         next();
     });
 

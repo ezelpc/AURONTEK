@@ -98,7 +98,21 @@ const downloadTemplate = async (req: Request, res: Response) => {
 
 // POST /api/habilidades/bulk - Carga masiva desde CSV
 const bulkUpload = async (req: Request, res: Response) => {
+    console.log('='.repeat(60));
+    console.log('[BULK DEBUG] Request received');
+    console.log('[BULK DEBUG] Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('[BULK DEBUG] Content-Type:', req.headers['content-type']);
+    console.log('[BULK DEBUG] req.file:', req.file);
+    console.log('[BULK DEBUG] req.files:', (req as any).files);
+    console.log('[BULK DEBUG] req.body:', req.body);
+    console.log('='.repeat(60));
+
     if (!req.file) {
+        console.error('[BULK ERROR] No file received!');
+        console.error('[BULK ERROR] This usually means:');
+        console.error('[BULK ERROR] 1. Multer middleware not running');
+        console.error('[BULK ERROR] 2. Field name mismatch (expecting "file")');
+        console.error('[BULK ERROR] 3. Content-Type not multipart/form-data');
         return res.status(400).json({ msg: 'No se subió ningún archivo CSV.' });
     }
 

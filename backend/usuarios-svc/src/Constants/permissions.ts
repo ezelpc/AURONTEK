@@ -59,6 +59,7 @@ export const PERMISOS = {
     SERVICIOS_EDIT_LOCAL: 'servicios.edit_local',
     SERVICIOS_DELETE_LOCAL: 'servicios.delete_local',
     SERVICIOS_VIEW_LOCAL: 'servicios.view_local',
+    SERVICIOS_MANAGE_LOCAL: 'servicios.manage_local', // Manage all local service operations
     SERVICIOS_CREATE_GLOBAL: 'servicios.create_global',
     SERVICIOS_EDIT_GLOBAL: 'servicios.edit_global',
     SERVICIOS_DELETE_GLOBAL: 'servicios.delete_global',
@@ -77,6 +78,7 @@ export const PERMISOS = {
     ADMINS_VIEW: 'admins.view',
     ADMINS_EDIT: 'admins.edit',
     ADMINS_DELETE: 'admins.delete',
+    ADMINS_MANAGE: 'admins.manage', // Manage all admin operations
 
     // HABILITIES SYSTEM
     HABILITIES_VIEW: 'habilities.view',

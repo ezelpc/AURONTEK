@@ -3,7 +3,6 @@ import api from '@/api/axios';
 export interface CareGroup {
     _id?: string;
     nombre: string;
-    categoria: string;
     descripcion?: string;
     activo: boolean;
 }
@@ -42,13 +41,19 @@ export const careGroupsService = {
     },
 
     bulkUpload: async (file: File): Promise<any> => {
+        console.log('[BULK UPLOAD] Starting upload');
+        console.log('[BULK UPLOAD] File:', file.name, file.size, file.type);
+
         const formData = new FormData();
         formData.append('file', file);
-        const response = await api.post('/habilidades/bulk', formData, {
-            headers: {
-                'Content-Type': undefined
-            }
-        });
+
+        console.log('[BULK UPLOAD] FormData created');
+        console.log('[BULK UPLOAD] FormData entries:', Array.from(formData.entries()));
+
+        // IMPORTANT: Don't set Content-Type manually - axios will add boundary automatically
+        const response = await api.post('/habilidades/bulk', formData);
+
+        console.log('[BULK UPLOAD] Response:', response);
         return response.data;
     }
 };

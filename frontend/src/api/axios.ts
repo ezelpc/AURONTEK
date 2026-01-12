@@ -4,9 +4,7 @@ import { useAuthStore } from '@/auth/auth.store';
 // 1. Crear Instancia
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api', // Gateway URL
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    // Don't set default Content-Type - let axios handle it based on data type
 });
 
 // 2. Interceptor Request: Inyectar Token
@@ -16,6 +14,25 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // For FormData, delete Content-Type to let axios set it with boundary
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+            console.log('[AXIOS] FormData detected - Content-Type will be set automatically');
+        } else if (!config.headers['Content-Type']) {
+            // For non-FormData requests, set default to application/json
+            config.headers['Content-Type'] = 'application/json';
+        }
+
+        // Debug logging for bulk upload
+        if (config.url?.includes('/bulk')) {
+            console.log('[AXIOS INTERCEPTOR] Bulk upload request');
+            console.log('[AXIOS INTERCEPTOR] URL:', config.url);
+            console.log('[AXIOS INTERCEPTOR] Method:', config.method);
+            console.log('[AXIOS INTERCEPTOR] Headers:', config.headers);
+            console.log('[AXIOS INTERCEPTOR] Data type:', config.data?.constructor?.name);
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

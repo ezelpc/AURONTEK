@@ -37,6 +37,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { GlobalChat } from '@/components/GlobalChat';
 
 // Context to manage sidebar state
 const SidebarContext = createContext({ collapsed: false });
@@ -153,24 +154,33 @@ const AdminLayout = () => {
     // Auto-refresh permisos cada 5 minutos
     usePermissionRefresh(5);
 
-    // Efecto para conectar socket y escuchar notificaciones
+    // Efecto para conectar sockets y escuchar notificaciones
     useEffect(() => {
-        socketService.connect();
+        try {
+            // Conectar ambos sockets
+            socketService.connectChat();
+            socketService.connectNotifications();
 
-        // Escuchar notificaciones generales
-        socketService.on('notificacion', (payload: any) => {
-            // Payload esperado: { titulo, mensaje, tipo }
-            toast(payload.titulo || 'Notificación', {
-                description: payload.mensaje,
-                action: {
-                    label: 'Ver',
-                    onClick: () => console.log('Navegar a...', payload), // TODO: Navegar si hay linkId
-                },
+            // Escuchar notificaciones en tiempo real
+            socketService.onNewNotification((notification: any) => {
+                toast(notification.titulo || 'Notificación', {
+                    description: notification.mensaje,
+                    action: notification.metadata?.ticketId ? {
+                        label: 'Ver',
+                        onClick: () => window.location.href = `/admin/tickets/${notification.metadata.ticketId}`
+                    } : undefined,
+                });
             });
-        });
+        } catch (error) {
+            console.error('Error conectando sockets:', error);
+        }
 
         return () => {
-            socketService.disconnect();
+            try {
+                socketService.disconnect();
+            } catch (error) {
+                console.error('Error desconectando sockets:', error);
+            }
         };
     }, []);
 
@@ -290,13 +300,14 @@ const AdminLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
-                <div className="h-full p-8 max-w-7xl mx-auto">
+            <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                <div className="p-6">
                     <Outlet />
                 </div>
             </main>
 
             <CommandMenu />
+            <GlobalChat />
             <Toaster />
         </div>
     );

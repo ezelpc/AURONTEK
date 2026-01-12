@@ -6,10 +6,13 @@ export const ticketsService = {
     getTickets: async (filters?: {
         estado?: string;
         prioridad?: string;
-        asignado?: boolean; // true = solo asignados a mi
+        asignado?: boolean; // true = solo asignados a mi (legacy/backend default)
+        agenteAsignado?: string; // ID específico del agente assignments
         empresaId?: string; // filtrar por empresa específica
         tipo?: string;
         usuarioCreador?: string;
+        usuarioCreadorEmail?: string;
+        limit?: number;
     }): Promise<Ticket[]> => {
         // Backend endpoint: GET /api/tickets
         // El backend ya filtra por permisos gracias al middleware
@@ -18,9 +21,12 @@ export const ticketsService = {
         if (filters?.estado) params.append('estado', filters.estado);
         if (filters?.prioridad) params.append('prioridad', filters.prioridad);
         if (filters?.asignado) params.append('asignado', 'true');
+        if (filters?.agenteAsignado) params.append('agenteAsignado', filters.agenteAsignado);
         if (filters?.empresaId) params.append('empresaId', filters.empresaId);
         if (filters?.tipo) params.append('tipo', filters.tipo);
         if (filters?.usuarioCreador) params.append('usuarioCreador', filters.usuarioCreador);
+        if (filters?.usuarioCreadorEmail) params.append('usuarioCreadorEmail', filters.usuarioCreadorEmail);
+        if (filters?.limit) params.append('limit', filters.limit.toString());
 
         const queryString = params.toString();
         const url = queryString ? `/tickets?${queryString}` : '/tickets';
@@ -170,5 +176,19 @@ export const ticketsService = {
     delegateTicket: async (id: string, becarioId: string): Promise<Ticket> => {
         const response = await api.put<{ ticket: Ticket }>(`/tickets/${id}/delegar`, { becarioId });
         return response.data.ticket;
+    },
+
+    // Obtener estadísticas para Dashboard (Empresa)
+    getDashboardStats: async (filters?: {
+        empresaId?: string;
+    }): Promise<{ total: number; abiertos: number; en_proceso: number; en_espera: number; cerrados: number }> => {
+        const params = new URLSearchParams();
+        if (filters?.empresaId) params.append('empresaId', filters.empresaId);
+
+        const queryString = params.toString();
+        const url = queryString ? `/tickets/estadisticas/dashboard?${queryString}` : '/tickets/estadisticas/dashboard';
+
+        const response = await api.get(url);
+        return response.data;
     }
 };

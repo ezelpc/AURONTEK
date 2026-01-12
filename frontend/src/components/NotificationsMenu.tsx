@@ -89,35 +89,52 @@ export const NotificationsMenu = () => {
     });
 
     useEffect(() => {
-        socketService.connect();
+        try {
+            socketService.connectNotifications();
 
-        const handleNotification = (payload: any) => {
-            const newNotif: Notification = {
-                _id: payload._id || Math.random().toString(36).substr(2, 9),
-                usuarioId: payload.usuarioId || '',
-                titulo: payload.titulo,
-                mensaje: payload.mensaje,
-                tipo: payload.tipo || 'info',
-                leida: false,
-                link: payload.link,
-                metadata: payload.metadata,
-                createdAt: new Date().toISOString()
+            const handleNotification = (payload: any) => {
+                const newNotif: Notification = {
+                    _id: payload._id || Math.random().toString(36).substr(2, 9),
+                    usuarioId: payload.usuarioId || '',
+                    titulo: payload.titulo,
+                    mensaje: payload.mensaje,
+                    tipo: payload.tipo || 'info',
+                    leida: false,
+                    link: payload.link,
+                    metadata: payload.metadata,
+                    createdAt: new Date().toISOString()
+                };
+
+                setNotifications(prev => [newNotif, ...prev]);
+                setUnreadCount(prev => prev + 1);
+
+                // Show toast notification
+                toast.info(payload.titulo, {
+                    description: payload.mensaje
+                });
+
+                // Play Sound
+                try {
+                    const audio = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
+                    audio.volume = 0.5;
+                    audio.play().catch(err => console.error('Audio play failed:', err));
+                } catch (e) {
+                    console.error('Audio error:', e);
+                }
             };
 
-            setNotifications(prev => [newNotif, ...prev]);
-            setUnreadCount(prev => prev + 1);
+            socketService.onNewNotification(handleNotification);
 
-            // Show toast notification
-            toast.info(payload.titulo, {
-                description: payload.mensaje
-            });
-        };
-
-        socketService.on('notification.new', handleNotification);
-
-        return () => {
-            socketService.off('notification.new');
-        };
+            return () => {
+                try {
+                    socketService.offNewNotification();
+                } catch (error) {
+                    console.error('Error cleaning up notifications socket:', error);
+                }
+            };
+        } catch (error) {
+            console.error('Error connecting to notifications:', error);
+        }
     }, []);
 
     const markAsRead = (id: string) => {
