@@ -126,6 +126,8 @@ const ValidarAcceso = () => {
                             <InputOTP
                                 maxLength={8}
                                 value={codigo}
+                                pattern={/^[a-zA-Z0-9]*$/}
+                                inputMode="text"
                                 onChange={(value) => setCodigo(value)}
                             >
                                 <InputOTPGroup>

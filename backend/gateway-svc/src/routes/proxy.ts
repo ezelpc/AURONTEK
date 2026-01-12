@@ -100,11 +100,25 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
         changeOrigin: true,
         pathRewrite: (path) => '/habilidades' + path,
         onProxyRes: removeCorsHeaders,
-        // Important: Don't parse body for multipart/form-data
-        onProxyReq: (proxyReq: any, req: any, res: any) => {
-            if (req.method === 'POST' && req.path === '/habilidades/bulk') {
-                console.log('[GATEWAY] Proxying file upload to usuarios-svc');
-                console.log('[GATEWAY] Content-Type:', req.headers['content-type']);
+        onProxyReq: (proxyReq, req: any, res) => {
+            const contentType = req.headers['content-type'] || '';
+            const isMultipart = contentType.includes('multipart/form-data');
+
+            if (req.method === 'POST') {
+                console.log(`[GATEWAY DEBUG] Proxying POST to: ${req.originalUrl} (Multipart: ${isMultipart})`);
+
+                if (isMultipart) {
+                    // For multipart, we MUST NOT touch the body or set headers if we want to stream
+                    console.log('🚀 [GATEWAY] Streaming multipart request untouched');
+                    return;
+                }
+
+                if (req.body && Object.keys(req.body).length > 0) {
+                    const bodyData = JSON.stringify(req.body);
+                    proxyReq.setHeader('Content-Type', 'application/json');
+                    proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                    proxyReq.write(bodyData);
+                }
             }
         }
     } as Options));

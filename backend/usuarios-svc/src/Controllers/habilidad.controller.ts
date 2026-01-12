@@ -113,7 +113,14 @@ const bulkUpload = async (req: Request, res: Response) => {
         console.error('[BULK ERROR] 1. Multer middleware not running');
         console.error('[BULK ERROR] 2. Field name mismatch (expecting "file")');
         console.error('[BULK ERROR] 3. Content-Type not multipart/form-data');
-        return res.status(400).json({ msg: 'No se subió ningún archivo CSV.' });
+        return res.status(400).json({
+            msg: 'No se subió ningún archivo CSV.',
+            debug: {
+                contentType: req.headers['content-type'],
+                bodyPreview: req.body ? Object.keys(req.body) : 'null',
+                headers: Object.keys(req.headers)
+            }
+        });
     }
 
     const results: any[] = [];

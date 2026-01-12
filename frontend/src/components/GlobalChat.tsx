@@ -1,101 +1,109 @@
-import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Loader2, ChevronLeft, User, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageCircle, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/auth/auth.store';
 import { socketService } from '@/api/socket.service';
-import { chatService, Message } from '@/api/chat.service';
 import { ticketsService } from '@/api/tickets.service';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { ChatWindow } from './ChatWindow';
+import { Message } from '@/api/chat.service';
+
+// Local cn definition as fallback/fix for runtime reference issues
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 export const GlobalChat = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
-    const [message, setMessage] = useState('');
+    const [isOpen, setIsOpen] = useState(false); // Controls Main Ticket List visibility
+    const [openTickets, setOpenTickets] = useState<string[]>([]); // Array of open chat IDs
+    const [minimizedTickets, setMinimizedTickets] = useState<string[]>([]); // Array of minimized chat IDs
     const user = useAuthStore((state) => state.user);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const toggleChat = () => {
+    const toggleMainList = () => {
         setIsOpen(!isOpen);
-        if (!isOpen) setUnreadCount(0); // Reset on open
+        if (!isOpen) setUnreadCount(0); // Reset unread on opening list (simplified logic)
     };
 
-    // 1. Cargar lista de tickets activos (conversaciones)
+    const openChat = (ticketId: string) => {
+        if (!openTickets.includes(ticketId)) {
+            setOpenTickets([...openTickets, ticketId]);
+        }
+        // Ensure it's not minimized when opened/clicked
+        if (minimizedTickets.includes(ticketId)) {
+            setMinimizedTickets(minimizedTickets.filter(id => id !== ticketId));
+        }
+    };
+
+    const closeChat = (ticketId: string) => {
+        setOpenTickets(openTickets.filter(id => id !== ticketId));
+        setMinimizedTickets(minimizedTickets.filter(id => id !== ticketId));
+    };
+
+    const toggleMinimize = (ticketId: string) => {
+        if (minimizedTickets.includes(ticketId)) {
+            setMinimizedTickets(minimizedTickets.filter(id => id !== ticketId));
+        } else {
+            setMinimizedTickets([...minimizedTickets, ticketId]);
+        }
+    };
+
+    // 1. Load Active Tickets (Assignments + Created)
     const { data: tickets = [], isLoading: loadingTickets } = useQuery({
         queryKey: ['my-active-tickets'],
         queryFn: async () => {
             if (!user?.id) return [];
-
-            // Quitamos estado: 'abierto' para filtrar en cliente y evitar case mismatch
             const limit = 50;
-            // UPDATE: Admin needs explicit filtering to mimic "My Tickets" view found in Company Dashboard
             const [asignadosRes, creadosRes] = await Promise.allSettled([
                 ticketsService.getTickets({ agenteAsignado: user.id, limit }),
                 ticketsService.getTickets({ usuarioCreador: user.id, usuarioCreadorEmail: (user as any).email || (user as any).correo, limit })
             ]);
-
             const asignados = asignadosRes.status === 'fulfilled' ? asignadosRes.value : [];
             const creados = creadosRes.status === 'fulfilled' ? creadosRes.value : [];
-
             const todos = [...asignados, ...creados];
 
-            // Eliminar duplicados y filtrar por estado activo (normalizado)
+            // Deduplicate and filter active
             const unicos = todos.filter((ticket, index, self) => {
                 const isUnique = index === self.findIndex((t) => t._id === ticket._id);
                 if (!isUnique) return false;
-
                 const estado = ticket.estado?.toUpperCase() || '';
-                // Considerar activos: ABIERTO, EN_PROCESO, PENDIENTE
                 return !['CERRADO', 'RESUELTO'].includes(estado);
             });
 
-            // Ordenar por fecha de actualización (más reciente primero)
             return unicos.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         },
-        enabled: isOpen && !activeTicketId
+        // enabled: isOpen // Always load to show unread badges? OR load on mount?
+        // Let's load on mount to handle incoming message badges correctly ideally, but for now stick to efficient loading
+        enabled: true
     });
 
-    // 2. Cargar mensajes del ticket activo (con diagnóstico de error)
-    const { data: messages = [], isLoading: loadingMessages, error: chatError } = useQuery({
-        queryKey: ['chat', activeTicketId],
-        queryFn: async () => {
-            if (!activeTicketId) return [];
-            console.log('[GlobalChat] Loading history for:', activeTicketId);
-            try {
-                return await chatService.getHistory(activeTicketId);
-            } catch (err: any) {
-                console.error('[GlobalChat] Error loading history:', err);
-                const status = err.response?.status;
-                const msg = err.response?.data?.error || err.message;
-                // Devolvemos error con info útil
-                throw new Error(status ? `Error ${status}: ${msg}` : msg);
-            }
-        },
-        enabled: !!activeTicketId,
-        retry: 1
-    });
-
-    // Conexión Socket
+    // Global Socket Connection (Manager)
     useEffect(() => {
-        if (!isOpen || !activeTicketId) return;
+        if (!user) return; // Wait for user
 
-        console.log('[GlobalChat] Connecting socket for ticket:', activeTicketId);
+        // Connect global socket (without joining specific room initially, or join ALL active?)
+        // In this architecture, GlobalChat manages the connection.
+        // ChatWindows rely on query updates.
+        // But we need to Listen to ALL active tickets?
+        // Or connect to 'user-room'?
+
+        // Strategy: Connect and Join rooms for ALL Open Tickets + Active List?
+        // Simplest: Connect once.
         const socket = socketService.connectChat();
 
         if (socket) {
-            socketService.joinTicketRoom(activeTicketId);
+            // Join rooms for all open tickets
+            openTickets.forEach(id => socketService.joinTicketRoom(id));
 
             const handleNewMessage = (newMessage: Message) => {
-                console.log('[GlobalChat] New message received:', newMessage);
-
-                // Play Sound if message is from OTHER
+                // Play Sound logic (Global)
                 const isOwn = typeof newMessage.emisorId === 'object'
                     ? (newMessage.emisorId as any)._id === user?.id
                     : newMessage.emisorId === user?.id;
@@ -104,328 +112,144 @@ export const GlobalChat = () => {
                     try {
                         const audio = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
                         audio.volume = 0.5;
-                        if (audio) {
-                            audio.play().catch(err => console.log('Audio play failed (interaction required?):', err));
-                        }
-                    } catch (e) {
-                        console.error('Audio error:', e);
-                    }
+                        audio.play().catch(console.error);
+                    } catch (e) { console.error(e); }
 
-                    if (!isOpen) {
-                        setUnreadCount(prev => prev + 1);
-                    }
+                    // Increment unread if chat not focused? 
+                    // Simplified: just global increment
+                    setUnreadCount(prev => prev + 1);
                 }
 
-                queryClient.setQueryData(['chat', activeTicketId], (old: Message[] = []) => {
+                // Update Cache for specific ticket
+                queryClient.setQueryData(['chat', newMessage.ticketId], (old: Message[] = []) => {
                     if (old.some(m => m._id === newMessage._id)) return old;
-                    // Ensure emisorId is the object for display purposes
-                    const msgToStore = {
-                        ...newMessage,
-                        // emisorId: (newMessage as any).emisor || newMessage.emisorId
-                    };
+                    const msgToStore = { ...newMessage };
                     return [...old, msgToStore];
                 });
 
-                // Invalidate queries to refresh list/history
+                // Refresh ticket list ordering
                 queryClient.invalidateQueries({ queryKey: ['my-active-tickets'] });
-                if (newMessage.ticketId === activeTicketId) {
-                    queryClient.invalidateQueries({ queryKey: ['chat', activeTicketId] });
-                }
             };
 
             socketService.onNewMessage(handleNewMessage);
 
-            // DEBUG: Listen for join status
-            socket.on('room-joined', (data: any) => {
-                console.log('[GlobalChat] Joined room successfully:', data);
-            });
-            socket.on('error', (err: any) => {
-                console.error('[GlobalChat] Socket Error:', err);
-            });
-
-            // Re-join room on reconnection (critical for unstable connections)
-            socket.on('connect', () => {
-                console.log('[GlobalChat] Socket connected/reconnected, joining room:', activeTicketId);
-                socketService.joinTicketRoom(activeTicketId);
-            });
-
             return () => {
                 socketService.offNewMessage();
-                socket.off('room-joined');
-                socket.off('error');
-                socket.off('connect');
             };
         }
-    }, [isOpen, activeTicketId, queryClient]);
+    }, [user, openTickets, queryClient]); // Re-run when openTickets changes to join new rooms?
+    // Better: Effect dependent on openTickets to join rooms.
 
-    // Auto-scroll
+    // Effect to join rooms when openTickets changes
     useEffect(() => {
-        if (activeTicketId) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [messages, activeTicketId, isOpen]);
-
-    const handleSend = () => {
-        if (!message.trim() || !activeTicketId) return;
-
-        // Find active ticket to get empresaId (Required for Admin users)
-        const activeTicket = tickets.find(t => t._id === activeTicketId);
-        const empresaId = typeof activeTicket?.empresaId === 'object'
-            ? (activeTicket.empresaId as any)._id
-            : activeTicket?.empresaId;
-
-        socketService.sendMessage({
-            ticketId: activeTicketId,
-            contenido: message.trim(),
-            empresaId: empresaId
+        if (!user) return;
+        openTickets.forEach(id => {
+            socketService.joinTicketRoom(id);
         });
+    }, [openTickets, user]);
 
-        setMessage('');
-        // Focus stays on input
-    };
 
     if (!user) return null;
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-none">
-            {/* Contenedor principal con pointer-events-auto para interactuar */}
-            <div className="pointer-events-auto flex flex-col items-end space-y-4">
+        <div className="fixed bottom-0 right-0 z-50 pointer-events-none flex flex-row items-end justify-end p-4 gap-4">
+            {/* 
+                Layout:
+                [Chat Window 2] [Chat Window 1] [Main List] [Button]
+                We will map openTickets in REVERSE to stack them leftwards?
+                Or Flex-Row-Reverse? 
+             */}
 
-                {/* Ventana de Chat */}
-                {isOpen && (
-                    <Card className="w-[350px] h-[500px] shadow-2xl border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-200">
-                        {/* Header */}
-                        <CardHeader className="p-3 border-b bg-blue-600 text-white shrink-0">
-                            <div className="flex items-center gap-2">
-                                {activeTicketId && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-white hover:bg-blue-700 hover:text-white -ml-2"
-                                        onClick={() => setActiveTicketId(null)}
-                                    >
-                                        <ChevronLeft className="h-5 w-5" />
-                                    </Button>
-                                )}
-                                <div className="flex-1 overflow-hidden">
-                                    <div className="flex flex-col">
-                                        <CardTitle className="text-base font-semibold truncate leading-none">
-                                            {activeTicketId
-                                                ? (() => {
-                                                    const t = tickets.find(t => t._id === activeTicketId);
-                                                    if (!t) return 'Chat de Ticket';
-
-                                                    const isAssignedToMe = (t.agenteAsignado as any)?._id === user?.id || t.agenteAsignado === user?.id;
-                                                    const displayedName = isAssignedToMe
-                                                        ? (typeof t.usuarioCreador === 'object' ? (t.usuarioCreador as any)?.nombre : 'Usuario')
-                                                        : (typeof t.agenteAsignado === 'object' ? (t.agenteAsignado as any)?.nombre : 'Pendiente');
-
-                                                    return displayedName ? `${t.titulo} • ${displayedName}` : t.titulo;
-                                                })()
-                                                : 'Mensajes'
-                                            }
-                                        </CardTitle>
+            <div className="flex flex-row-reverse items-end gap-4 pointer-events-auto">
+                {/* Main Button */}
+                <div className="relative flex flex-col items-end">
+                    {/* Main List Popover */}
+                    {isOpen && (
+                        <Card className="mb-4 w-[350px] h-[500px] shadow-2xl border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-200">
+                            <CardHeader className="p-3 border-b bg-blue-600 text-white shrink-0">
+                                <div className="flex justify-between items-center">
+                                    <CardTitle className="text-base font-semibold">Mensajes</CardTitle>
+                                    <span className="text-xs text-blue-100 font-normal">Tus conversaciones activas</span>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 p-0 overflow-y-auto bg-white dark:bg-slate-950">
+                                {loadingTickets ? (
+                                    <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+                                ) : tickets.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full p-6 text-center text-slate-500 gap-4">
+                                        <MessageCircle className="h-8 w-8 text-slate-300" />
+                                        <p className="text-sm">No hay conversaciones activas</p>
                                     </div>
-                                    {!activeTicketId && (
-                                        <span className="text-xs text-blue-100 font-normal">Tus conversaciones activas</span>
-                                    )}
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-white hover:bg-blue-700 hover:text-white"
-                                    onClick={toggleChat}
-                                >
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            </div>
-                        </CardHeader>
+                                ) : (
+                                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {tickets.map(ticket => {
+                                            const isAssignedToMe = (ticket.agenteAsignado as any)?._id === user?.id || ticket.agenteAsignado === user?.id;
+                                            const displayedName = isAssignedToMe
+                                                ? (typeof ticket.usuarioCreador === 'object' ? (ticket.usuarioCreador as any)?.nombre : 'Usuario')
+                                                : (typeof ticket.agenteAsignado === 'object' ? (ticket.agenteAsignado as any)?.nombre : 'Pendiente');
 
-                        <CardContent className="flex-1 p-0 overflow-hidden bg-white dark:bg-slate-950 relative">
-                            {/* VISTA 1: Lista de Tickets (Conversaciones) */}
-                            {!activeTicketId && (
-                                <div className="h-full overflow-y-auto">
-                                    {loadingTickets ? (
-                                        <div className="flex flex-col items-center justify-center h-40 gap-2 text-slate-500">
-                                            <Loader2 className="animate-spin h-6 w-6" />
-                                            <span className="text-xs">Cargando conversaciones...</span>
-                                        </div>
-                                    ) : tickets.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center h-full p-6 text-center text-slate-500 gap-4">
-                                            <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-full">
-                                                <MessageCircle className="h-8 w-8 text-slate-300" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm mb-1">No hay conversaciones</p>
-                                                <p className="text-xs text-slate-500">
-                                                    No tienes tickets activos (creados o asignados).
-                                                </p>
-                                            </div>
-                                            <Button variant="outline" size="sm" onClick={() => window.location.href = '/admin/tickets'}>
-                                                Ver todos los tickets
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                                            {tickets.map(ticket => {
-                                                const isAssignedToMe = (ticket.agenteAsignado as any)?._id === user?.id || ticket.agenteAsignado === user?.id;
-                                                const displayedName = isAssignedToMe
-                                                    ? (typeof ticket.usuarioCreador === 'object' ? (ticket.usuarioCreador as any)?.nombre : 'Usuario')
-                                                    : (typeof ticket.agenteAsignado === 'object' ? (ticket.agenteAsignado as any)?.nombre : 'Pendiente');
+                                            // Check if already open
+                                            const isOpenChat = openTickets.includes(ticket._id!);
 
-                                                return (
-                                                    <div
-                                                        key={ticket._id}
-                                                        onClick={() => ticket._id && setActiveTicketId(ticket._id)}
-                                                        className="p-4 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors flex gap-3 items-start group"
-                                                    >
-                                                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400 font-semibold text-sm">
-                                                            {displayedName?.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex justify-between items-start mb-0.5">
-                                                                <h4 className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate pr-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                                                    {ticket.titulo}
-                                                                </h4>
-                                                                <span className="text-[10px] text-slate-400 shrink-0">
-                                                                    {ticket.updatedAt && format(new Date(ticket.updatedAt), 'dd MMM', { locale: es })}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                                                #{ticket.id?.slice(-4)} • CrID: {(typeof ticket.usuarioCreador === 'object' ? (ticket.usuarioCreador as any)?._id : ticket.usuarioCreador)?.slice(-4)}
-                                                            </p>
-                                                            <div className="mt-1.5 flex gap-1.5">
-                                                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-slate-100 text-slate-600">
-                                                                    {ticket.estado}
-                                                                </Badge>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* VISTA 2: Chat Activo */}
-                            {activeTicketId && (
-                                <div className="flex flex-col h-full">
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
-                                        {loadingMessages ? (
-                                            <div className="flex justify-center py-8">
-                                                <Loader2 className="animate-spin h-6 w-6 text-blue-500" />
-                                            </div>
-                                        ) : chatError ? (
-                                            <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
-                                                <AlertCircle className="h-8 w-8 text-red-500 opacity-50" />
-                                                <div className="text-center">
-                                                    <p className="text-red-500 font-medium text-sm">Error al cargar historial</p>
-                                                    <p className="text-xs text-slate-400 mt-1 max-w-[200px] break-words">
-                                                        {(chatError as Error).message}
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="mt-2"
-                                                    onClick={() => queryClient.invalidateQueries({ queryKey: ['chat', activeTicketId] })}
+                                            return (
+                                                <div
+                                                    key={ticket._id}
+                                                    onClick={() => ticket._id && openChat(ticket._id)}
+                                                    className={cn(
+                                                        "p-4 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors flex gap-3 items-start group",
+                                                        isOpenChat && "bg-blue-50 dark:bg-blue-900/10"
+                                                    )}
                                                 >
-                                                    Reintentar
-                                                </Button>
-                                            </div>
-                                        ) : messages.length === 0 ? (
-                                            <div className="text-center text-xs text-slate-400 mt-8">
-                                                Inicio de la conversación.
-                                            </div>
-                                        ) : (
-                                            messages.map((msg) => {
-                                                const isOwn = (msg.emisorId && typeof msg.emisorId === 'object')
-                                                    ? (msg.emisorId as any)._id === user?.id
-                                                    : msg.emisorId === user?.id;
-
-                                                // DEBUG LOG to diagnose alignment issue
-                                                if (messages.indexOf(msg) === messages.length - 1) { // Log only last message to avoid spam
-                                                    console.log('[DEBUG CHAT ALIGN]', {
-                                                        msgId: msg._id,
-                                                        emisorId: msg.emisorId,
-                                                        userId: user?.id,
-                                                        isOwn
-                                                    });
-                                                }
-
-                                                const senderName = (msg.emisorId && typeof msg.emisorId === 'object')
-                                                    ? (msg.emisorId as any).nombre
-                                                    : 'Usuario';
-
-                                                return (
-                                                    <div key={msg._id} className={cn("flex flex-col mb-2", isOwn ? "items-end" : "items-start")}>
-                                                        {/* Sender Name - HIDDEN per user request */}
-                                                        {/* {!isOwn && (
-                                                            <span className="text-[10px] text-slate-500 ml-1 mb-0.5 font-medium">
-                                                                {senderName}
-                                                            </span>
-                                                        )} */}
-
-                                                        <div className={cn(
-                                                            "max-w-[85%] rounded-2xl px-3 py-2 text-sm break-words shadow-sm",
-                                                            isOwn
-                                                                ? "bg-blue-600 text-white rounded-br-sm"
-                                                                : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-bl-sm"
-                                                        )}>
-                                                            {msg.contenido}
-                                                        </div>
-                                                        <span className={cn(
-                                                            "text-[10px] text-slate-400 mt-0.5 px-1 select-none",
-                                                            isOwn ? "text-right" : "text-left"
-                                                        )}>
-                                                            {format(new Date(msg.createdAt), 'HH:mm', { locale: es })}
-                                                        </span>
+                                                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400 font-semibold text-sm">
+                                                        {displayedName?.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
                                                     </div>
-                                                );
-                                            })
-                                        )}
-                                        <div ref={messagesEndRef} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start mb-0.5">
+                                                            <h4 className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate pr-2 group-hover:text-blue-600 transition-colors">
+                                                                {ticket.titulo}
+                                                            </h4>
+                                                            <span className="text-[10px] text-slate-400 shrink-0">
+                                                                {ticket.updatedAt && format(new Date(ticket.updatedAt), 'dd MMM', { locale: es })}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                                            {displayedName} • {ticket.estado}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
                                     </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
-                                    {/* Input Area */}
-                                    <div className="p-3 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex gap-2 items-end">
-                                        <Input
-                                            value={message}
-                                            onChange={e => setMessage(e.target.value)}
-                                            className="min-h-[40px] max-h-[100px] text-sm bg-slate-50 dark:bg-slate-900 border-0 focus-visible:ring-1 focus-visible:ring-blue-500 resize-none"
-                                            placeholder="Escribe un mensaje..."
-                                            onKeyPress={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-                                        />
-                                        <Button
-                                            size="icon"
-                                            className="h-10 w-10 shrink-0 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                                            onClick={handleSend}
-                                            disabled={!message.trim()}
-                                        >
-                                            <Send className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Botón Flotante Principal */}
-                {!isOpen && (
                     <Button
-                        onClick={toggleChat}
-                        className="h-14 w-14 rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white p-0 flex items-center justify-center transition-all hover:scale-110 hover:shadow-2xl active:scale-95 relative"
+                        onClick={toggleMainList}
+                        className="h-14 w-14 rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white p-0 flex items-center justify-center transition-all hover:scale-110 relative"
                     >
                         <MessageCircle className="h-7 w-7" />
-                        {unreadCount > 0 && (
+                        {unreadCount > 0 && !isOpen && (
                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200 z-50">
                                 {unreadCount > 9 ? '9+' : unreadCount}
                             </span>
                         )}
                     </Button>
-                )}
+                </div>
+
+                {/* Open Chat Windows */}
+                {openTickets.map((ticketId, index) => (
+                    <ChatWindow
+                        key={ticketId}
+                        ticketId={ticketId}
+                        onClose={() => closeChat(ticketId)}
+                        onMinimize={() => toggleMinimize(ticketId)}
+                        isMinimized={minimizedTickets.includes(ticketId)}
+                        style={{}} // Flex layout handles positioning
+                        positionIndex={index}
+                    />
+                ))}
             </div>
         </div>
     );
