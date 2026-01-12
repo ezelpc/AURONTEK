@@ -77,14 +77,17 @@ async def verify_service_token(request, call_next):
     return await call_next(request)
 
 # Configuración de servicios
-if os.getenv('DOCKER_ENV') == 'true':
-    RABBITMQ_URL = os.getenv('RABBITMQ_URL')
-else:
-    RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev')
+RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://localhost:5672')
 
-USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SERVICE_URL', 'http://localhost:3001')
-TICKETS_SERVICE_URL = os.getenv('TICKETS_SERVICE_URL', 'http://localhost:3002')
+# URLs de servicios - Intentar primero con nombres cortos (SVC), luego con largos (SERVICE)
+# En Docker, el hostname es el nombre del servicio definido en docker-compose
+USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SVC_URL', os.getenv('USUARIOS_SERVICE_URL', 'http://usuarios-svc:3001'))
+TICKETS_SERVICE_URL = os.getenv('TICKETS_SVC_URL', os.getenv('TICKETS_SERVICE_URL', 'http://tickets-svc:3002'))
 SERVICE_TOKEN = os.getenv('SERVICE_TOKEN','23022e6bdb08ad3631c48af69253c5528f42cbed36b024b2fc041c0cfb23723b')
+
+print(f"📡 RabbitMQ: {RABBITMQ_URL}")
+print(f"👥 Usuarios: {USUARIOS_SERVICE_URL}")
+print(f"🎫 Tickets: {TICKETS_SERVICE_URL}")
 
 # Inicializar servicios
 ticket_classifier = TicketClassifier()

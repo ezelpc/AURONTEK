@@ -12,41 +12,17 @@ def init_logger():
     normalized = branch.lower()
     is_main = normalized in ('main', 'production', 'prod')
 
-    if not is_main:
-        prefix = f'[{normalized}]'
+    # Always log to stdout in container/production/development
+    # Docker captures stdout/stderr which is the standard way to log.
+    prefix = f'[{normalized}]'
 
-        def _print(*args, **kwargs):
-            sys.stdout.write(prefix + ' ' + ' '.join(map(str, args)) + '\n')
+    def _print(*args, **kwargs):
+        sys.stdout.write(prefix + ' ' + ' '.join(map(str, args)) + '\n')
 
-        # Rebind print to include prefix
-        builtins = __import__('builtins')
-        builtins.print = _print
-        return
-
-    # main: log to file
-    log_dir = os.getenv('LOG_DIR', '/var/log/aurontek')
-    log_file = os.path.join(log_dir, os.getenv('LOG_FILE', 'ia.log'))
-
-    try:
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir, mode=0o700, exist_ok=True)
-        else:
-            try:
-                os.chmod(log_dir, 0o700)
-            except Exception:
-                pass
-
-        if not os.path.exists(log_file):
-            fd = os.open(log_file, os.O_WRONLY | os.O_CREAT, 0o600)
-            os.close(fd)
-        else:
-            try:
-                os.chmod(log_file, 0o600)
-            except Exception:
-                pass
-    except Exception as e:
-        sys.stderr.write(f"Logger init error: {e}\n")
-        return
+    # Rebind print to include prefix
+    builtins = __import__('builtins')
+    builtins.print = _print
+    return
 
     def file_print(*args, **kwargs):
         try:
