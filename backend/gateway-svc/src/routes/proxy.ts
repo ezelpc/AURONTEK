@@ -100,7 +100,7 @@ export const createProxyRouter = (authLimiter: RequestHandler | null) => {
         changeOrigin: true,
         pathRewrite: (path) => '/habilidades' + path,
         onProxyRes: removeCorsHeaders,
-        onProxyReq: (proxyReq, req: any, res) => {
+        onProxyReq: (proxyReq: any, req: any, res: any) => {
             const contentType = req.headers['content-type'] || '';
             const isMultipart = contentType.includes('multipart/form-data');
 
