@@ -13,6 +13,8 @@ export const createApp = () => {
     const allowedOrigins = [
         process.env.FRONTEND_URL, // URL de Vercel
         process.env.CUSTOM_DOMAIN, // Dominio No-IP con HTTPS
+        'https://aurontek.vercel.app', // Fallback Vercel
+        'https://aurontekhq-api.ddns.net', // Fallback No-IP
         'http://localhost:5173', // Desarrollo local
         'http://localhost:3000',
         'http://localhost:5000'
