@@ -344,6 +344,16 @@ export const GlobalChat = () => {
                                                     ? (msg.emisorId as any)._id === user?.id
                                                     : msg.emisorId === user?.id;
 
+                                                // DEBUG LOG to diagnose alignment issue
+                                                if (messages.indexOf(msg) === messages.length - 1) { // Log only last message to avoid spam
+                                                    console.log('[DEBUG CHAT ALIGN]', {
+                                                        msgId: msg._id,
+                                                        emisorId: msg.emisorId,
+                                                        userId: user?.id,
+                                                        isOwn
+                                                    });
+                                                }
+
                                                 const senderName = (msg.emisorId && typeof msg.emisorId === 'object')
                                                     ? (msg.emisorId as any).nombre
                                                     : 'Usuario';

@@ -72,7 +72,26 @@ class ChatService {
         return await (Mensaje as any).find(query)
             .sort({ createdAt: 1 })
             .limit(limite)
-            .populate('emisorId', 'nombre rol fotoPerfil');
+            .lean()
+            .then(async (mensajes: any[]) => {
+                const emisorIds = [...new Set(mensajes.map(m => m.emisorId).filter(Boolean))];
+
+                // Manual population to preserve raw emisorId if user not found (e.g. Admin)
+                let usuariosMap = new Map();
+                try {
+                    const UsuarioModel = require('../Models/UsuarioStub').default;
+                    const usuarios = await UsuarioModel.find({ _id: { $in: emisorIds } }, 'nombre rol fotoPerfil').lean();
+                    usuariosMap = new Map(usuarios.map((u: any) => [u._id.toString(), u]));
+                } catch (e) {
+                    console.error('Error populating users:', e);
+                }
+
+                return mensajes.map(m => ({
+                    ...m,
+                    emisorId: m.emisorId, // Keep raw ID
+                    emisor: usuariosMap.get(m.emisorId?.toString()) || null
+                }));
+            });
     }
 
     async marcarComoLeido(mensajeId: string, usuarioId: string) {
