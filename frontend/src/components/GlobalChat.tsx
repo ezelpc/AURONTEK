@@ -135,8 +135,25 @@ export const GlobalChat = () => {
 
             socketService.onNewMessage(handleNewMessage);
 
+            // DEBUG: Listen for join status
+            socket.on('room-joined', (data: any) => {
+                console.log('[GlobalChat] Joined room successfully:', data);
+            });
+            socket.on('error', (err: any) => {
+                console.error('[GlobalChat] Socket Error:', err);
+            });
+
+            // Re-join room on reconnection (critical for unstable connections)
+            socket.on('connect', () => {
+                console.log('[GlobalChat] Socket connected/reconnected, joining room:', activeTicketId);
+                socketService.joinTicketRoom(activeTicketId);
+            });
+
             return () => {
                 socketService.offNewMessage();
+                socket.off('room-joined');
+                socket.off('error');
+                socket.off('connect');
             };
         }
     }, [isOpen, activeTicketId, queryClient]);
