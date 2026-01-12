@@ -295,15 +295,17 @@ const CompanyUsersPage = () => {
                         <TableBody>
                             {Array.isArray(users) && users.map((u) => (
                                 <TableRow key={u.id || u._id}>
-                                    <TableCell className="font-medium flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                            {u.fotoPerfil ? (
-                                                <img src={u.fotoPerfil} alt={u.nombre} className="h-8 w-8 rounded-full" />
-                                            ) : (
-                                                <div className="font-bold text-xs">{u.nombre.charAt(0).toUpperCase()}</div>
-                                            )}
+                                    <TableCell className="font-medium">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+                                                {(u.fotoPerfil || u.foto) ? (
+                                                    <img src={u.fotoPerfil || u.foto} alt={u.nombre} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="font-bold text-sm">{(u.nombre || '?').charAt(0).toUpperCase()}</div>
+                                                )}
+                                            </div>
+                                            <span>{u.nombre}</span>
                                         </div>
-                                        {u.nombre}
                                     </TableCell>
                                     <TableCell>{u.email || u.correo}</TableCell>
                                     <TableCell>

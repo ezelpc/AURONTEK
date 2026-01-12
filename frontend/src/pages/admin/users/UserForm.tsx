@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Upload, X, Mail, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@/auth/auth.store';
 
 interface UserFormProps {
     userToEdit?: any;
@@ -89,8 +90,9 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
 
     // Fetch Care Groups (filtered by company)
     const { data: allCareGroups = [] } = useQuery({
-        queryKey: ['care-groups'],
-        queryFn: careGroupsService.getAll
+        queryKey: ['care-groups', empresaId],
+        queryFn: () => careGroupsService.getAll(empresaId ? { empresaId } : {}),
+        enabled: !!empresaId || tipo === 'local' // If local, we might want global groups
     });
 
     // Filter care groups by selected company
@@ -155,8 +157,24 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
     // Update Mutation
     const updateUserMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: any }) => userService.updateUser(id, data),
-        onSuccess: () => {
+        onSuccess: (data: any) => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
+
+            // Backend returns { msg, usuario }
+            const updatedUserData = data.usuario || data;
+
+            // Si el usuario editado es el mismo que está logueado, actualizar el authStore
+            const currentAuthUser = useAuthStore.getState().user;
+            const updatedUserId = userToEdit?._id || userToEdit?.id;
+
+            if (currentAuthUser && (currentAuthUser._id === updatedUserId || currentAuthUser.id === updatedUserId)) {
+                console.log('🔄 Syncing updated user to authStore:', updatedUserData);
+                useAuthStore.getState().setUser({
+                    ...currentAuthUser,
+                    ...updatedUserData
+                });
+            }
+
             toast.success(t('users.form.update_btn') + ' ' + t('common.success'));
             if (onSuccess) onSuccess();
         },

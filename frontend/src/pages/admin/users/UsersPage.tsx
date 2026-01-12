@@ -303,8 +303,19 @@ const UsersPage = () => {
                                 {Array.isArray(users) && users.map((user: any) => (
                                     <TableRow key={user.id || user._id} className="dark:border-slate-700">
                                         <TableCell>
-                                            <div className="font-medium dark:text-slate-100">{user.nombre}</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">{user.email || user.correo}</div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-9 w-9 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
+                                                    {(user.fotoPerfil || user.foto) ? (
+                                                        <img src={user.fotoPerfil || user.foto} alt={user.nombre} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="font-bold text-sm">{(user.nombre || '?').charAt(0).toUpperCase()}</div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium dark:text-slate-100">{user.nombre}</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400">{user.email || user.correo}</div>
+                                                </div>
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1">

@@ -86,8 +86,22 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
             <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <div className="relative">
-                        <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                            {user.nombre.charAt(0).toUpperCase()}
+                        <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold overflow-hidden">
+                            {(user.fotoPerfil || user.foto) ? (
+                                <img
+                                    src={user.fotoPerfil || user.foto}
+                                    alt={user.nombre}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                        // Fallback if image fails to load
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        const parent = (e.target as HTMLImageElement).parentElement;
+                                        if (parent) parent.innerText = user.nombre.charAt(0).toUpperCase();
+                                    }}
+                                />
+                            ) : (
+                                user.nombre.charAt(0).toUpperCase()
+                            )}
                         </div>
                         {/* Status Indicator Dot */}
                         <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-slate-950 ${getStatusColor(status)}`} />

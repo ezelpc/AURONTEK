@@ -7,7 +7,18 @@ import { Readable } from 'stream';
 // GET /api/habilidades
 const listarHabilidades = async (req: Request, res: Response) => {
     try {
-        const habilidades = await Habilidad.find().sort({ nombre: 1 });
+        const { empresaId } = req.query;
+        let query: any = { activo: true };
+
+        if (empresaId) {
+            query.$or = [
+                { empresa: empresaId },
+                { empresa: null },
+                { empresa: { $exists: false } }
+            ];
+        }
+
+        const habilidades = await Habilidad.find(query).sort({ nombre: 1 });
         res.json(habilidades);
     } catch (error: any) {
         res.status(500).json({ msg: 'Error al listar habilidades', error: error.message });
