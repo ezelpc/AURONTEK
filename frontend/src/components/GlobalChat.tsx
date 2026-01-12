@@ -102,7 +102,7 @@ export const GlobalChat = () => {
 
                 if (!isOwn) {
                     try {
-                        const audio = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
+                        const audio = new Audio('/pop.mp3');
                         audio.volume = 0.5;
                         if (audio) {
                             audio.play().catch(err => console.log('Audio play failed (interaction required?):', err));
