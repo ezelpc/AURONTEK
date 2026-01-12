@@ -36,7 +36,7 @@ const crearAdmin = async (req: Request, res: Response) => {
             contraseña: hashedPassword,
             rol,
             puesto,
-            permisos: permisos || [], // Default to empty array if not provided
+            permisos: Array.from(new Set(permisos || [])), // Unique permissions
             activo: true
         });
 
@@ -92,9 +92,48 @@ const detalleAdmin = async (req: Request, res: Response) => {
     }
 };
 
+// PUT /api/admins/:id
+const modificarAdmin = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { nombre, correo, rol, puesto, permisos, activo } = req.body;
+
+    try {
+        const admin = await Admin.findById(id);
+        if (!admin) {
+            return res.status(404).json({ msg: 'Administrador no encontrado.' });
+        }
+
+        // Prevent changing rol to admin-general if it's not already
+        if (rol === 'admin-general' && admin.rol !== 'admin-general') {
+            return res.status(403).json({ msg: 'No se puede asignar el rol de Super Administrador.' });
+        }
+
+        if (nombre) admin.nombre = nombre;
+        if (correo) admin.correo = correo.toLowerCase();
+        if (rol) admin.rol = rol;
+        if (puesto) admin.puesto = puesto;
+        if (activo !== undefined) admin.activo = activo;
+
+        if (permisos) {
+            admin.permisos = Array.from(new Set(permisos));
+        }
+
+        await admin.save();
+
+        const { contraseña, ...adminResponse } = admin.toObject();
+        res.json({ msg: 'Administrador actualizado correctamente.', admin: adminResponse });
+    } catch (error: any) {
+        if (error.code === 11000) {
+            return res.status(409).json({ msg: `El correo ya está en uso.` });
+        }
+        res.status(500).json({ msg: 'Error al actualizar el administrador', error: error.message });
+    }
+};
+
 export default {
     listarAdmins,
     crearAdmin,
     eliminarAdmin,
-    detalleAdmin
+    detalleAdmin,
+    modificarAdmin
 };

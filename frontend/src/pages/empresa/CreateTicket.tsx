@@ -11,8 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/auth/auth.store';
-import { Globe, Building2, ChevronRight, ArrowLeft, CheckCircle2, LayoutGrid, FileText } from 'lucide-react';
+import { Globe, Building2, ChevronRight, ArrowLeft, CheckCircle2, LayoutGrid, FileText, Paperclip, X, Loader2, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRef } from 'react';
+
 
 type Step = 'scope' | 'category' | 'service' | 'details';
 
@@ -32,6 +34,10 @@ const CreateTicket = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [customFields, setCustomFields] = useState<Record<string, string>>({});
+    const [attachments, setAttachments] = useState<{ url: string; nombre: string; tipo: string }[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     // Reset details when service changes
     useEffect(() => {
@@ -91,9 +97,65 @@ const CreateTicket = () => {
             tipo: selectedService.tipo.toLowerCase(),
             categoria: selectedService.categoria || selectedService.area,
             prioridad: (selectedService.prioridad?.toLowerCase() as any) || 'media',
-            metadata: { ...selectedService, ...customFields }
+            metadata: { ...selectedService, ...customFields },
+            adjuntos: attachments
         });
     };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        if (!cloudName) {
+            toast.error('Cloudinary no configurado');
+            return;
+        }
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'aurontek_users');
+        formData.append('folder', 'tickets'); // Using 'tickets' folder as per request
+
+        try {
+            const response = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                { method: 'POST', body: formData }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'Error uploading file');
+            }
+
+            const data = await response.json();
+
+            setAttachments(prev => [...prev, {
+                url: data.secure_url,
+                nombre: file.name,
+                tipo: file.type
+            }]);
+
+            toast.success('Archivo subido correctamente');
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            const msg = error.message || 'Error al subir archivo';
+            if (msg.includes('preset')) {
+                toast.error('Error: Preset de Cloudinary no encontrado o mal configurado.');
+            } else {
+                toast.error(`Error al subir archivo: ${msg}`);
+            }
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
 
     const handleBack = () => {
         if (step === 'details') setStep('service');
@@ -283,7 +345,56 @@ const CreateTicket = () => {
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <Label>{t('company_portal.create_ticket.attachments_label') || 'Archivos y Evidencia'}</Label>
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-wrap gap-2">
+                                {attachments.map((file, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-slate-100 border p-2 rounded-md text-sm group relative">
+                                        {file.tipo.startsWith('image/') ? (
+                                            <ImageIcon className="w-4 h-4 text-blue-500" />
+                                        ) : (
+                                            <FileText className="w-4 h-4 text-slate-500" />
+                                        )}
+                                        <span className="max-w-[150px] truncate">{file.nombre}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeAttachment(idx)}
+                                            className="ml-1 text-slate-400 hover:text-red-500"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                                className="hidden"
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                            />
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                                className="w-fit gap-2"
+                            >
+                                {uploading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Paperclip className="w-4 h-4" />
+                                )}
+                                {uploading ? 'Subiendo...' : 'Adjuntar archivo o imagen'}
+                            </Button>
+                        </div>
+                    </div>
+
                     <p className="text-xs text-slate-400">{t('company_portal.create_ticket.evidence_note')}</p>
+
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2 bg-slate-50 p-4">
                     <Button type="button" variant="outline" onClick={handleBack}>{t('common.cancel')}</Button>

@@ -188,10 +188,15 @@ export const actualizarUsuario = async (usuarioId: string, datosActualizados: an
   const usuario = await Usuario.findById(usuarioId);
   if (!usuario) throw new Error('Usuario no encontrado.');
 
-  // No permitir actualizar rol ni empresa
-  delete datosActualizados.rol;
-  delete datosActualizados.empresa;
-  delete datosActualizados.contraseña; // La contraseña se actualiza por otro método
+  // Sync care groups/habilidades if either is provided
+  if (datosActualizados.habilidades && !datosActualizados.gruposDeAtencion) {
+    datosActualizados.gruposDeAtencion = datosActualizados.habilidades;
+  } else if (datosActualizados.gruposDeAtencion && !datosActualizados.habilidades) {
+    datosActualizados.habilidades = datosActualizados.gruposDeAtencion;
+  }
+
+  // Remove protected fields
+  delete datosActualizados.contraseña;
 
   Object.assign(usuario, datosActualizados);
 

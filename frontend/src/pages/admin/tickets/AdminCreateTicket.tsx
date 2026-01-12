@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Send, ChevronRight, Upload, Search, Monitor, Wrench, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, ChevronRight, Upload, Search, Monitor, Wrench, FileText, Loader2, X, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -25,9 +25,10 @@ const AdminCreateTicket = () => {
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedService, setSelectedService] = useState<any>(null);
     const [descripcion, setDescripcion] = useState('');
-    const [adjuntos, setAdjuntos] = useState<File[]>([]);
+    const [adjuntos, setAdjuntos] = useState<{ url: string; nombre: string; tipo: string }[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Fetch servicios INTERNOS (LOCALES de AurontekHQ)
     const { data: servicios = [], isLoading } = useQuery({
@@ -82,67 +83,83 @@ const AdminCreateTicket = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        try {
-            let uploadedAttachments: any[] = [];
+        // Helper para normalizar prioridad (evitar problemas de acentos)
+        const getPrioridadNormalizada = (p: string | undefined) => {
+            if (!p) return 'media';
+            const lower = p.toLowerCase().trim();
+            if (lower === 'crítica' || lower === 'critica' || lower === 'critico' || lower === 'crítico') return 'crítica';
+            return lower;
+        };
 
-            // 1. Subir archivos si existen
-            if (adjuntos.length > 0) {
-                setIsUploading(true);
-                try {
-                    const filesData = await ticketsService.uploadFiles(adjuntos);
-                    uploadedAttachments = filesData.map((f: any) => ({
-                        nombre: f.nombre,
-                        url: f.url,
-                        tipo: f.tipo
-                    }));
-                } catch (error) {
-                    console.error('Error subiendo archivos:', error);
-                    toast.error('Error al subir archivos adjuntos. Intenta sin archivos o verifica tu conexión.');
-                    setIsUploading(false);
-                    return;
-                }
-                setIsUploading(false);
-            }
-
-            // Helper para normalizar prioridad (evitar problemas de acentos)
-            const getPrioridadNormalizada = (p: string | undefined) => {
-                if (!p) return 'media';
-                const lower = p.toLowerCase().trim();
-                // Map 'crítica' or 'critica' to 'crítica' (Required by stale backend)
-                if (lower === 'crítica' || lower === 'critica' || lower === 'critico' || lower === 'crítico') return 'crítica';
-                return lower;
-            };
-
-            // 2. Crear ticket
-            createMutation.mutate({
-                titulo: selectedService.nombre,
-                descripcion,
-                servicioId: selectedService._id,
-                servicioNombre: selectedService.nombre,
-                tipo: selectedType.toLowerCase(),
-                prioridad: getPrioridadNormalizada(selectedService.prioridad),
-                categoria: selectedSubcategory,
-                empresaId: null, // Ticket interno (Backend lo manejará)
-                usuarioCreador: user?._id,
-                estado: 'abierto',
-                adjuntos: uploadedAttachments
-            });
-
-        } catch (error) {
-            console.error('Error en proceso de creación:', error);
-            setIsUploading(false);
-        }
+        createMutation.mutate({
+            titulo: selectedService.nombre,
+            descripcion,
+            servicioId: selectedService._id,
+            servicioNombre: selectedService.nombre,
+            tipo: selectedType.toLowerCase(),
+            prioridad: getPrioridadNormalizada(selectedService.prioridad),
+            categoria: selectedSubcategory,
+            empresaId: null, // Ticket interno (Backend lo manejará)
+            usuarioCreador: user?._id,
+            estado: 'abierto',
+            adjuntos: adjuntos
+        });
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setAdjuntos(Array.from(e.target.files));
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        if (!cloudName) {
+            toast.error('Cloudinary no configurado');
+            return;
+        }
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'aurontek_users');
+        formData.append('folder', 'tickets');
+
+        try {
+            const response = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                { method: 'POST', body: formData }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'Error uploading file');
+            }
+
+            const data = await response.json();
+
+            setAdjuntos(prev => [...prev, {
+                url: data.secure_url,
+                nombre: file.name,
+                tipo: file.type
+            }]);
+
+            toast.success('Archivo subido correctamente');
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            const msg = error.message || 'Error al subir archivo';
+            if (msg.includes('preset')) {
+                toast.error('Error: Preset de Cloudinary no encontrado o mal configurado.');
+            } else {
+                toast.error(`Error al subir archivo: ${msg}`);
+            }
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
     const removeFile = (index: number) => {
         setAdjuntos(prev => prev.filter((_, i) => i !== index));
     };
+
 
     if (isLoading) {
         return (
@@ -410,45 +427,24 @@ const AdminCreateTicket = () => {
 
                             {/* Adjuntos */}
                             <div className="space-y-3">
-                                <Label htmlFor="adjuntos" className="text-base font-semibold flex items-center gap-2">
-                                    <Upload className="h-4 w-4" />
+                                <Label className="text-base font-semibold flex items-center gap-2">
+                                    <Paperclip className="h-4 w-4" />
                                     Evidencias (Opcional)
                                 </Label>
-                                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 hover:bg-slate-50 transition-colors cursor-pointer group relative bg-slate-50/50">
-                                    <input
-                                        type="file"
-                                        id="adjuntos"
-                                        multiple
-                                        accept="image/png, image/jpeg, application/pdf"
-                                        onChange={handleFileChange}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                    <div className="flex flex-col items-center">
-                                        <div className="bg-white p-3 rounded-full mb-3 shadow-sm group-hover:scale-110 transition-transform">
-                                            <Upload className="h-6 w-6 text-blue-600" />
-                                        </div>
-                                        <p className="font-medium text-slate-700 group-hover:text-blue-600">
-                                            Arrastra archivos aquí o haz click para buscar
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            Soporta imágenes PNG, JPG y PDF (Máx 5MB)
-                                        </p>
-                                    </div>
-                                </div>
 
                                 {adjuntos.length > 0 && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 animate-in fade-in">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
                                         {adjuntos.map((file, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 bg-white border rounded-md shadow-sm">
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-white border rounded-md shadow-sm group">
                                                 <div className="flex items-center gap-2 overflow-hidden">
                                                     <div className="bg-slate-100 p-1.5 rounded">
-                                                        {file.type.includes('pdf') ?
-                                                            <span className="text-xs font-bold text-red-500">PDF</span> :
-                                                            <span className="text-xs font-bold text-blue-500">IMG</span>
-                                                        }
+                                                        {file.tipo.startsWith('image/') ? (
+                                                            <ImageIcon className="w-4 h-4 text-blue-500" />
+                                                        ) : (
+                                                            <FileText className="w-4 h-4 text-slate-500" />
+                                                        )}
                                                     </div>
-                                                    <span className="text-sm truncate text-slate-700">{file.name}</span>
-                                                    <span className="text-xs text-slate-400">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                                    <span className="text-sm truncate text-slate-700 max-w-[200px]">{file.nombre}</span>
                                                 </div>
                                                 <Button
                                                     type="button"
@@ -457,13 +453,40 @@ const AdminCreateTicket = () => {
                                                     className="h-8 w-8 text-slate-400 hover:text-red-500"
                                                     onClick={() => removeFile(idx)}
                                                 >
-                                                    <div className="h-4 w-4">×</div>
+                                                    <X className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         ))}
                                     </div>
                                 )}
+
+                                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 hover:bg-slate-50 transition-colors cursor-pointer group relative bg-slate-50/50">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                        onChange={handleFileSelect}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        disabled={uploading}
+                                    />
+                                    <div className="flex flex-col items-center">
+                                        <div className="bg-white p-3 rounded-full mb-3 shadow-sm group-hover:scale-110 transition-transform">
+                                            {uploading ? (
+                                                <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                                            ) : (
+                                                <Upload className="h-6 w-6 text-blue-600" />
+                                            )}
+                                        </div>
+                                        <p className="font-medium text-slate-700 group-hover:text-blue-600">
+                                            {uploading ? 'Subiendo archivo...' : 'Arrastra archivos aquí o haz click para buscar'}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Soporta imágenes, PDFs y documentos (Máx 5MB)
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
+
 
                             {/* Botones */}
                             <div className="flex justify-end gap-3 pt-6 border-t mt-8">
@@ -472,21 +495,22 @@ const AdminCreateTicket = () => {
                                     variant="outline"
                                     className="px-6"
                                     onClick={() => navigate('/admin/tickets')}
-                                    disabled={createMutation.isPending || isUploading}
+                                    disabled={createMutation.isPending || uploading}
                                 >
                                     Cancelar
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={createMutation.isPending || !descripcion.trim() || isUploading}
+                                    disabled={createMutation.isPending || !descripcion.trim() || uploading}
                                     className="bg-blue-600 hover:bg-blue-700 px-8 text-white shadow-md hover:shadow-lg transition-all"
                                 >
-                                    {(createMutation.isPending || isUploading) ? (
+                                    {(createMutation.isPending || uploading) ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {isUploading ? 'Subiendo archivos...' : 'Creando Ticket...'}
+                                            {uploading ? 'Subiendo archivos...' : 'Creando Ticket...'}
                                         </>
                                     ) : (
+
                                         <>
                                             <Send className="mr-2 h-4 w-4" />
                                             Crear Ticket

@@ -33,4 +33,12 @@ router.delete(
     adminController.eliminarAdmin
 );
 
+// PUT /api/admins/:id - Modificar un administrador
+router.put(
+    '/:id',
+    verificarToken,
+    requirePermission(PERMISOS.ADMINS_EDIT),
+    adminController.modificarAdmin
+);
+
 export default router;

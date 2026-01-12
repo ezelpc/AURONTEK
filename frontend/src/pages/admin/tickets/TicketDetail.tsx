@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Clock, User, Building, Paperclip, MessageSquare, X } from 'lucide-react';
+import { ArrowLeft, Clock, User, Building, Paperclip, MessageSquare, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { TicketTimeline } from '@/components/tickets/TicketTimeline';
 import { TicketActionsMenu } from '@/components/tickets/TicketActionsMenu';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const TicketDetail = () => {
     const { id } = useParams<{ id: string }>();
@@ -53,24 +54,29 @@ const TicketDetail = () => {
     // Helper for Status Badge
     const getStatusBadge = (status: string) => {
         const s = status?.toLowerCase();
+        const baseClass = "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm border";
         switch (s) {
-            case 'abierto': return <Badge variant="destructive" className="uppercase">Abierto</Badge>;
-            case 'en_proceso': return <Badge className="bg-blue-600 hover:bg-blue-700 uppercase">En Proceso</Badge>;
-            case 'en_espera': return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white uppercase">En Espera</Badge>;
-            case 'resuelto': return <Badge className="bg-green-600 hover:bg-green-700 uppercase">Resuelto</Badge>;
-            case 'cerrado': return <Badge variant="outline" className="text-slate-500 uppercase">Cerrado</Badge>;
+            case 'abierto': return <span className={cn(baseClass, "bg-red-50 text-red-600 border-red-200")}>Abierto</span>;
+            case 'en_proceso': return <span className={cn(baseClass, "bg-blue-50 text-blue-600 border-blue-200 animate-pulse")}>En Proceso</span>;
+            case 'en_espera': return <span className={cn(baseClass, "bg-amber-50 text-amber-600 border-amber-200")}>En Espera</span>;
+            case 'resuelto': return <span className={cn(baseClass, "bg-emerald-50 text-emerald-600 border-emerald-200")}>Resuelto</span>;
+            case 'cerrado': return <span className={cn(baseClass, "bg-slate-50 text-slate-500 border-slate-200")}>Cerrado</span>;
             default: return <Badge variant="secondary">{status}</Badge>;
         }
     };
 
     // Helper for Priority
-    const getPriorityColor = (p: string) => {
+    const getPriorityStyles = (p: string) => {
         const priority = p?.toLowerCase();
-        if (priority === 'crítica' || priority === 'urgente') return 'text-red-600 bg-red-50 border-red-200';
-        if (priority === 'alta') return 'text-orange-600 bg-orange-50 border-orange-200';
-        if (priority === 'baja') return 'text-green-600 bg-green-50 border-green-200';
-        return 'text-blue-600 bg-blue-50 border-blue-200'; // Media
+        if (priority === 'crítica' || priority === 'urgente' || priority === 'critica')
+            return 'text-red-600 bg-red-50/50 border-red-200';
+        if (priority === 'alta')
+            return 'text-orange-600 bg-orange-50/50 border-orange-200';
+        if (priority === 'baja')
+            return 'text-emerald-600 bg-emerald-50/50 border-emerald-200';
+        return 'text-indigo-600 bg-indigo-50/50 border-indigo-200'; // Media
     };
+
 
     // Chat Logic
     // Habilitado si: 'en_proceso' o 'resuelto'.
@@ -116,176 +122,203 @@ const TicketDetail = () => {
                         <CardHeader className="bg-slate-50/50 pb-4 border-b">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <Badge variant="outline" className="font-mono text-xs">#{ticket._id?.slice(-6)}</Badge>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-white border rounded shadow-sm">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Ticket</span>
+                                            <span className="font-mono text-xs font-bold text-slate-700">#{ticket._id?.slice(-6)}</span>
+                                        </div>
                                         {getStatusBadge(ticket.estado)}
-                                        <span className={`text-xs px-2 py-0.5 rounded border font-medium uppercase ${getPriorityColor(ticket.prioridad)}`}>
+                                        <span className={cn("text-[10px] px-3 py-1 rounded-full border font-bold uppercase tracking-wider shadow-sm", getPriorityStyles(ticket.prioridad))}>
                                             {ticket.prioridad}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-2xl text-slate-800">{ticket.titulo}</CardTitle>
-                                    <CardDescription className="flex items-center gap-2 mt-1">
-                                        <Clock className="h-3 w-3" />
-                                        Creado el {format(new Date(ticket.createdAt), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+                                    <CardTitle className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">{ticket.titulo}</CardTitle>
+                                    <CardDescription className="flex items-center gap-2 mt-2 font-medium text-slate-500">
+                                        <Clock className="h-4 w-4 text-blue-500" />
+                                        Iniciado el {format(new Date(ticket.createdAt), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
                                     </CardDescription>
                                 </div>
+
                             </div>
                         </CardHeader>
 
                         <CardContent className="pt-6 space-y-6">
                             {/* Descripción */}
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-900 uppercase mb-2">Descripción</h3>
-                                <div className="bg-slate-50 p-4 rounded-md text-slate-700 whitespace-pre-wrap leading-relaxed border">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-1 w-6 bg-blue-600 rounded-full"></div>
+                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Descripción del Caso</h3>
+                                </div>
+                                <div className="bg-gradient-to-br from-slate-50 to-white p-6 rounded-xl text-slate-700 whitespace-pre-wrap leading-relaxed border shadow-inner text-base">
                                     {ticket.descripcion}
                                 </div>
                             </div>
 
-                            {/* Imágenes Adjuntas */}
-                            {ticket.imagenes && ticket.imagenes.length > 0 && (
-                                <div>
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase mb-2">Imágenes Adjuntas</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {ticket.imagenes.map((imagen: string, index: number) => {
-                                            // Transform URL to use gateway if it's a local upload
+                            {/* Metadata Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="p-4 bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow group">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                            <User className="h-5 w-5" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Solicitante</span>
+                                    </div>
+                                    <div className="font-bold text-slate-900 truncate">
+                                        {(ticket.usuarioCreador as any)?.nombre || 'Usuario'}
+                                    </div>
+                                    <div className="text-xs text-slate-500 truncate mt-0.5">{(ticket.usuarioCreador as any)?.email}</div>
+                                </div>
+
+                                <div className="p-4 bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow group">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                            <Building className="h-5 w-5" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Empresa / Área</span>
+                                    </div>
+                                    <div className="font-bold text-slate-900 truncate">
+                                        {(ticket.empresaId as any)?.nombre || 'Interno'}
+                                    </div>
+                                    <Badge variant="outline" className="mt-1 text-[9px] uppercase font-bold text-indigo-600 border-indigo-100 bg-indigo-50/30">
+                                        {ticket.categoria || 'Soporte General'}
+                                    </Badge>
+                                </div>
+
+                                <div className="p-4 bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow group border-l-4 border-l-blue-500">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                            <User className="h-5 w-5" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Agente Asignado</span>
+                                    </div>
+                                    {ticket.agenteAsignado ? (
+                                        <>
+                                            <div className="font-bold text-blue-700 truncate">
+                                                {(ticket.agenteAsignado as any).nombre}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 uppercase font-medium mt-0.5">{(ticket.agenteAsignado as any).rol}</div>
+                                        </>
+                                    ) : (
+                                        <div className="text-slate-400 italic text-sm mt-1">Esperando asignación...</div>
+                                    )}
+                                </div>
+
+                                <div className="p-4 bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow group">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 bg-amber-50 rounded-lg text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                                            <Clock className="h-5 w-5" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Información SLA</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="text-xs font-bold text-slate-700 truncate">{ticket.servicioNombre}</div>
+                                        {ticket.tiempoEnEspera ? (
+                                            <div className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full inline-flex items-center font-bold">
+                                                ⏸️ {(ticket.tiempoEnEspera / 1000 / 60).toFixed(0)} min pausa
+                                            </div>
+                                        ) : (
+                                            <div className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full inline-flex items-center font-bold">
+                                                ✅ Dentro de tiempo
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Unified Evidence Gallery */}
+                            {((ticket.imagenes && ticket.imagenes.length > 0) || (ticket.adjuntos && ticket.adjuntos.length > 0)) && (
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-1 w-6 bg-indigo-600 rounded-full"></div>
+                                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Evidencias y Adjuntos</h3>
+                                        </div>
+                                        <span className="text-xs text-slate-400 font-medium font-mono">
+                                            {((ticket.imagenes?.length || 0) + (ticket.adjuntos?.length || 0))} archivos detectados
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        {/* Render legacy images array */}
+                                        {ticket.imagenes?.map((imagen: string, index: number) => {
                                             let imageUrl = imagen;
                                             if (imagen.startsWith('/uploads')) {
-                                                // Remove /api from VITE_API_URL for static file serving
                                                 const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
                                                 imageUrl = `${baseUrl}${imagen}`;
                                             }
-
                                             return (
                                                 <div
-                                                    key={index}
+                                                    key={`img-${index}`}
                                                     onClick={() => setSelectedImage(imageUrl)}
-                                                    className="group relative aspect-square rounded-lg overflow-hidden border-2 border-slate-200 hover:border-blue-500 transition-all cursor-pointer"
+                                                    className="group relative aspect-square rounded-xl overflow-hidden border-2 border-slate-100 hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer bg-slate-50"
                                                 >
                                                     <img
                                                         src={imageUrl}
-                                                        alt={`Adjunto ${index + 1}`}
-                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                                        onError={(e) => {
-                                                            // Fallback if image fails to load
-                                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImagen no disponible%3C/text%3E%3C/svg%3E';
-                                                        }}
+                                                        alt="Evidencia"
+                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                     />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 px-3 py-1 rounded-full text-xs font-medium">
-                                                            Ver imagen
+                                                    <div className="absolute inset-0 bg-indigo-900/0 group-hover:bg-indigo-900/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <div className="bg-white/95 p-2 rounded-full shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                                                            <ImageIcon className="h-4 w-4 text-indigo-600" />
                                                         </div>
                                                     </div>
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                </div>
-                            )}
 
-                            {/* Info General Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-3 border rounded-md">
-                                    <div className="flex items-center gap-2 text-slate-500 mb-1">
-                                        <User className="h-4 w-4" />
-                                        <span className="text-xs font-bold uppercase">Solicitante</span>
-                                    </div>
-                                    <div className="font-medium text-slate-800">
-                                        {(ticket.usuarioCreador as any)?.nombre || 'Usuario Desconocido'}
-                                    </div>
-                                    <div className="text-xs text-slate-500">{(ticket.usuarioCreador as any)?.email}</div>
-                                </div>
-
-                                <div className="p-3 border rounded-md">
-                                    <div className="flex items-center gap-2 text-slate-500 mb-1">
-                                        <Building className="h-4 w-4" />
-                                        <span className="text-xs font-bold uppercase">Empresa / Área</span>
-                                    </div>
-                                    <div className="font-medium text-slate-800">
-                                        {(ticket.empresaId as any)?.nombre || 'Interno'}
-                                    </div>
-                                    <div className="text-xs text-slate-500 uppercase">{ticket.categoria || 'General'}</div>
-                                </div>
-
-                                <div className="p-3 border rounded-md">
-                                    <div className="flex items-center gap-2 text-slate-500 mb-1">
-                                        <User className="h-4 w-4 text-blue-500" />
-                                        <span className="text-xs font-bold uppercase">Asignado A</span>
-                                    </div>
-                                    {ticket.agenteAsignado ? (
-                                        <>
-                                            <div className="font-medium text-blue-700">
-                                                {(ticket.agenteAsignado as any).nombre}
-                                            </div>
-                                            <div className="text-xs text-slate-500">{(ticket.agenteAsignado as any).rol}</div>
-                                        </>
-                                    ) : (
-                                        <div className="text-slate-400 italic text-sm">Sin asignar</div>
-                                    )}
-                                </div>
-                                <div className="p-3 border rounded-md">
-                                    <div className="flex items-center gap-2 text-slate-500 mb-1">
-                                        <Clock className="h-4 w-4 text-yellow-500" />
-                                        <span className="text-xs font-bold uppercase">SLA / Tiempos</span>
-                                    </div>
-                                    <div className="text-sm">
-                                        {ticket.tiempoEnEspera ? (
-                                            <div className="text-yellow-600">⏸️ Pausado: {(ticket.tiempoEnEspera / 1000 / 60).toFixed(0)} min</div>
-                                        ) : null}
-                                        {/* Poner más info de SLA aquí si existe */}
-                                        <div className="text-xs text-slate-400 mt-1">Servicio: {ticket.servicioNombre}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Adjuntos */}
-                            {ticket.adjuntos && ticket.adjuntos.length > 0 && (
-                                <div>
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase mb-3 flex items-center gap-2">
-                                        <Paperclip className="h-4 w-4" /> Evidencias Adjuntas
-                                    </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {ticket.adjuntos.map((file: any, idx: number) => {
+                                        {/* Render dynamic adjuntos array */}
+                                        {ticket.adjuntos?.map((file: any, index: number) => {
                                             const isImage = file.tipo?.startsWith('image/');
                                             let fileUrl = file.url;
                                             if (file.url.startsWith('/uploads')) {
-                                                // Remove /api from VITE_API_URL for static file serving
                                                 const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
                                                 fileUrl = `${baseUrl}${file.url}`;
                                             }
 
                                             return isImage ? (
                                                 <div
-                                                    key={idx}
+                                                    key={`adj-${index}`}
                                                     onClick={() => setSelectedImage(fileUrl)}
-                                                    className="flex items-center p-3 border rounded hover:bg-slate-50 transition-colors group cursor-pointer"
+                                                    className="group relative aspect-square rounded-xl overflow-hidden border-2 border-slate-100 hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer bg-slate-50"
                                                 >
-                                                    <div className="bg-slate-100 p-2 rounded mr-3 group-hover:bg-white text-xs font-bold text-slate-600">
-                                                        {file.tipo?.split('/')[1]?.toUpperCase() || 'FILE'}
+                                                    <img
+                                                        src={fileUrl}
+                                                        alt={file.nombre}
+                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                    />
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                                        <p className="text-[9px] text-white truncate font-medium">{file.nombre}</p>
                                                     </div>
-                                                    <div className="flex-1 overflow-hidden">
-                                                        <div className="text-sm font-medium truncate text-blue-600">{file.nombre}</div>
+                                                    <div className="absolute inset-0 bg-indigo-900/0 group-hover:bg-indigo-900/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <div className="bg-white/95 p-2 rounded-full shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                                                            <ImageIcon className="h-4 w-4 text-indigo-600" />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <a
-                                                    key={idx}
+                                                    key={`adj-${index}`}
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    className="flex items-center p-3 border rounded hover:bg-slate-50 transition-colors group"
+                                                    className="flex flex-col justify-center items-center aspect-square rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all group p-4 text-center"
                                                 >
-                                                    <div className="bg-slate-100 p-2 rounded mr-3 group-hover:bg-white text-xs font-bold text-slate-600">
+                                                    <div className="bg-slate-100 p-3 rounded-2xl mb-2 group-hover:bg-blue-100 group-hover:scale-110 transition-all">
+                                                        <FileText className="h-6 w-6 text-slate-500 group-hover:text-blue-600" />
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-slate-600 line-clamp-2 uppercase h-7 overflow-hidden leading-tight">
+                                                        {file.nombre}
+                                                    </p>
+                                                    <span className="text-[8px] mt-1 font-mono text-slate-400 group-hover:text-blue-500">
                                                         {file.tipo?.split('/')[1]?.toUpperCase() || 'FILE'}
-                                                    </div>
-                                                    <div className="flex-1 overflow-hidden">
-                                                        <div className="text-sm font-medium truncate text-blue-600">{file.nombre}</div>
-                                                    </div>
+                                                    </span>
                                                 </a>
                                             );
                                         })}
                                     </div>
                                 </div>
                             )}
+
                         </CardContent>
                     </Card>
                 </div>

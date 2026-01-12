@@ -260,6 +260,17 @@ const modificarUsuario = async (req: Request, res: Response) => {
   const empresaId = req.usuario.empresaId;
   const usuarioId = req.params.id;
   const rolUsuario = req.usuario.rol;
+  const datosActualizados = req.body;
+
+  // Normalize 'empresa' field: Frontend might send 'empresaId'
+  if (!datosActualizados.empresa && datosActualizados.empresaId) {
+    datosActualizados.empresa = datosActualizados.empresaId;
+  }
+
+  // Normalize email field: Frontend might send 'email' or 'correo'
+  if (!datosActualizados.correo && datosActualizados.email) {
+    datosActualizados.correo = datosActualizados.email;
+  }
 
   // Validar Permisos si se están actualizando
   if (req.body.permisos) {
@@ -297,27 +308,37 @@ const modificarUsuario = async (req: Request, res: Response) => {
     }
 
     // Validar Rol si cambia
-    if (req.body.rol) {
-      if (req.body.rol !== 'admin-general' && req.body.rol !== 'admin-subroot') {
+    if (datosActualizados.rol) {
+      if (datosActualizados.rol !== 'admin-general' && datosActualizados.rol !== 'admin-subroot') {
         const RolModel = (await import('../Models/Role.model')).default;
         // Use existing user company if not changing, or new company if changing
-        const targetEmpresa = req.body.empresa || usuario.empresa || empresaId;
+        const targetEmpresa = datosActualizados.empresa || usuario.empresa || empresaId;
 
         const roleExists = await RolModel.findOne({
-          nombre: req.body.rol,
+          nombre: datosActualizados.rol,
           $or: [
             { empresa: targetEmpresa },
             { empresa: null }
           ]
         });
 
-        if (!roleExists && req.body.rol !== 'admin-interno') {
-          return res.status(400).json({ msg: `El rol '${req.body.rol}' no es válido para esta empresa.` });
+        if (!roleExists && datosActualizados.rol !== 'admin-interno') {
+          return res.status(400).json({ msg: `El rol '${datosActualizados.rol}' no es válido para esta empresa.` });
         }
+
+        // AUTO-SYNC PERMISSIONS IF ROLE CHANGED
+        // If the user didn't explicitly send permissions, or even if they did, we might want to sync.
+        // For now, if role is changed and no permissions provided, sync them.
+        if (roleExists && (!datosActualizados.permisos || datosActualizados.permisos.length === 0)) {
+          datosActualizados.permisos = roleExists.permisos || [];
+          console.log(`[UPDATE] Auto-syncing permissions for role change: ${datosActualizados.rol}`);
+        }
+      } else if (datosActualizados.rol === 'admin-general') {
+        datosActualizados.permisos = ['*'];
       }
     }
 
-    usuario = await usuarioService.actualizarUsuario(usuarioId, req.body);
+    usuario = await usuarioService.actualizarUsuario(usuarioId, datosActualizados);
     res.json({ msg: 'Usuario actualizado.', usuario });
   } catch (error: any) {
     res.status(400).json({ msg: error.message });

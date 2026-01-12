@@ -43,12 +43,16 @@ const UserForm = ({ userToEdit, onSuccess, tipo }: UserFormProps) => {
     useEffect(() => {
         if (userToEdit) {
             setNombre(userToEdit.nombre || '');
-            setEmail(userToEdit.email || userToEdit.correo || '');
+            setEmail(userToEdit.correo || userToEdit.email || '');
             setTelefono(userToEdit.telefono || '');
             setPuesto(userToEdit.puesto || '');
-            setEmpresaId(userToEdit.empresaId || userToEdit.empresa || '');
+            setEmpresaId(userToEdit.empresaId || userToEdit.empresa?._id || userToEdit.empresa || '');
             setSelectedRole(userToEdit.rol || '');
-            setSelectedCareGroups(userToEdit.habilidades || userToEdit.gruposDeAtencion || []);
+
+            // Handle both habilidades and gruposDeAtencion for compatibility
+            const groups = userToEdit.gruposDeAtencion || userToEdit.habilidades || [];
+            setSelectedCareGroups(Array.isArray(groups) ? groups : []);
+
             setActivo(userToEdit.activo !== false);
             setFotoPreview(userToEdit.fotoPerfil || '');
         }
