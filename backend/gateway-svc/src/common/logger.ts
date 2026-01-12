@@ -9,42 +9,19 @@ export function initLogger() {
   const normalized = branch.toLowerCase();
   const isMain = normalized === 'main' || normalized === 'production' || normalized === 'prod';
 
-  if (!isMain) {
-    const origLog = console.log.bind(console);
-    const origInfo = console.info.bind(console);
-    const origWarn = console.warn.bind(console);
-    const origError = console.error.bind(console);
+  // Always log to console in Docker/Production (standard practice)
+  const origLog = console.log.bind(console);
+  const origInfo = console.info.bind(console);
+  const origWarn = console.warn.bind(console);
+  const origError = console.error.bind(console);
 
-    const prefix = `[${normalized}]`;
-    console.log = (...args: any[]) => origLog(prefix, ...args);
-    console.info = (...args: any[]) => origInfo(prefix, ...args);
-    console.warn = (...args: any[]) => origWarn(prefix, ...args);
-    console.error = (...args: any[]) => origError(prefix, ...args);
-    return;
-  }
-
-  const logDir = process.env.LOG_DIR || '/var/log/aurontek';
-  const logFileName = process.env.LOG_FILE || 'app.log';
-  const logFile = path.join(logDir, logFileName);
-
-  try {
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true, mode: 0o700 });
-    } else {
-      try { fs.chmodSync(logDir, 0o700); } catch (e) { /* ignore */ }
-    }
-
-    if (!fs.existsSync(logFile)) {
-      const fd = fs.openSync(logFile, 'w', 0o600);
-      fs.closeSync(fd);
-      try { fs.chmodSync(logFile, 0o600); } catch (e) { /* ignore */ }
-    } else {
-      try { fs.chmodSync(logFile, 0o600); } catch (e) { /* ignore */ }
-    }
-  } catch (err) {
-    console.error('Logger init: no se pudo crear directorio/archivo de log, usando consola.', err);
-    return;
-  }
+  const prefix = `[${normalized}]`;
+  console.log = (...args: any[]) => origLog(prefix, ...args);
+  console.info = (...args: any[]) => origInfo(prefix, ...args);
+  console.warn = (...args: any[]) => origWarn(prefix, ...args);
+  console.error = (...args: any[]) => origError(prefix, ...args);
+  console.debug = (...args: any[]) => origLog(prefix, '[DEBUG]', ...args);
+  return;
 
   const write = (level: string, args: any[]) => {
     try {
