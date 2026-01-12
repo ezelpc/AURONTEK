@@ -12,13 +12,14 @@ from services.ticket_classifier import TicketClassifier
 from services.agent_assigner import AgentAssigner
 from services.rabbitmq_client import RabbitMQClient
 
-# ✅ Cargar variables de entorno solo en desarrollo
+from contextlib import asynccontextmanager
+
+# ✅ Cargar variables de entorno
 ENV = os.getenv('NODE_ENV', 'development')
 
-if ENV == 'development':
-    local_env_path = Path(__file__).parent / '.env'
-    load_dotenv(dotenv_path=local_env_path)
-    print(f'[{ENV}] 📄 Cargando variables desde .env local')
+# Intentar cargar .env y .env.local
+load_dotenv() # Carga .env por defecto
+load_dotenv(dotenv_path=Path(__file__).parent / '.env.local') # Sobrescribe con .env.local si existe
 
 print(f'[{ENV}] 🌍 Entorno detectado')
 
@@ -35,11 +36,53 @@ except Exception:
 if init_logger:
     init_logger()
 
+# Configuración de servicios
+RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://localhost:5672')
+
+# URLs de servicios - Intentar primero con nombres cortos (SVC), luego con largos (SERVICE)
+USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SVC_URL', os.getenv('USUARIOS_SERVICE_URL', 'http://usuarios-svc:3001'))
+TICKETS_SERVICE_URL = os.getenv('TICKETS_SVC_URL', os.getenv('TICKETS_SERVICE_URL', 'http://tickets-svc:3002'))
+SERVICE_TOKEN = os.getenv('SERVICE_TOKEN','23022e6bdb08ad3631c48af69253c5528f42cbed36b024b2fc041c0cfb23723b')
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manejador de ciclo de vida (Sustituye a startup/shutdown)"""
+    print("\n" + "="*60)
+    print("🚀 INICIANDO SERVICIO DE IA")
+    print("="*60)
+    print(f"📡 RabbitMQ URL: {RABBITMQ_URL}")
+    print(f"👥 Usuarios Service: {USUARIOS_SERVICE_URL}")
+    print(f"🎫 Tickets Service: {TICKETS_SERVICE_URL}")
+    print(f"🔑 Service Token: {'Configurado' if SERVICE_TOKEN else '❌ NO CONFIGURADO'}")
+    print("="*60 + "\n")
+    
+    def start_consumer():
+        try:
+            rabbitmq_client.start_consuming(
+                queue_name='ia_tickets',
+                routing_key='ticket.creado',
+                callback=process_new_ticket
+            )
+        except Exception as e:
+            print(f"❌ Error en consumidor RabbitMQ: {e}")
+    
+    # Iniciar consumidor en un hilo separado
+    consumer_thread = threading.Thread(target=start_consumer, daemon=True)
+    consumer_thread.start()
+    print("✅ Consumidor RabbitMQ iniciado\n")
+    
+    yield # Aquí es donde la aplicación "corre"
+    
+    print("\n🛑 Cerrando servicio de IA...")
+    rabbitmq_client.close()
+    print("✅ Conexiones cerradas\n")
+
 # Configuración de la aplicación
 app = FastAPI(
     title="Servicio de IA para Help Desk",
     description="Servicio de procesamiento inteligente de tickets",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS manejado por el Gateway, no agregar aquí
@@ -237,39 +280,7 @@ async def process_new_ticket(message: dict):
         except:
             pass
 
-@app.on_event("startup")
-async def startup_event():
-    """Inicializar conexiones y configuraciones al arrancar"""
-    print("\n" + "="*60)
-    print("🚀 INICIANDO SERVICIO DE IA")
-    print("="*60)
-    print(f"📡 RabbitMQ URL: {RABBITMQ_URL}")
-    print(f"👥 Usuarios Service: {USUARIOS_SERVICE_URL}")
-    print(f"🎫 Tickets Service: {TICKETS_SERVICE_URL}")
-    print(f"🔑 Service Token: {'Configurado' if SERVICE_TOKEN else '❌ NO CONFIGURADO'}")
-    print("="*60 + "\n")
-    
-    def start_consumer():
-        try:
-            rabbitmq_client.start_consuming(
-                queue_name='ia_tickets',
-                routing_key='ticket.creado',
-                callback=process_new_ticket
-            )
-        except Exception as e:
-            print(f"❌ Error en consumidor RabbitMQ: {e}")
-    
-    # Iniciar consumidor en un hilo separado
-    consumer_thread = threading.Thread(target=start_consumer, daemon=True)
-    consumer_thread.start()
-    print("✅ Consumidor RabbitMQ iniciado\n")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Limpiar recursos al cerrar"""
-    print("\n🛑 Cerrando servicio de IA...")
-    rabbitmq_client.close()
-    print("✅ Conexiones cerradas\n")
 
 @app.get("/")
 async def root():

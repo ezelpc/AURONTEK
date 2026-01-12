@@ -21,6 +21,8 @@ services:
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
       NODE_OPTIONS: "--max-old-space-size=180"
     mem_limit: 180m
+    depends_on:
+      - rabbitmq
     restart: always
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health" ]
@@ -114,9 +116,34 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL}
     mem_limit: 200m
     restart: always
+    depends_on:
+      - rabbitmq
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3005/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: always
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  rabbitmq_data:
+
+
