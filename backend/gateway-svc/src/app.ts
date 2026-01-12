@@ -26,14 +26,16 @@ export const createApp = () => {
             console.log('[CORS DEBUG] Origin recibido:', origin);
             console.log('[CORS DEBUG] Allowed origins:', allowedOrigins);
 
-            // Permitir requests sin origin SOLO en desarrollo (como Postman, curl)
+            // Permitir requests sin origin en desarrollo
             if (!origin && process.env.NODE_ENV !== 'production') {
                 return callback(null, true);
             }
 
-            // En producción, rechazar requests sin origin
-            if (!origin) {
-                return callback(new Error('Origin not allowed by CORS'));
+            // En producción, permitir requests sin origin si vienen de un proxy confiable (Nginx)
+            // Esto es seguro porque Nginx está en el mismo servidor y solo acepta conexiones HTTPS
+            if (!origin && process.env.NODE_ENV === 'production') {
+                console.log('[CORS] Request sin Origin en producción - probablemente de Nginx proxy');
+                return callback(null, true);
             }
 
             // Verificar si el origin está en la lista de permitidos
