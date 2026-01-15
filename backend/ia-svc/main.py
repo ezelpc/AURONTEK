@@ -37,7 +37,7 @@ if init_logger:
     init_logger()
 
 # Configuración de servicios
-RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://localhost:5672')
+RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqps://qgvzngev:OIUIrM9ToP4TL-_zjpk1L_iYCZcTSWOr@leopard.lmq.cloudamqp.com/qgvzngev')
 
 # URLs de servicios - Intentar primero con nombres cortos (SVC), luego con largos (SERVICE)
 USUARIOS_SERVICE_URL = os.getenv('USUARIOS_SVC_URL', os.getenv('USUARIOS_SERVICE_URL', 'http://usuarios-svc:3001'))
